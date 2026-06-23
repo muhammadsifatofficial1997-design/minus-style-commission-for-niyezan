@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minus Style Affiliate Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="login-screen" id="loginScreen">
+      <form class="login-card" id="loginForm">
+        <span class="brand-mark">MS</span>
+        <h1>Login Access</h1>
+        <p>Admin, Manager অথবা Employee PIN দিন। ডিফল্ট Admin: 1234, Manager: 2222, Employee: 3333</p>
+        <input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN" required />
+        <button class="primary-button" type="submit">
+          <i data-lucide="lock-keyhole"></i>
+          লগইন
+        </button>
+        <span class="status-pill" id="loginRoleHint">Admin / Manager / Employee Access</span>
+        <small id="loginError"></small>
+      </form>
+    </div>
+
+    <div class="app-shell locked" id="appShell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">MS</span>
+          <div>
+            <strong>Minus Style</strong>
+            <small>Affiliate Finance</small>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="প্রধান মেনু">
+          <button class="nav-button active" data-view="dashboard" type="button">
+            <i data-lucide="layout-dashboard"></i>
+            ড্যাশবোর্ড
+          </button>
+          <button class="nav-button" data-view="daily" type="button">
+            <i data-lucide="calendar-days"></i>
+            দৈনিক হিসাব
+          </button>
+          <button class="nav-button" data-view="reports" type="button">
+            <i data-lucide="file-chart-column"></i>
+            রিপোর্ট
+          </button>
+          <button class="nav-button" data-view="attendance" type="button">
+            <i data-lucide="clipboard-check"></i>
+            হাজিরা ও বেতন
+          </button>
+          <button class="nav-button" data-view="advance" type="button">
+            <i data-lucide="hand-coins"></i>
+            এডভান্স
+          </button>
+          <button class="nav-button" data-view="fixed" type="button">
+            <i data-lucide="wallet-cards"></i>
+            ফিক্সড খরচ
+          </button>
+          <button class="nav-button" data-view="settings" type="button">
+            <i data-lucide="settings"></i>
+            এডমিন সেটিংস
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span>মাসিক ফিক্সড খরচ</span>
+          <strong id="sidebarFixedTotal">৳0</strong>
+          <small id="currentUserLabel">Admin</small>
+          <button class="small-action logout-btn" id="logoutBtn" type="button">লগআউট</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">বাংলা এফিলিয়েট লাভ-লস ম্যানেজার</p>
+            <h1>আজকের আয়, খরচ ও নেট লাভ</h1>
+          </div>
+          <div class="date-control">
+            <label for="selectedDate">তারিখ</label>
+            <input id="selectedDate" type="date" />
+          </div>
+        </header>
+
+        <section class="view active" id="dashboardView">
+          <div class="metrics-grid">
+            <article class="metric">
+              <span class="metric-icon income"><i data-lucide="trending-up"></i></span>
+              <small>আজকের মোট আয়</small>
+              <strong id="todayIncome">৳0</strong>
+              <p>কমিশন ও অন্যান্য আয়</p>
+            </article>
+            <article class="metric">
+              <span class="metric-icon expense"><i data-lucide="trending-down"></i></span>
+              <small>আজকের মোট খরচ</small>
+              <strong id="todayExpense">৳0</strong>
+              <p>ডলার বুস্ট, অন্যান্য ও দৈনিক ফিক্সড</p>
+            </article>
+            <article class="metric">
+              <span class="metric-icon fixed"><i data-lucide="receipt-text"></i></span>
+              <small>দৈনিক ফিক্সড শেয়ার</small>
+              <strong id="dailyFixedShare">৳0</strong>
+              <p>মাসিক ফিক্সড খরচ ভাগ করে</p>
+            </article>
+            <article class="metric highlight">
+              <span class="metric-icon profit"><i data-lucide="badge-dollar-sign"></i></span>
+              <small>নেট লাভ / লস</small>
+              <strong id="todayNet">৳0</strong>
+              <p id="todayNetHint">আজকের ফলাফল</p>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel wide">
+              <div class="panel-head">
+                <div>
+                  <h2>মাসিক পারফরম্যান্স</h2>
+                  <p id="monthLabel">চলতি মাসের সারাংশ</p>
+                </div>
+                <span class="status-pill" id="monthStatus">হিসাব চলছে</span>
+              </div>
+              <div class="summary-row">
+                <div><small>মাসিক আয়</small><strong id="monthIncome">৳0</strong></div>
+                <div><small>ডলার বুস্ট</small><strong id="monthBoost">৳0</strong></div>
+                <div><small>ফিক্সড খরচ</small><strong id="monthFixed">৳0</strong></div>
+                <div><small>মাসিক নেট</small><strong id="monthNet">৳0</strong></div>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="trendChart" width="900" height="260" aria-label="মাসিক আয় খরচ চার্ট"></canvas>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>আজকের এন্ট্রি</h2>
+                  <p>নির্বাচিত তারিখের সব হিসাব</p>
+                </div>
+                <button class="icon-button" id="quickAddBtn" type="button" title="নতুন এন্ট্রি">
+                  <i data-lucide="plus"></i>
+                </button>
+              </div>
+              <div class="entry-list" id="todayEntries"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="dailyView">
+          <div class="filter-bar">
+            <label>শুরু <input id="dailyStart" type="date" /></label>
+            <label>শেষ <input id="dailyEnd" type="date" /></label>
+            <button class="secondary-button" id="applyDailyFilter" type="button">
+              <i data-lucide="filter"></i>
+              ফিল্টার
+            </button>
+          </div>
+
+          <div class="form-grid">
+            <form class="panel form-panel" id="entryForm">
+              <div class="panel-head">
+                <div>
+                  <h2>দৈনিক হিসাব যোগ করুন</h2>
+                  <p>কমিশন, ডলার বুস্ট বা অফিসের অন্যান্য খরচ</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>ধরন <select id="entryType" required><option value="income">আয়</option><option value="expense">খরচ</option></select></label>
+                <label>ক্যাটাগরি <select id="entryCategory" required></select></label>
+              </div>
+              <div class="field-row">
+                <label>পরিমাণ <input id="entryAmount" type="number" min="0" step="1" placeholder="যেমন 2500" required /></label>
+                <label>তারিখ <input id="entryDate" type="date" required /></label>
+              </div>
+              <label>নোট <textarea id="entryNote" rows="3" placeholder="যেমন: অফিস নাস্তা, Starlink extra, campaign boost"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="save"></i> এন্ট্রি সেভ করুন</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>দৈনিক এন্ট্রি</h2>
+                  <p id="entryTableHint">ফিল্টার অনুযায়ী এন্ট্রি</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>তারিখ</th>
+                      <th>ধরন</th>
+                      <th>ক্যাটাগরি</th>
+                      <th>পরিমাণ</th>
+                      <th>নোট</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="entriesTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="reportsView">
+          <section class="panel report-panel" id="printableReport">
+            <div class="panel-head">
+              <div>
+                <h2>Monthly Report</h2>
+                <p id="reportRangeLabel">রেঞ্জ অনুযায়ী আয়, boost cost, fixed cost, net profit</p>
+              </div>
+              <span class="status-pill" id="reportStatus">রিপোর্ট</span>
+            </div>
+            <div class="filter-bar report-actions">
+              <label>শুরু <input id="reportStart" type="date" /></label>
+              <label>শেষ <input id="reportEnd" type="date" /></label>
+              <button class="secondary-button" id="applyReportFilter" type="button"><i data-lucide="filter"></i> রিপোর্ট দেখুন</button>
+              <button class="secondary-button" id="csvExportBtn" type="button"><i data-lucide="file-down"></i> CSV</button>
+              <button class="secondary-button" id="pdfExportBtn" type="button"><i data-lucide="printer"></i> PDF</button>
+            </div>
+            <div class="summary-row report-summary">
+              <div><small>মোট আয়</small><strong id="reportIncome">৳0</strong></div>
+              <div><small>Boost Cost</small><strong id="reportBoost">৳0</strong></div>
+              <div><small>Fixed Cost</small><strong id="reportFixed">৳0</strong></div>
+              <div><small>Net Profit</small><strong id="reportNet">৳0</strong></div>
+            </div>
+            <div class="content-grid report-grid">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>ক্যাটাগরি</th><th>ধরন</th><th>পরিমাণ</th></tr></thead>
+                  <tbody id="categoryReportTable"></tbody>
+                </table>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>তারিখ</th><th>আয়</th><th>খরচ</th><th>নেট</th></tr></thead>
+                  <tbody id="dailyReportTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="attendanceView">
+          <div class="filter-bar">
+            <label>হাজিরার তারিখ <input id="attendanceDate" type="date" /></label>
+            <label>Payroll মাস <input id="payrollMonth" type="month" /></label>
+            <button class="secondary-button" id="applyPayrollBtn" type="button"><i data-lucide="calculator"></i> Payroll দেখুন</button>
+          </div>
+
+          <div class="form-grid">
+            <form class="panel form-panel" id="attendanceForm">
+              <div class="panel-head">
+                <div>
+                  <h2>Attendance Management</h2>
+                  <p>Check In, Check Out, Break Time এবং Shift Management</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>কর্মী <select id="attendanceEmployee" required></select></label>
+                <label>
+                  স্ট্যাটাস
+                  <select id="attendanceStatus" required>
+                    <option value="present">Present</option>
+                    <option value="leave">Leave - Salary Cut</option>
+                    <option value="absent">Absent - Salary Cut</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Shift
+                  <select id="attendanceShift" required>
+                    <option value="morning">Morning Shift</option>
+                    <option value="evening">Evening Shift</option>
+                    <option value="night">Night Shift</option>
+                  </select>
+                </label>
+                <label>Break Time (minutes) <input id="attendanceBreak" type="number" min="0" step="1" value="0" /></label>
+              </div>
+              <div class="field-row">
+                <label>Check In <input id="attendanceCheckIn" type="time" /></label>
+                <label>Check Out <input id="attendanceCheckOut" type="time" /></label>
+              </div>
+              <label>নোট <textarea id="attendanceNote" rows="3" placeholder="যেমন: ছুটি, অসুস্থতা, personal leave"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="save"></i> হাজিরা সেভ করুন</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>আজকের হাজিরা</h2>
+                  <p id="attendanceHint">নির্বাচিত তারিখের হাজিরা</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>কর্মী</th><th>স্ট্যাটাস</th><th>Shift</th><th>Check In</th><th>Check Out</th><th>Break</th><th>নোট</th><th>Marked By</th><th></th></tr></thead>
+                  <tbody id="attendanceTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel payroll-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Payroll Management</h2>
+                <p id="payrollHint">মাসভিত্তিক বেতন, কাটতি ও payable salary</p>
+              </div>
+            </div>
+            <div class="summary-row">
+              <div><small>Gross Salary</small><strong id="payrollGross">৳0</strong></div>
+              <div><small>Total Deduction</small><strong id="payrollDeduction">৳0</strong></div>
+              <div><small>Payable Salary</small><strong id="payrollPayable">৳0</strong></div>
+              <div><small>Cut Days</small><strong id="payrollCutDays">0</strong></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>কর্মী</th>
+                    <th>Base Salary</th>
+                    <th>Present</th>
+                    <th>Leave</th>
+                    <th>Absent</th>
+                    <th>Deduction</th>
+                    <th>Advance</th>
+                    <th>Payable</th>
+                    <th>Payslip</th>
+                  </tr>
+                </thead>
+                <tbody id="payrollTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="advanceView">
+          <div class="form-grid">
+            <form class="panel form-panel" id="advanceForm">
+              <div class="panel-head">
+                <div>
+                  <h2>Advance Salary Request</h2>
+                  <p>Employee request করবে, Admin approve করলে salary থেকে auto deduction হবে</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>কর্মী <select id="advanceEmployee" required></select></label>
+                <label>Salary Month <input id="advanceMonth" type="month" required /></label>
+              </div>
+              <div class="field-row">
+                <label>Amount <input id="advanceAmount" type="number" min="1" step="1" required /></label>
+                <label>Reason <input id="advanceReason" type="text" placeholder="কারণ" /></label>
+              </div>
+              <button class="primary-button" type="submit"><i data-lucide="send"></i> Advance Request</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Advance Approval</h2>
+                  <p>Approved advance payroll deduction-এ যুক্ত হবে</p>
+                </div>
+              </div>
+              <div class="fixed-list" id="advanceList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="fixedView">
+          <div class="form-grid">
+            <form class="panel form-panel" id="fixedForm">
+              <div class="panel-head">
+                <div>
+                  <h2>ফিক্সড খরচ ম্যানেজ করুন</h2>
+                  <p>বেতন, ইন্টারনেট, ভাড়া, বিদ্যুৎ বা নতুন খরচ</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>নাম <input id="fixedName" type="text" placeholder="যেমন: ফাইজুর বেতন" required /></label>
+                <label>
+                  ক্যাটাগরি
+                  <select id="fixedCategory">
+                    <option value="salary">বেতন</option>
+                    <option value="internet">ইন্টারনেট বিল</option>
+                    <option value="rent">অফিস ভাড়া</option>
+                    <option value="electricity">বিদ্যুৎ বিল</option>
+                    <option value="other">অন্যান্য</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>মাসিক পরিমাণ <input id="fixedAmount" type="number" min="0" step="1" required /></label>
+                <label class="toggle-label"><input id="fixedActive" type="checkbox" checked /><span>সক্রিয় খরচ</span></label>
+              </div>
+              <label>নোট <textarea id="fixedNote" rows="3" placeholder="চাকরি ছাড়লে inactive করুন বা ডিলিট করুন"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="save"></i> ফিক্সড খরচ সেভ করুন</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>ফিক্সড খরচ লিস্ট</h2>
+                  <p>প্রয়োজনে এডিট, inactive বা ডিলিট করুন</p>
+                </div>
+              </div>
+              <div class="fixed-list" id="fixedList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView">
+          <div class="content-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Admin & Publish</h2>
+                  <p>PIN, মোবাইল লিংক এবং publish checklist</p>
+                </div>
+              </div>
+              <form class="inline-form" id="pinForm">
+                <input id="newPin" type="password" inputmode="numeric" placeholder="নতুন PIN" required />
+                <button class="secondary-button" type="submit"><i data-lucide="key-round"></i> PIN বদলান</button>
+              </form>
+              <div class="publish-box">
+                <strong>Mobile responsive publish</strong>
+                <p>Netlify/GitHub Pages-এ upload করলে মোবাইল বা অন্য PC থেকে link দিয়ে দেখা যাবে। Google Sheets backend URL দিলে সবাই একই live data ব্যবহার করবে।</p>
+                <button class="secondary-button" id="copyLinkBtn" type="button"><i data-lucide="link"></i> বর্তমান লিংক কপি</button>
+              </div>
+              <div class="publish-box cloud-box">
+                <strong>Google Sheets Backend</strong>
+                <label>Apps Script Web App URL <input id="cloudApiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
+                <div class="button-row">
+                  <button class="secondary-button" id="saveCloudUrlBtn" type="button"><i data-lucide="cloud"></i> URL সেভ</button>
+                  <button class="secondary-button" id="syncFromCloudBtn" type="button"><i data-lucide="download-cloud"></i> Cloud থেকে আনুন</button>
+                  <button class="secondary-button" id="syncToCloudBtn" type="button"><i data-lucide="upload-cloud"></i> Cloud-এ পাঠান</button>
+                </div>
+                <p class="backup-status" id="cloudStatus">Cloud sync বন্ধ আছে।</p>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Manager Access</h2>
+                  <p>বেতনভুক্ত কর্মীর জন্য আলাদা PIN access</p>
+                </div>
+              </div>
+              <form class="inline-form manager-inline" id="managerForm">
+                <input id="managerName" type="text" placeholder="নাম, যেমন: ফাইজুর" required />
+                <input id="managerPin" type="password" inputmode="numeric" placeholder="PIN" required />
+                <button class="secondary-button" type="submit"><i data-lucide="user-plus"></i> Manager যোগ</button>
+              </form>
+              <div class="fixed-list" id="managerList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Approval Requests</h2>
+                  <p>Manager edit/update/delete request approve করলে auto apply হবে</p>
+                </div>
+              </div>
+              <div class="fixed-list" id="approvalList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Employee Login</h2>
+                  <p>বেতনভুক্ত কর্মীর আলাদা login PIN</p>
+                </div>
+              </div>
+              <form class="inline-form manager-inline" id="employeeAccessForm">
+                <select id="employeeAccessEmployee" required></select>
+                <input id="employeeAccessPin" type="password" inputmode="numeric" placeholder="PIN" required />
+                <button class="secondary-button" type="submit"><i data-lucide="user-round-plus"></i> Access সেভ</button>
+              </form>
+              <div class="fixed-list" id="employeeAccessList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>ক্যাটাগরি সেটিংস</h2>
+                  <p>ভ্যারিয়েবল খরচ ও আয়ের ক্যাটাগরি</p>
+                </div>
+              </div>
+              <form class="inline-form category-inline" id="categoryForm">
+                <select id="categoryType"><option value="income">আয়</option><option value="expense">খরচ</option></select>
+                <input id="categoryName" type="text" placeholder="নতুন ক্যাটাগরি" required />
+                <button class="icon-button filled" type="submit" title="ক্যাটাগরি যোগ করুন"><i data-lucide="plus"></i></button>
+              </form>
+              <div class="chip-list" id="categoryList"></div>
+            </section>
+
+            <section class="panel danger-zone">
+              <div class="panel-head">
+                <div>
+                  <h2>Backup & Export</h2>
+                  <p>Auto backup snapshot, JSON export এবং reset</p>
+                </div>
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" id="exportBtn" type="button"><i data-lucide="download"></i> JSON এক্সপোর্ট</button>
+                <button class="secondary-button" id="downloadBackupBtn" type="button"><i data-lucide="archive"></i> Backup ডাউনলোড</button>
+                <button class="danger-button" id="resetBtn" type="button"><i data-lucide="trash-2"></i> সব ডেটা রিসেট</button>
+              </div>
+              <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>
+              <textarea id="exportOutput" rows="8" readonly placeholder="এক্সপোর্ট করলে এখানে JSON দেখা যাবে"></textarea>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Notification System</h2>
+                  <p>WhatsApp alert queue: 01676182447</p>
+                </div>
+              </div>
+              <div class="fixed-list" id="notificationList"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal hidden" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <div class="panel-head">
+          <div>
+            <h2 id="modalTitle">এন্ট্রি এডিট</h2>
+            <p>পরিবর্তন করে সেভ করুন</p>
+          </div>
+          <button class="icon-button" id="closeModal" type="button" title="বন্ধ করুন"><i data-lucide="x"></i></button>
+        </div>
+        <form id="editEntryForm">
+          <input id="editId" type="hidden" />
+          <div class="field-row">
+            <label>ধরন <select id="editType" required><option value="income">আয়</option><option value="expense">খরচ</option></select></label>
+            <label>ক্যাটাগরি <select id="editCategory" required></select></label>
+          </div>
+          <div class="field-row">
+            <label>পরিমাণ <input id="editAmount" type="number" min="0" step="1" required /></label>
+            <label>তারিখ <input id="editDate" type="date" required /></label>
+          </div>
+          <label>নোট <textarea id="editNote" rows="3"></textarea></label>
+          <button class="primary-button" type="submit"><i data-lucide="check"></i> পরিবর্তন সেভ করুন</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
