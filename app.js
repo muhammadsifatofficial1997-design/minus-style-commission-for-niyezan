@@ -3,6 +3,7 @@ const LEGACY_KEY = "minus-style-affiliate-dashboard-v1";
 const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
+const DEFAULT_CLOUD_URL = "https://script.google.com/macros/s/AKfycbzbdWRDAn5c7tVyX53oVbQgQUYG5LnN3KwguGODW27JpLj7tpJXSbDWuA_79IyMEf84/exec";
 const CLOUD_PUSH_DELAY = 900;
 
 const bn = new Intl.NumberFormat("bn-BD", { maximumFractionDigits: 0 });
@@ -173,7 +174,7 @@ function saveState() {
 }
 
 function cloudUrl() {
-  return localStorage.getItem(CLOUD_URL_KEY) || "";
+  return localStorage.getItem(CLOUD_URL_KEY) || DEFAULT_CLOUD_URL;
 }
 
 function setCloudStatus(message) {
@@ -1796,7 +1797,7 @@ async function boot() {
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
   }
-  saveState();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
 }
 
