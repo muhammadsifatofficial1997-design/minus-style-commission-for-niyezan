@@ -316,6 +316,7 @@
                 <label>Check In <input id="attendanceCheckIn" type="time" /></label>
                 <label>Check Out <input id="attendanceCheckOut" type="time" /></label>
               </div>
+              <p class="backup-status" id="attendanceLocationStatus">Office location verification বন্ধ আছে।</p>
               <label>নোট <textarea id="attendanceNote" rows="3" placeholder="যেমন: ছুটি, অসুস্থতা, personal leave"></textarea></label>
               <button class="primary-button" type="submit"><i data-lucide="save"></i> হাজিরা সেভ করুন</button>
             </form>
@@ -471,6 +472,21 @@
                   <button class="secondary-button" id="syncToCloudBtn" type="button"><i data-lucide="upload-cloud"></i> Cloud-এ পাঠান</button>
                 </div>
                 <p class="backup-status" id="cloudStatus">Cloud sync বন্ধ আছে।</p>
+              </div>
+              <div class="publish-box office-location-box">
+                <strong>Office Location Attendance</strong>
+                <p>Employee নিজে হাজিরা দিলে office radius-এর ভিতরে থাকতে হবে। Admin/Manager manual correction করতে পারবে।</p>
+                <label class="check-line"><input id="officeLocationEnabled" type="checkbox" /> Location verification চালু</label>
+                <div class="field-row compact-row">
+                  <label>Latitude <input id="officeLatitude" type="number" step="any" placeholder="23.000000" /></label>
+                  <label>Longitude <input id="officeLongitude" type="number" step="any" placeholder="90.000000" /></label>
+                </div>
+                <label>Radius meter <input id="officeRadius" type="number" min="20" step="10" placeholder="100" /></label>
+                <div class="button-row">
+                  <button class="secondary-button" id="setOfficeLocationBtn" type="button"><i data-lucide="map-pin"></i> বর্তমান লোকেশন সেট</button>
+                  <button class="secondary-button" id="saveOfficeLocationBtn" type="button"><i data-lucide="save"></i> Office Location সেভ</button>
+                </div>
+                <p class="backup-status" id="officeLocationStatus">Office location সেট করা হয়নি।</p>
               </div>
             </section>
 

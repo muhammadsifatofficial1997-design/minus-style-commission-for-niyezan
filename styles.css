@@ -638,6 +638,21 @@ td:last-child {
   color: var(--muted);
 }
 
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.check-line input {
+  width: auto;
+}
+
+.compact-row {
+  margin-bottom: 0;
+}
+
 .backup-status {
   margin-top: 12px;
   font-weight: 700;

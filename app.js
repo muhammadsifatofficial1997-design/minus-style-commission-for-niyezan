@@ -47,6 +47,7 @@ const els = {
   attendanceBreak: document.querySelector("#attendanceBreak"),
   attendanceCheckIn: document.querySelector("#attendanceCheckIn"),
   attendanceCheckOut: document.querySelector("#attendanceCheckOut"),
+  attendanceLocationStatus: document.querySelector("#attendanceLocationStatus"),
   attendanceNote: document.querySelector("#attendanceNote"),
   attendanceTable: document.querySelector("#attendanceTable"),
   advanceForm: document.querySelector("#advanceForm"),
@@ -91,6 +92,11 @@ const els = {
   notificationList: document.querySelector("#notificationList"),
   cloudApiUrl: document.querySelector("#cloudApiUrl"),
   cloudStatus: document.querySelector("#cloudStatus"),
+  officeLocationEnabled: document.querySelector("#officeLocationEnabled"),
+  officeLatitude: document.querySelector("#officeLatitude"),
+  officeLongitude: document.querySelector("#officeLongitude"),
+  officeRadius: document.querySelector("#officeRadius"),
+  officeLocationStatus: document.querySelector("#officeLocationStatus"),
   categoryForm: document.querySelector("#categoryForm"),
   categoryType: document.querySelector("#categoryType"),
   categoryName: document.querySelector("#categoryName"),
@@ -113,6 +119,12 @@ function defaultState() {
   return {
     settings: {
       adminPin: "1234",
+      officeLocation: {
+        enabled: false,
+        latitude: "",
+        longitude: "",
+        radiusMeters: 100,
+      },
     },
     managers: [{ id: crypto.randomUUID(), name: "ফাইজুর (ম্যানেজার)", pin: "2222", active: true }],
     employeeAccess: [],
@@ -423,6 +435,60 @@ function employeeForAccess(access) {
     employeeById(access.employeeId) ||
     employees().find((employee) => normalizeName(employee.name) === normalizeName(access.employeeName))
   );
+}
+
+function officeLocation() {
+  return state.settings.officeLocation || defaultState().settings.officeLocation;
+}
+
+function officeLocationReady() {
+  const office = officeLocation();
+  return Boolean(office.enabled && Number(office.latitude) && Number(office.longitude) && Number(office.radiusMeters));
+}
+
+function distanceMeters(from, to) {
+  const earthRadius = 6371000;
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const dLat = toRad(to.latitude - from.latitude);
+  const dLng = toRad(to.longitude - from.longitude);
+  const lat1 = toRad(from.latitude);
+  const lat2 = toRad(to.latitude);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("এই browser location support করে না।"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 30000,
+    });
+  });
+}
+
+async function verifyOfficeLocation() {
+  const office = officeLocation();
+  const position = await getCurrentPosition();
+  const current = {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+  };
+  const distance = distanceMeters(current, {
+    latitude: Number(office.latitude),
+    longitude: Number(office.longitude),
+  });
+  return {
+    latitude: current.latitude,
+    longitude: current.longitude,
+    accuracy: Math.round(position.coords.accuracy || 0),
+    distance: Math.round(distance),
+    allowed: distance <= Number(office.radiusMeters || 100),
+  };
 }
 
 function shiftStart(shift) {
@@ -908,6 +974,26 @@ function renderCloudSettings() {
   if (!els.cloudApiUrl) return;
   els.cloudApiUrl.value = cloudUrl();
   if (!cloudUrl()) setCloudStatus("Cloud sync বন্ধ আছে। Apps Script Web App URL দিলে live data sync হবে।");
+  renderOfficeLocationSettings();
+}
+
+function renderOfficeLocationSettings() {
+  if (!els.officeLocationEnabled) return;
+  const office = officeLocation();
+  els.officeLocationEnabled.checked = Boolean(office.enabled);
+  els.officeLatitude.value = office.latitude || "";
+  els.officeLongitude.value = office.longitude || "";
+  els.officeRadius.value = office.radiusMeters || 100;
+  const ready = officeLocationReady();
+  const text = ready
+    ? `Office location চালু: ${office.latitude}, ${office.longitude} | Radius ${bn.format(office.radiusMeters)}m`
+    : "Office location সেট করা নেই বা বন্ধ আছে।";
+  if (els.officeLocationStatus) els.officeLocationStatus.textContent = text;
+  if (els.attendanceLocationStatus) {
+    els.attendanceLocationStatus.textContent = ready
+      ? `Employee check-in/check-out office radius ${bn.format(office.radiusMeters)}m-এর ভিতরে হতে হবে।`
+      : "Office location verification বন্ধ আছে।";
+  }
 }
 
 function statusLabel(status) {
@@ -1180,7 +1266,7 @@ function addBulkEntries(event) {
   if (isAdmin()) alert(`${bn.format(entries.length)}টি এন্ট্রি যোগ হয়েছে।`);
 }
 
-function saveAttendance(event) {
+async function saveAttendance(event) {
   event.preventDefault();
   const employee = employees().find((item) => item.id === els.attendanceEmployee.value);
   if (!employee) return;
@@ -1198,6 +1284,25 @@ function saveAttendance(event) {
     markedBy: currentUser.name || "Admin",
     updatedAt: new Date().toISOString(),
   };
+
+  if (isEmployee() && payload.status === "present" && officeLocationReady()) {
+    try {
+      if (els.attendanceLocationStatus) els.attendanceLocationStatus.textContent = "Location verify করা হচ্ছে...";
+      const location = await verifyOfficeLocation();
+      if (!location.allowed) {
+        els.attendanceLocationStatus.textContent = `Office radius-এর বাইরে: ${bn.format(location.distance)}m দূরে। Attendance save হয়নি।`;
+        alert(`আপনি office radius-এর বাইরে আছেন (${location.distance}m)। Attendance save হয়নি।`);
+        return;
+      }
+      payload.location = location;
+      els.attendanceLocationStatus.textContent = `Location verified: office থেকে ${bn.format(location.distance)}m দূরে।`;
+    } catch (error) {
+      els.attendanceLocationStatus.textContent = `Location পাওয়া যায়নি: ${error.message}`;
+      alert("Location permission allow না করলে employee attendance save হবে না।");
+      return;
+    }
+  }
+
   const existing = attendanceFor(payload.date, payload.employeeId);
 
   if (existing) {
@@ -1277,6 +1382,33 @@ function saveEmployeeAccess(event) {
   if (cloudUrl()) syncToCloud(false);
   alert("Employee login PIN সেভ হয়েছে। এখন logout করে মূল login screen থেকে এই PIN দিয়ে ঢুকুন।");
   render();
+}
+
+async function setOfficeLocationFromCurrentPosition() {
+  if (!isAdmin()) return;
+  try {
+    if (els.officeLocationStatus) els.officeLocationStatus.textContent = "বর্তমান location নেওয়া হচ্ছে...";
+    const position = await getCurrentPosition();
+    els.officeLatitude.value = position.coords.latitude.toFixed(7);
+    els.officeLongitude.value = position.coords.longitude.toFixed(7);
+    els.officeLocationStatus.textContent = `Current location set হয়েছে। Accuracy: ${bn.format(Math.round(position.coords.accuracy || 0))}m`;
+  } catch (error) {
+    els.officeLocationStatus.textContent = `Location নেওয়া যায়নি: ${error.message}`;
+    alert("Browser location permission allow করুন, তারপর আবার চেষ্টা করুন।");
+  }
+}
+
+function saveOfficeLocation() {
+  if (!isAdmin()) return;
+  state.settings.officeLocation = {
+    enabled: els.officeLocationEnabled.checked,
+    latitude: els.officeLatitude.value.trim(),
+    longitude: els.officeLongitude.value.trim(),
+    radiusMeters: Number(els.officeRadius.value || 100),
+  };
+  saveState();
+  renderOfficeLocationSettings();
+  alert("Office location attendance settings সেভ হয়েছে।");
 }
 
 function printPayslip(employeeId) {
@@ -1710,6 +1842,8 @@ document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
 });
 document.querySelector("#syncFromCloudBtn").addEventListener("click", () => syncFromCloud(true));
 document.querySelector("#syncToCloudBtn").addEventListener("click", () => syncToCloud(true));
+document.querySelector("#setOfficeLocationBtn")?.addEventListener("click", setOfficeLocationFromCurrentPosition);
+document.querySelector("#saveOfficeLocationBtn")?.addEventListener("click", saveOfficeLocation);
 
 document.body.addEventListener("click", (event) => {
   const entryEdit = event.target.closest("[data-edit-entry]");
