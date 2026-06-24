@@ -47,6 +47,8 @@ const els = {
   attendanceBreak: document.querySelector("#attendanceBreak"),
   attendanceCheckIn: document.querySelector("#attendanceCheckIn"),
   attendanceCheckOut: document.querySelector("#attendanceCheckOut"),
+  attendanceCheckInNowBtn: document.querySelector("#attendanceCheckInNowBtn"),
+  attendanceCheckOutNowBtn: document.querySelector("#attendanceCheckOutNowBtn"),
   attendanceLocationStatus: document.querySelector("#attendanceLocationStatus"),
   attendanceNote: document.querySelector("#attendanceNote"),
   attendanceTable: document.querySelector("#attendanceTable"),
@@ -338,6 +340,11 @@ function money(value) {
 
 function today() {
   return formatYmd(new Date());
+}
+
+function currentTimeValue() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
 function monthStart(dateString) {
@@ -1266,6 +1273,89 @@ function addBulkEntries(event) {
   if (isAdmin()) alert(`${bn.format(entries.length)}টি এন্ট্রি যোগ হয়েছে।`);
 }
 
+async function attachLocationIfNeeded(payload) {
+  if (!isEmployee() || payload.status !== "present" || !officeLocationReady()) return true;
+
+  try {
+    if (els.attendanceLocationStatus) els.attendanceLocationStatus.textContent = "Location verify করা হচ্ছে...";
+    const location = await verifyOfficeLocation();
+    if (!location.allowed) {
+      els.attendanceLocationStatus.textContent = `Office radius-এর বাইরে: ${bn.format(location.distance)}m দূরে। Attendance save হয়নি।`;
+      alert(`আপনি office radius-এর বাইরে আছেন (${location.distance}m)। Attendance save হয়নি।`);
+      return false;
+    }
+    payload.location = location;
+    els.attendanceLocationStatus.textContent = `Location verified: office থেকে ${bn.format(location.distance)}m দূরে।`;
+    return true;
+  } catch (error) {
+    els.attendanceLocationStatus.textContent = `Location পাওয়া যায়নি: ${error.message}`;
+    alert("Location permission allow না করলে employee attendance save হবে না।");
+    return false;
+  }
+}
+
+function persistAttendance(payload, employee, resetForm = true) {
+  const existing = attendanceFor(payload.date, payload.employeeId);
+
+  if (existing) {
+    Object.assign(existing, payload);
+  } else {
+    state.attendance.push({ id: crypto.randomUUID(), ...payload, createdAt: new Date().toISOString() });
+  }
+
+  if (payload.status === "present" && isLate(payload.shift, payload.checkIn)) {
+    addNotification("Late Arrival Alert", `${employee.name} ${payload.date} তারিখে ${shiftLabel(payload.shift)}-এ late check-in করেছে: ${payload.checkIn}`);
+  }
+  if (payload.status === "leave") {
+    addNotification("Leave Approval Alert", `${employee.name}-এর ${payload.date} তারিখের leave marked/approved হয়েছে।`);
+  }
+
+  if (resetForm) {
+    els.attendanceForm.reset();
+    els.attendanceDate.value = payload.date;
+  }
+  saveState();
+  render();
+}
+
+async function saveAttendancePunch(kind) {
+  const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.attendanceEmployee.value);
+  if (!employee) return;
+
+  const date = today();
+  const existing = attendanceFor(date, employee.id);
+  const payload = {
+    employeeId: employee.id,
+    employeeName: employee.name,
+    date,
+    status: "present",
+    shift: existing?.shift || els.attendanceShift.value || "morning",
+    checkIn: existing?.checkIn || "",
+    checkOut: existing?.checkOut || "",
+    breakMinutes: existing?.breakMinutes || Number(els.attendanceBreak.value || 0),
+    note: existing?.note || "",
+    markedBy: currentUser.name || "Admin",
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (kind === "in") {
+    if (payload.checkIn && !confirm("আজ check-in আছে। নতুন সময় দিয়ে update করবেন?")) return;
+    payload.checkIn = currentTimeValue();
+  }
+
+  if (kind === "out") {
+    if (!payload.checkIn && !confirm("আজ check-in নেই। তারপরও check-out save করবেন?")) return;
+    if (payload.checkOut && !confirm("আজ check-out আছে। নতুন সময় দিয়ে update করবেন?")) return;
+    payload.checkOut = currentTimeValue();
+  }
+
+  const verified = await attachLocationIfNeeded(payload);
+  if (!verified) return;
+
+  persistAttendance(payload, employee, false);
+  alert(kind === "in" ? "Check-in save হয়েছে।" : "Check-out save হয়েছে।");
+}
+
 async function saveAttendance(event) {
   event.preventDefault();
   const employee = employees().find((item) => item.id === els.attendanceEmployee.value);
@@ -1816,6 +1906,8 @@ els.editType.addEventListener("change", () => renderEntryCategories(els.editType
 els.entryForm.addEventListener("submit", addEntry);
 els.bulkEntryForm.addEventListener("submit", addBulkEntries);
 els.attendanceForm.addEventListener("submit", saveAttendance);
+els.attendanceCheckInNowBtn?.addEventListener("click", () => saveAttendancePunch("in"));
+els.attendanceCheckOutNowBtn?.addEventListener("click", () => saveAttendancePunch("out"));
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.fixedForm.addEventListener("submit", saveFixed);
 els.categoryForm.addEventListener("submit", addCategory);
