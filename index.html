@@ -370,6 +370,67 @@
             </section>
           </div>
 
+          <div class="form-grid stacked-grid">
+            <form class="panel form-panel" id="breakForm">
+              <div class="panel-head">
+                <div>
+                  <h2>Employee Break Management</h2>
+                  <p>Prayer, Washroom, Lunch, Personal বা Official break start/end করুন</p>
+                </div>
+                <span class="status-pill" id="breakStatusPill">Available</span>
+              </div>
+              <div class="field-row">
+                <label>কর্মী <select id="breakEmployee" required></select></label>
+                <label>Break Type
+                  <select id="breakType" required>
+                    <option value="prayer">Prayer Break</option>
+                    <option value="washroom">Washroom Break</option>
+                    <option value="lunch">Lunch Break</option>
+                    <option value="personal">Personal Break</option>
+                    <option value="official">Official Break</option>
+                  </select>
+                </label>
+              </div>
+              <label>নোট <input id="breakNote" type="text" placeholder="যেমন: ব্যাংক, ডেলিভারি, মার্কেট, অফিসিয়াল মিটিং" /></label>
+              <div class="break-current-box">
+                <strong id="currentBreakStatus">Current Status: Available</strong>
+                <span id="currentBreakStarted">Started At: -</span>
+                <span id="currentBreakDuration">Running Duration: 00:00:00</span>
+              </div>
+              <div class="button-row">
+                <button class="primary-button" id="startBreakBtn" type="submit"><i data-lucide="pause-circle"></i> Start Break</button>
+                <button class="secondary-button" id="endBreakBtn" type="button"><i data-lucide="play-circle"></i> Back from Break</button>
+              </div>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Today's Break Summary</h2>
+                  <p id="breakSummaryHint">নির্বাচিত তারিখের break history</p>
+                </div>
+              </div>
+              <div class="summary-row break-summary-row">
+                <div><small>Prayer</small><strong id="breakPrayerTotal">0 min</strong></div>
+                <div><small>Washroom</small><strong id="breakWashroomTotal">0 min</strong></div>
+                <div><small>Lunch</small><strong id="breakLunchTotal">0 min</strong></div>
+                <div><small>Official</small><strong id="breakOfficialTotal">0 min</strong></div>
+              </div>
+              <div class="summary-row break-summary-row">
+                <div><small>Personal</small><strong id="breakPersonalTotal">0 min</strong></div>
+                <div><small>Total Break</small><strong id="breakGrandTotal">0 min</strong></div>
+                <div><small>Break Count</small><strong id="breakCountTotal">0</strong></div>
+                <div><small>Running</small><strong id="breakRunningTotal">0</strong></div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>কর্মী</th><th>Break Type</th><th>Start</th><th>End</th><th>Duration</th><th>Note</th><th></th></tr></thead>
+                  <tbody id="breakTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
           <section class="panel payroll-panel">
             <div class="panel-head">
               <div>

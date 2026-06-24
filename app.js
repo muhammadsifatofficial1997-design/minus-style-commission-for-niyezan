@@ -12,6 +12,7 @@ let editingFixedId = null;
 let currentUser = { role: "guest", name: "" };
 let cloudPushTimer = null;
 let isApplyingCloudState = false;
+let breakTicker = null;
 
 const categoryLabels = {
   commission: "মাইনাস স্টাইল কমিশন",
@@ -24,6 +25,14 @@ const categoryLabels = {
   rent: "অফিস ভাড়া",
   electricity: "বিদ্যুৎ বিল",
   other: "অন্যান্য",
+};
+
+const breakLabels = {
+  prayer: "Prayer Break",
+  washroom: "Washroom Break",
+  lunch: "Lunch Break",
+  personal: "Personal Break",
+  official: "Official Break",
 };
 
 const els = {
@@ -53,6 +62,17 @@ const els = {
   attendanceLocationStatus: document.querySelector("#attendanceLocationStatus"),
   attendanceNote: document.querySelector("#attendanceNote"),
   attendanceTable: document.querySelector("#attendanceTable"),
+  breakForm: document.querySelector("#breakForm"),
+  breakEmployee: document.querySelector("#breakEmployee"),
+  breakType: document.querySelector("#breakType"),
+  breakNote: document.querySelector("#breakNote"),
+  breakStatusPill: document.querySelector("#breakStatusPill"),
+  currentBreakStatus: document.querySelector("#currentBreakStatus"),
+  currentBreakStarted: document.querySelector("#currentBreakStarted"),
+  currentBreakDuration: document.querySelector("#currentBreakDuration"),
+  startBreakBtn: document.querySelector("#startBreakBtn"),
+  endBreakBtn: document.querySelector("#endBreakBtn"),
+  breakTable: document.querySelector("#breakTable"),
   employeeHomePanel: document.querySelector("#employeeHomePanel"),
   employeeHomeTitle: document.querySelector("#employeeHomeTitle"),
   employeeTodayHint: document.querySelector("#employeeTodayHint"),
@@ -149,6 +169,7 @@ function defaultState() {
     employeeAccess: [],
     approvals: [],
     attendance: [],
+    breaks: [],
     advances: [],
     leaveRequests: [],
     payrollLocks: [],
@@ -192,6 +213,7 @@ function loadState() {
       employeeAccess: parsed.employeeAccess || defaults.employeeAccess,
       approvals: parsed.approvals || defaults.approvals,
       attendance: parsed.attendance || defaults.attendance,
+      breaks: parsed.breaks || defaults.breaks,
       advances: parsed.advances || defaults.advances,
       leaveRequests: parsed.leaveRequests || defaults.leaveRequests,
       payrollLocks: parsed.payrollLocks || defaults.payrollLocks,
@@ -576,6 +598,55 @@ function attendanceFor(date, employeeId) {
   return state.attendance.find((item) => item.date === date && item.employeeId === employeeId);
 }
 
+function breakLabel(type) {
+  return breakLabels[type] || type;
+}
+
+function activeBreakFor(employeeId) {
+  return state.breaks.find((item) => item.employeeId === employeeId && !item.endAt);
+}
+
+function breakDurationSeconds(item) {
+  if (!item) return 0;
+  if (item.durationSeconds !== undefined && item.endAt) return Number(item.durationSeconds || 0);
+  const start = Date.parse(item.startAt);
+  const end = item.endAt ? Date.parse(item.endAt) : Date.now();
+  if (Number.isNaN(start) || Number.isNaN(end)) return 0;
+  return Math.max(0, Math.floor((end - start) / 1000));
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = total % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function formatBreakMinutes(seconds) {
+  const minutes = Math.round((Number(seconds) || 0) / 60);
+  if (minutes < 60) return `${bn.format(minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${bn.format(hours)}h ${bn.format(rest)}m` : `${bn.format(hours)}h`;
+}
+
+function breaksForDate(date, employeeIds = null) {
+  return state.breaks.filter((item) => item.date === date && (!employeeIds || employeeIds.includes(item.employeeId)));
+}
+
+function breakTotals(items) {
+  const totals = { prayer: 0, washroom: 0, lunch: 0, personal: 0, official: 0, total: 0, running: 0 };
+  items.forEach((item) => {
+    const duration = breakDurationSeconds(item);
+    totals[item.type] = (totals[item.type] || 0) + duration;
+    totals.total += duration;
+    if (!item.endAt) totals.running += 1;
+  });
+  totals.count = items.length;
+  return totals;
+}
+
 function payrollLockFor(month) {
   return state.payrollLocks.find((item) => item.month === month && item.locked);
 }
@@ -713,6 +784,7 @@ function render() {
   renderApprovals();
   renderRoleUi();
   renderAttendance();
+  renderBreaks();
   renderPayroll();
   renderEmployeeHome();
   renderAdvance();
@@ -932,7 +1004,7 @@ function renderAttendance() {
           <td>${escapeHtml(shiftLabel(record?.shift || "morning"))}</td>
           <td>${escapeHtml(record?.checkIn || "-")}</td>
           <td>${escapeHtml(record?.checkOut || "-")}</td>
-          <td>${bn.format(record?.breakMinutes || 0)} min</td>
+          <td>${formatBreakMinutes((Number(record?.breakMinutes || 0) * 60) + breakTotals(breaksForDate(date, [employee.id])).total)}</td>
           <td>${escapeHtml(record?.note || "-")}</td>
           <td>${escapeHtml(record?.markedBy || "Default")}</td>
           <td>
@@ -944,6 +1016,66 @@ function renderAttendance() {
     .join("");
   els.attendanceTable.innerHTML = rows || `<tr><td colspan="5" class="empty">কোনো employee নেই।</td></tr>`;
   renderAttendanceActionState();
+}
+
+function renderBreaks() {
+  if (!els.breakEmployee) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  const currentBreakEmployee = els.breakEmployee.value;
+  els.breakEmployee.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+  if (visibleEmployees.some((employee) => employee.id === currentBreakEmployee)) els.breakEmployee.value = currentBreakEmployee;
+  if (isEmployee()) els.breakEmployee.value = currentEmployeeId();
+
+  const selectedEmployee = visibleEmployees.find((employee) => employee.id === els.breakEmployee.value);
+  const running = selectedEmployee ? activeBreakFor(selectedEmployee.id) : null;
+  const statusText = running ? `On ${breakLabel(running.type)}` : "Available";
+
+  els.breakStatusPill.textContent = statusText;
+  els.currentBreakStatus.textContent = `Current Status: ${statusText}`;
+  els.currentBreakStarted.textContent = `Started At: ${running?.startTime || "-"}`;
+  els.currentBreakDuration.textContent = `Running Duration: ${formatDuration(breakDurationSeconds(running))}`;
+  els.startBreakBtn.disabled = Boolean(running) || !selectedEmployee;
+  els.endBreakBtn.disabled = !running;
+  els.breakType.disabled = Boolean(running);
+
+  const date = els.attendanceDate.value;
+  const employeeIds = visibleEmployees.map((employee) => employee.id);
+  const rows = breaksForDate(date, employeeIds).sort((a, b) => String(b.startAt).localeCompare(String(a.startAt)));
+  const totals = breakTotals(rows);
+
+  setText("breakSummaryHint", isEmployee() ? `${date} তারিখে আপনার break history` : `${date} তারিখে সব employee break report`);
+  setText("breakPrayerTotal", formatBreakMinutes(totals.prayer));
+  setText("breakWashroomTotal", formatBreakMinutes(totals.washroom));
+  setText("breakLunchTotal", formatBreakMinutes(totals.lunch));
+  setText("breakPersonalTotal", formatBreakMinutes(totals.personal));
+  setText("breakOfficialTotal", formatBreakMinutes(totals.official));
+  setText("breakGrandTotal", formatBreakMinutes(totals.total));
+  setText("breakCountTotal", bn.format(totals.count || 0));
+  setText("breakRunningTotal", bn.format(totals.running || 0));
+
+  els.breakTable.innerHTML =
+    rows
+      .map(
+        (item) => `
+          <tr>
+            <td>${escapeHtml(item.employeeName)}</td>
+            <td><span class="type-pill">${escapeHtml(breakLabel(item.type))}</span></td>
+            <td>${escapeHtml(item.startTime || "-")}</td>
+            <td>${escapeHtml(item.endTime || "Running")}</td>
+            <td>${formatBreakMinutes(breakDurationSeconds(item))}</td>
+            <td>${escapeHtml(item.note || "-")}</td>
+            <td>
+              ${
+                isAdmin()
+                  ? `<button class="small-action" data-edit-break="${item.id}" type="button">Edit</button>
+                     <button class="small-action danger" data-delete-break="${item.id}" type="button">Delete</button>`
+                  : ""
+              }
+            </td>
+          </tr>
+        `,
+      )
+      .join("") || `<tr><td colspan="7" class="empty">এই তারিখে break history নেই।</td></tr>`;
 }
 
 function renderAttendanceActionState() {
@@ -984,7 +1116,8 @@ function renderEmployeeHome() {
 
   const hasCheckIn = Boolean(record?.checkIn);
   const hasCheckOut = Boolean(record?.checkOut);
-  const statusText = hasCheckIn && hasCheckOut ? "Complete" : hasCheckIn ? "Check-out baki" : "Check-in baki";
+  const runningBreak = activeBreakFor(employee.id);
+  const statusText = runningBreak ? `On ${breakLabel(runningBreak.type)}` : hasCheckIn && hasCheckOut ? "Complete" : hasCheckIn ? "Check-out baki" : "Check-in baki";
 
   els.employeeHomeTitle.textContent = `${employee.name} - আজকের স্ট্যাটাস`;
   els.employeeTodayStatus.textContent = statusText;
@@ -993,7 +1126,9 @@ function renderEmployeeHome() {
   els.employeeMonthPayable.textContent = payrollRow ? money(payrollRow.payable) : money(0);
   els.employeePendingApproval.textContent = bn.format(pendingTotal);
 
-  if (!hasCheckIn) {
+  if (runningBreak) {
+    els.employeeTodayHint.textContent = `${breakLabel(runningBreak.type)} চলছে। Started: ${runningBreak.startTime}, Duration: ${formatDuration(breakDurationSeconds(runningBreak))}`;
+  } else if (!hasCheckIn) {
     els.employeeTodayHint.textContent = "আজ check-in বাকি আছে। অফিস লোকেশনে গিয়ে Check In Now চাপুন।";
   } else if (!hasCheckOut) {
     els.employeeTodayHint.textContent = "আজ check-out বাকি আছে। কাজ শেষ হলে Check Out Now চাপুন।";
@@ -1637,6 +1772,110 @@ async function saveAttendance(event) {
 
   els.attendanceForm.reset();
   els.attendanceDate.value = payload.date;
+  saveState();
+  render();
+}
+
+function isoForDateTime(date, time) {
+  return new Date(`${date}T${time || "00:00"}:00`).toISOString();
+}
+
+function startBreak(event) {
+  event.preventDefault();
+  const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.breakEmployee.value);
+  if (!employee) return;
+
+  const running = activeBreakFor(employee.id);
+  if (running) {
+    alert(`You are already on ${breakLabel(running.type)}. Please end the current break before starting a new one.`);
+    renderBreaks();
+    return;
+  }
+
+  const attendance = attendanceFor(today(), employee.id);
+  if (isEmployee() && (!attendance?.checkIn || attendance?.checkOut)) {
+    alert("Break start করার আগে আজকের check-in থাকতে হবে এবং check-out হয়ে গেলে আর break start করা যাবে না।");
+    return;
+  }
+
+  const now = new Date();
+  const startTime = currentTimeValue();
+  state.breaks.unshift({
+    id: crypto.randomUUID(),
+    employeeId: employee.id,
+    employeeName: employee.name,
+    type: els.breakType.value,
+    date: today(),
+    startAt: now.toISOString(),
+    startTime,
+    endAt: "",
+    endTime: "",
+    durationSeconds: 0,
+    note: els.breakNote.value.trim(),
+    createdBy: currentUser.name || employee.name,
+    createdAt: now.toISOString(),
+  });
+
+  els.breakNote.value = "";
+  saveState();
+  render();
+}
+
+function endBreak() {
+  const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.breakEmployee.value);
+  if (!employee) return;
+  const running = activeBreakFor(employee.id);
+  if (!running) {
+    alert("Running break নেই।");
+    return;
+  }
+
+  const now = new Date();
+  running.endAt = now.toISOString();
+  running.endTime = currentTimeValue();
+  running.durationSeconds = breakDurationSeconds(running);
+  running.updatedAt = now.toISOString();
+  running.updatedBy = currentUser.name || employee.name;
+  saveState();
+  render();
+}
+
+function editBreak(id) {
+  if (!isAdmin()) return;
+  const item = state.breaks.find((breakItem) => breakItem.id === id);
+  if (!item) return;
+  const type = prompt("Break type লিখুন: prayer, washroom, lunch, personal, official", item.type);
+  if (!type || !breakLabels[type]) {
+    alert("Valid break type দিন।");
+    return;
+  }
+  const startTime = prompt("Start time দিন (HH:MM)", item.startTime || "");
+  if (!startTime || timeToMinutes(startTime) === null) return;
+  const endTime = prompt("End time দিন (HH:MM). Running রাখতে খালি রাখুন।", item.endTime || "");
+  if (endTime && timeToMinutes(endTime) === null) return;
+  if (endTime && timeToMinutes(endTime) < timeToMinutes(startTime)) {
+    alert("End time start time-এর আগে হতে পারবে না।");
+    return;
+  }
+  const note = prompt("Note লিখুন", item.note || "");
+
+  item.type = type;
+  item.startTime = startTime;
+  item.startAt = isoForDateTime(item.date, startTime);
+  item.endTime = endTime || "";
+  item.endAt = endTime ? isoForDateTime(item.date, endTime) : "";
+  item.durationSeconds = endTime ? Math.max(0, Math.floor((Date.parse(item.endAt) - Date.parse(item.startAt)) / 1000)) : 0;
+  item.note = note || "";
+  item.updatedAt = new Date().toISOString();
+  item.updatedBy = "Admin";
+  saveState();
+  render();
+}
+
+function deleteBreak(id) {
+  if (!isAdmin()) return;
+  if (!confirm("এই break record delete করবেন?")) return;
+  state.breaks = state.breaks.filter((item) => item.id !== id);
   saveState();
   render();
 }
@@ -2295,6 +2534,9 @@ els.bulkEntryForm.addEventListener("submit", addBulkEntries);
 els.attendanceForm.addEventListener("submit", saveAttendance);
 els.attendanceCheckInNowBtn?.addEventListener("click", () => saveAttendancePunch("in"));
 els.attendanceCheckOutNowBtn?.addEventListener("click", () => saveAttendancePunch("out"));
+els.breakForm?.addEventListener("submit", startBreak);
+els.endBreakBtn?.addEventListener("click", endBreak);
+els.breakEmployee?.addEventListener("change", renderBreaks);
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.leaveForm?.addEventListener("submit", saveLeaveRequest);
 els.leaveEmployee?.addEventListener("change", renderLeave);
@@ -2310,7 +2552,10 @@ document.querySelector("#applyDailyFilter").addEventListener("click", renderEntr
 document.querySelector("#applyReportFilter").addEventListener("click", renderReports);
 document.querySelector("#applyPayrollBtn").addEventListener("click", renderPayroll);
 els.payrollLockBtn?.addEventListener("click", togglePayrollLock);
-els.attendanceDate.addEventListener("change", renderAttendance);
+els.attendanceDate.addEventListener("change", () => {
+  renderAttendance();
+  renderBreaks();
+});
 els.attendanceEmployee?.addEventListener("change", renderAttendanceActionState);
 els.payrollMonth.addEventListener("change", () => {
   renderPayroll();
@@ -2348,6 +2593,8 @@ document.body.addEventListener("click", (event) => {
   const rejectAdvance = event.target.closest("[data-reject-advance]");
   const approveLeave = event.target.closest("[data-approve-leave]");
   const rejectLeave = event.target.closest("[data-reject-leave]");
+  const editBreakButton = event.target.closest("[data-edit-break]");
+  const deleteBreakButton = event.target.closest("[data-delete-break]");
   const payslip = event.target.closest("[data-payslip]");
   const employeeAccessToggle = event.target.closest("[data-toggle-employee-access]");
   const employeeAccessDelete = event.target.closest("[data-delete-employee-access]");
@@ -2434,6 +2681,8 @@ document.body.addEventListener("click", (event) => {
   if (rejectAdvance) reviewAdvance(rejectAdvance.dataset.rejectAdvance, false);
   if (approveLeave) reviewLeave(approveLeave.dataset.approveLeave, true);
   if (rejectLeave) reviewLeave(rejectLeave.dataset.rejectLeave, false);
+  if (editBreakButton) editBreak(editBreakButton.dataset.editBreak);
+  if (deleteBreakButton) deleteBreak(deleteBreakButton.dataset.deleteBreak);
   if (payslip) printPayslip(payslip.dataset.payslip);
 
   if (employeeAccessToggle) {
@@ -2470,6 +2719,11 @@ window.addEventListener("resize", () => renderChart(els.selectedDate.value));
 
 initDates();
 ensureEmployeeAccess();
+breakTicker = setInterval(() => {
+  renderBreaks();
+  renderEmployeeHome();
+}, 1000);
+
 async function boot() {
   if (cloudUrl()) await syncFromCloud(false);
   try {
