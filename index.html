@@ -172,7 +172,7 @@
                 <label>ক্যাটাগরি <select id="entryCategory" required></select></label>
               </div>
               <div class="field-row">
-                <label>পরিমাণ <input id="entryAmount" type="number" min="0" step="1" placeholder="যেমন 2500" required /></label>
+                <label>পরিমাণ <input id="entryAmount" type="number" min="0" step="1" placeholder="পরিমাণ লিখুন" required /></label>
                 <label>তারিখ <input id="entryDate" type="date" required /></label>
               </div>
               <label>নোট <textarea id="entryNote" rows="3" placeholder="যেমন: অফিস নাস্তা, Starlink extra, campaign boost"></textarea></label>
@@ -208,7 +208,7 @@
             <div class="panel-head">
               <div>
                 <h2>রেঞ্জ ধরে একসাথে হিসাব যোগ করুন</h2>
-                <p>যেমন জুন ১-২৪ এর মোট ডলার বুস্ট বা মোট কমিশন একবারে বসান</p>
+                <p>নির্দিষ্ট তারিখের রেঞ্জে মোট ডলার বুস্ট বা মোট কমিশন একবারে বসান</p>
               </div>
             </div>
             <form id="bulkEntryForm">
@@ -221,7 +221,7 @@
                 <label>শেষ <input id="bulkEnd" type="date" required /></label>
               </div>
               <div class="field-row">
-                <label>মোট পরিমাণ <input id="bulkAmount" type="number" min="0" step="1" placeholder="যেমন 24000" required /></label>
+                <label>মোট পরিমাণ <input id="bulkAmount" type="number" min="0" step="1" placeholder="মোট পরিমাণ লিখুন" required /></label>
                 <label>
                   ভাগ করার নিয়ম
                   <select id="bulkMode">
@@ -310,7 +310,7 @@
                     <option value="night">Night Shift</option>
                   </select>
                 </label>
-                <label>Break Time (minutes) <input id="attendanceBreak" type="number" min="0" step="1" value="0" /></label>
+                <label>Break Time (minutes) <input id="attendanceBreak" type="number" min="0" step="1" placeholder="মিনিট" /></label>
               </div>
               <div class="field-row">
                 <label>Check In <input id="attendanceCheckIn" type="time" /></label>
