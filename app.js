@@ -186,7 +186,8 @@ function setCloudStatus(message) {
 }
 
 function cloudLoginSummary() {
-  return `Cloud ready: ${bn.format(state.employeeAccess.length)} employee PIN, ${bn.format(employees().length)} employee`;
+  const savedPins = state.employeeAccess.filter((access) => normalizePin(access.pin)).length;
+  return `Cloud ready: ${bn.format(savedPins)} employee PIN, ${bn.format(employees().length)} employee`;
 }
 
 function queueCloudPush() {
@@ -382,10 +383,24 @@ function employees() {
 }
 
 function ensureEmployeeAccess() {
-  if (state.employeeAccess.length) return;
-  const first = employees()[0];
-  if (!first) return;
-  state.employeeAccess.push({ id: crypto.randomUUID(), employeeId: first.id, pin: "3333", active: true });
+  employees().forEach((employee, index) => {
+    const existing = state.employeeAccess.find(
+      (access) => access.employeeId === employee.id || normalizeName(access.employeeName) === normalizeName(employee.name),
+    );
+    if (existing) {
+      existing.employeeId = employee.id;
+      existing.employeeName = employee.name;
+      if (existing.active === undefined) existing.active = true;
+      return;
+    }
+    state.employeeAccess.push({
+      id: crypto.randomUUID(),
+      employeeId: employee.id,
+      employeeName: employee.name,
+      pin: index === 0 ? "3333" : "",
+      active: index === 0,
+    });
+  });
 }
 
 function currentEmployeeId() {
@@ -841,6 +856,7 @@ function renderAdvance() {
 
 function renderEmployeeAccess() {
   if (!els.employeeAccessEmployee) return;
+  ensureEmployeeAccess();
   els.employeeAccessEmployee.innerHTML = employees().map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
   els.employeeAccessList.innerHTML =
     state.employeeAccess
@@ -852,7 +868,7 @@ function renderEmployeeAccess() {
               <strong>${escapeHtml(employee?.name || "Unknown employee")}</strong>
               <span class="status-pill">${access.active ? "Active" : "Inactive"}</span>
             </div>
-            <small class="muted">PIN: ${"*".repeat(String(access.pin).length)}</small>
+            <small class="muted">PIN: ${normalizePin(access.pin) ? "*".repeat(String(access.pin).length) : "সেট করা নেই"}</small>
             <div class="action-row">
               <button class="small-action" data-toggle-employee-access="${access.id}" type="button">${access.active ? "Inactive" : "Active"}</button>
               <button class="small-action danger" data-delete-employee-access="${access.id}" type="button">ডিলিট</button>
