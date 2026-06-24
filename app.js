@@ -256,6 +256,34 @@ function isEmployee() {
   return currentUser.role === "employee";
 }
 
+function normalizePin(value) {
+  const digitMap = {
+    "০": "0",
+    "১": "1",
+    "২": "2",
+    "৩": "3",
+    "৪": "4",
+    "৫": "5",
+    "৬": "6",
+    "৭": "7",
+    "৮": "8",
+    "৯": "9",
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9",
+  };
+  return String(value || "")
+    .trim()
+    .replace(/[০-৯٠-٩]/g, (digit) => digitMap[digit] || digit);
+}
+
 function createAutoBackup() {
   const backups = getBackups();
   const now = new Date();
@@ -1188,15 +1216,17 @@ function reviewAdvance(id, approved) {
 function saveEmployeeAccess(event) {
   event.preventDefault();
   if (!isAdmin()) return;
+  const pin = normalizePin(els.employeeAccessPin.value);
+  if (!pin) return;
   const existing = state.employeeAccess.find((item) => item.employeeId === els.employeeAccessEmployee.value);
   if (existing) {
-    existing.pin = els.employeeAccessPin.value.trim();
+    existing.pin = pin;
     existing.active = true;
   } else {
     state.employeeAccess.push({
       id: crypto.randomUUID(),
       employeeId: els.employeeAccessEmployee.value,
-      pin: els.employeeAccessPin.value.trim(),
+      pin,
       active: true,
     });
   }
@@ -1287,7 +1317,7 @@ function addManager(event) {
   event.preventDefault();
   if (!isAdmin()) return;
   const baseName = els.managerName.value.trim();
-  const pin = els.managerPin.value.trim();
+  const pin = normalizePin(els.managerPin.value);
   if (!baseName || !pin) return;
   state.managers.push({
     id: crypto.randomUUID(),
@@ -1534,9 +1564,9 @@ document.querySelectorAll(".nav-button").forEach((button) => {
 
 els.loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const password = els.pinInput.value;
+  const password = normalizePin(els.pinInput.value);
 
-  if (password === state.settings.adminPin) {
+  if (password === normalizePin(state.settings.adminPin)) {
     els.loginError.textContent = "";
     currentUser = { role: "admin", name: "Admin" };
     unlockApp();
@@ -1544,7 +1574,7 @@ els.loginForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const manager = state.managers.find((item) => item.active && password === item.pin);
+  const manager = state.managers.find((item) => item.active && password === normalizePin(item.pin));
   if (manager) {
     els.loginError.textContent = "";
     currentUser = { role: "manager", name: manager.name };
@@ -1555,7 +1585,7 @@ els.loginForm.addEventListener("submit", (event) => {
 
   const employeeAccess = state.employeeAccess.find((item) => {
     const employee = employeeById(item.employeeId);
-    return item.active && password === item.pin;
+    return item.active && password === normalizePin(item.pin);
   });
   if (employeeAccess) {
     const employee = employeeById(employeeAccess.employeeId);
@@ -1575,7 +1605,7 @@ document.querySelector("#logoutBtn").addEventListener("click", lockApp);
 els.pinForm.addEventListener("submit", (event) => {
   event.preventDefault();
   if (!isAdmin()) return;
-  state.settings.adminPin = els.newPin.value.trim();
+  state.settings.adminPin = normalizePin(els.newPin.value);
   els.newPin.value = "";
   saveState();
   alert("নতুন PIN সেভ হয়েছে।");
