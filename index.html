@@ -376,6 +376,7 @@
                 <h2>Payroll Management</h2>
                 <p id="payrollHint">মাসভিত্তিক বেতন, কাটতি ও payable salary</p>
               </div>
+              <button class="secondary-button" id="payrollLockBtn" type="button"><i data-lucide="lock"></i> Payroll Lock</button>
             </div>
             <div class="summary-row">
               <div><small>Gross Salary</small><strong id="payrollGross">৳0</strong></div>
@@ -432,6 +433,50 @@
                 </div>
               </div>
               <div class="fixed-list" id="advanceList"></div>
+            </section>
+          </div>
+
+          <div class="form-grid stacked-grid">
+            <form class="panel form-panel" id="leaveForm">
+              <div class="panel-head">
+                <div>
+                  <h2>Leave Request</h2>
+                  <p>Employee leave চাইলে Admin approve করলে attendance/payroll auto update হবে</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>কর্মী <select id="leaveEmployee" required></select></label>
+                <label>Leave Type
+                  <select id="leaveType" required>
+                    <option value="personal">Personal Leave</option>
+                    <option value="sick">Sick Leave</option>
+                    <option value="study">Study Leave</option>
+                    <option value="other">Other Leave</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>শুরু <input id="leaveStart" type="date" required /></label>
+                <label>শেষ <input id="leaveEnd" type="date" required /></label>
+              </div>
+              <label>কারণ <textarea id="leaveReason" rows="3" placeholder="যেমন: অসুস্থতা, personal leave"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="calendar-plus"></i> Leave Request পাঠান</button>
+            </form>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Leave Balance & Requests</h2>
+                  <p id="leaveHint">নিজের leave status বা admin approval list</p>
+                </div>
+              </div>
+              <div class="summary-row leave-summary">
+                <div><small>Total Leave</small><strong id="leaveTotal">20</strong></div>
+                <div><small>Used</small><strong id="leaveUsed">0</strong></div>
+                <div><small>Pending</small><strong id="leavePending">0</strong></div>
+                <div><small>Remaining</small><strong id="leaveRemaining">20</strong></div>
+              </div>
+              <div class="fixed-list" id="leaveList"></div>
             </section>
           </div>
         </section>
@@ -588,11 +633,12 @@
               <div class="button-row">
                 <button class="secondary-button" id="exportBtn" type="button"><i data-lucide="download"></i> JSON এক্সপোর্ট</button>
                 <button class="secondary-button" id="downloadBackupBtn" type="button"><i data-lucide="archive"></i> Backup ডাউনলোড</button>
+                <button class="secondary-button" id="restoreJsonBtn" type="button"><i data-lucide="upload"></i> JSON Restore</button>
                 <button class="secondary-button" id="clearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
                 <button class="danger-button" id="resetBtn" type="button"><i data-lucide="trash-2"></i> সব ডেটা রিসেট</button>
               </div>
               <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>
-              <textarea id="exportOutput" rows="8" readonly placeholder="এক্সপোর্ট করলে এখানে JSON দেখা যাবে"></textarea>
+              <textarea id="exportOutput" rows="8" placeholder="Export JSON এখানে দেখাবে। Restore করতে backup JSON paste করে JSON Restore চাপুন।"></textarea>
             </section>
 
             <section class="panel">

@@ -492,6 +492,14 @@ canvas {
   margin-top: 16px;
 }
 
+.stacked-grid {
+  margin-top: 16px;
+}
+
+.leave-summary {
+  margin-top: 6px;
+}
+
 .entry-list,
 .fixed-list,
 .chip-list {
@@ -814,7 +822,31 @@ td:last-child {
 
 @media (max-width: 680px) {
   .main {
-    padding: 16px;
+    padding: 16px 16px 96px;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 40;
+    padding: 8px;
+    border-right: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .nav-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(74px, 1fr);
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .nav-button {
+    justify-content: center;
+    min-height: 54px;
+    padding: 8px;
+    font-size: 12px;
   }
 
   .topbar,

@@ -67,6 +67,14 @@ const els = {
   advanceAmount: document.querySelector("#advanceAmount"),
   advanceReason: document.querySelector("#advanceReason"),
   advanceList: document.querySelector("#advanceList"),
+  leaveForm: document.querySelector("#leaveForm"),
+  leaveEmployee: document.querySelector("#leaveEmployee"),
+  leaveType: document.querySelector("#leaveType"),
+  leaveStart: document.querySelector("#leaveStart"),
+  leaveEnd: document.querySelector("#leaveEnd"),
+  leaveReason: document.querySelector("#leaveReason"),
+  leaveList: document.querySelector("#leaveList"),
+  payrollLockBtn: document.querySelector("#payrollLockBtn"),
   entryForm: document.querySelector("#entryForm"),
   entryType: document.querySelector("#entryType"),
   entryCategory: document.querySelector("#entryCategory"),
@@ -142,6 +150,8 @@ function defaultState() {
     approvals: [],
     attendance: [],
     advances: [],
+    leaveRequests: [],
+    payrollLocks: [],
     notifications: [],
     fixedExpenses: [
       fixed("ফাইজুর বেতন", "salary", 15000, true, "এমপ্লয়ী"),
@@ -183,6 +193,8 @@ function loadState() {
       approvals: parsed.approvals || defaults.approvals,
       attendance: parsed.attendance || defaults.attendance,
       advances: parsed.advances || defaults.advances,
+      leaveRequests: parsed.leaveRequests || defaults.leaveRequests,
+      payrollLocks: parsed.payrollLocks || defaults.payrollLocks,
       notifications: parsed.notifications || defaults.notifications,
       categories: { ...defaults.categories, ...parsed.categories },
     };
@@ -564,7 +576,11 @@ function attendanceFor(date, employeeId) {
   return state.attendance.find((item) => item.date === date && item.employeeId === employeeId);
 }
 
-function payrollForMonth(month) {
+function payrollLockFor(month) {
+  return state.payrollLocks.find((item) => item.month === month && item.locked);
+}
+
+function calculatePayrollForMonth(month) {
   const start = `${month}-01`;
   const end = monthEnd(start);
   const days = getDaysInMonth(start);
@@ -601,6 +617,12 @@ function payrollForMonth(month) {
     payable: sum(payrollRows, "payable"),
     cutDays: sum(payrollRows, "cutDays"),
   };
+}
+
+function payrollForMonth(month) {
+  const locked = payrollLockFor(month);
+  if (locked?.snapshot) return locked.snapshot;
+  return calculatePayrollForMonth(month);
 }
 
 function fixedForRange(start, end) {
@@ -694,6 +716,7 @@ function render() {
   renderPayroll();
   renderEmployeeHome();
   renderAdvance();
+  renderLeave();
   renderEmployeeAccess();
   renderNotifications();
   renderCloudSettings();
@@ -956,7 +979,8 @@ function renderEmployeeHome() {
   const payrollRow = payroll.rows.find((row) => row.id === employee.id);
   const pendingAttendance = state.approvals.filter((item) => item.status === "pending" && item.payload?.employeeId === employee.id).length;
   const pendingAdvance = state.advances.filter((item) => item.status === "pending" && item.employeeId === employee.id).length;
-  const pendingTotal = pendingAttendance + pendingAdvance;
+  const pendingLeave = state.leaveRequests.filter((item) => item.status === "pending" && item.employeeId === employee.id).length;
+  const pendingTotal = pendingAttendance + pendingAdvance + pendingLeave;
 
   const hasCheckIn = Boolean(record?.checkIn);
   const hasCheckOut = Boolean(record?.checkOut);
@@ -981,6 +1005,7 @@ function renderEmployeeHome() {
 function renderPayroll() {
   if (!els.payrollMonth) return;
   const month = els.payrollMonth.value;
+  const locked = payrollLockFor(month);
   const payroll = payrollForMonth(month);
   const rows = isEmployee() ? payroll.rows.filter((row) => row.id === currentEmployeeId()) : payroll.rows;
   const summary = {
@@ -994,6 +1019,11 @@ function renderPayroll() {
   setText("payrollDeduction", money(summary.deduction));
   setText("payrollPayable", money(summary.payable));
   setText("payrollCutDays", bn.format(summary.cutDays));
+  if (els.payrollLockBtn) {
+    els.payrollLockBtn.hidden = !isAdmin();
+    els.payrollLockBtn.innerHTML = locked ? `<i data-lucide="unlock"></i> Payroll Unlock` : `<i data-lucide="lock"></i> Payroll Lock`;
+    els.payrollLockBtn.title = locked ? `${month} payroll locked আছে` : `${month} payroll final করে lock করুন`;
+  }
   document.querySelector("#payrollTable").innerHTML =
     rows
       .map(
@@ -1043,6 +1073,58 @@ function renderAdvance() {
         `,
       )
       .join("") || `<div class="empty">Advance request নেই।</div>`;
+}
+
+function leaveTypeLabel(type) {
+  return {
+    personal: "Personal Leave",
+    sick: "Sick Leave",
+    study: "Study Leave",
+    other: "Other Leave",
+  }[type] || type;
+}
+
+function renderLeave() {
+  if (!els.leaveEmployee) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  els.leaveEmployee.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+  if (isEmployee()) els.leaveEmployee.value = currentEmployeeId();
+
+  const visibleLeaves = isEmployee() ? state.leaveRequests.filter((item) => item.employeeId === currentEmployeeId()) : state.leaveRequests;
+  const employeeId = isEmployee() ? currentEmployeeId() : els.leaveEmployee.value || visibleEmployees[0]?.id;
+  const employeeLeaves = state.leaveRequests.filter((item) => item.employeeId === employeeId);
+  const used = employeeLeaves.filter((item) => item.status === "approved").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const pending = employeeLeaves.filter((item) => item.status === "pending").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const total = 20;
+
+  setText("leaveTotal", bn.format(total));
+  setText("leaveUsed", bn.format(used));
+  setText("leavePending", bn.format(pending));
+  setText("leaveRemaining", bn.format(Math.max(total - used - pending, 0)));
+  setText("leaveHint", isEmployee() ? "আপনার leave balance ও request history" : "নির্বাচিত কর্মীর leave balance এবং সব request");
+
+  els.leaveList.innerHTML =
+    visibleLeaves
+      .map(
+        (item) => `
+          <article class="fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(item.employeeName)} · ${escapeHtml(leaveTypeLabel(item.type))}</strong>
+              <span class="status-pill">${escapeHtml(item.status)}</span>
+            </div>
+            <small class="muted">${escapeHtml(item.start)} to ${escapeHtml(item.end)} · ${bn.format(item.days || 0)} days · ${escapeHtml(item.reason || "No reason")}</small>
+            ${
+              isAdmin() && item.status === "pending"
+                ? `<div class="action-row">
+                    <button class="small-action" data-approve-leave="${item.id}" type="button">Approve</button>
+                    <button class="small-action danger" data-reject-leave="${item.id}" type="button">Reject</button>
+                  </div>`
+                : ""
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">Leave request নেই।</div>`;
 }
 
 function renderEmployeeAccess() {
@@ -1142,6 +1224,7 @@ function requestTitle(request) {
     add_entry: "Daily entry approval request",
     bulk_entries: "Range entries approval request",
     attendance_punch: "Attendance approval request",
+    leave_request: "Leave approval request",
     edit_entry: "Entry edit request",
     delete_entry: "Entry delete request",
     toggle_fixed: "Fixed expense update request",
@@ -1156,6 +1239,7 @@ function requestDescription(request) {
   if (request.action === "bulk_entries") return `${labelFor(request.payload.category)} · ${money(request.payload.total)} · ${request.payload.start} to ${request.payload.end} · ${bn.format(request.payload.entries?.length || 0)} entries`;
   if (request.action === "attendance_punch") return `${request.payload.employeeName} · ${request.payload.date} · ${request.payload.reason}`;
   if (request.action === "edit_entry") return `${labelFor(request.payload.category)} · ${money(request.payload.amount)} · ${request.payload.date}`;
+  if (request.action === "leave_request") return `${request.payload.employeeName} · ${request.payload.start} to ${request.payload.end} · ${bn.format(request.payload.days)} days`;
   if (request.action === "delete_entry") return `Entry ID: ${request.payload.id}`;
   if (request.action === "toggle_fixed" || request.action === "delete_fixed") return `Fixed ID: ${request.payload.id}`;
   if (request.action === "delete_category") return `${request.payload.type}: ${request.payload.category}`;
@@ -1688,6 +1772,117 @@ function printPayslip(employeeId) {
   render();
 }
 
+function applyLeaveToAttendance(leave) {
+  const employee = employeeById(leave.employeeId) || { id: leave.employeeId, name: leave.employeeName };
+  dateRange(leave.start, leave.end).forEach((date) => {
+    persistAttendance(
+      {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        date,
+        status: "leave",
+        shift: "morning",
+        checkIn: "",
+        checkOut: "",
+        breakMinutes: 0,
+        note: `${leaveTypeLabel(leave.type)}: ${leave.reason || "Approved leave"}`,
+        markedBy: "Admin",
+        updatedAt: new Date().toISOString(),
+      },
+      employee,
+      false,
+    );
+  });
+}
+
+function saveLeaveRequest(event) {
+  event.preventDefault();
+  const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.leaveEmployee.value);
+  if (!employee) return;
+  const start = els.leaveStart.value;
+  const end = els.leaveEnd.value;
+  if (end < start) {
+    alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
+    return;
+  }
+
+  const leave = {
+    id: crypto.randomUUID(),
+    employeeId: employee.id,
+    employeeName: employee.name,
+    type: els.leaveType.value,
+    start,
+    end,
+    days: dateRange(start, end).length,
+    reason: els.leaveReason.value.trim(),
+    requestedBy: currentUser.name || employee.name,
+    requestedAt: new Date().toISOString(),
+    status: isAdmin() ? "approved" : "pending",
+  };
+
+  state.leaveRequests.unshift(leave);
+  if (isAdmin()) {
+    applyLeaveToAttendance(leave);
+    addNotification("Leave Approval Alert", `${employee.name}-এর leave approved হয়েছে: ${start} to ${end}`);
+  } else {
+    addApproval("leave_request", leave);
+    addNotification("Leave Approval Alert", `${employee.name}-এর leave approval দরকার: ${start} to ${end}`);
+  }
+
+  els.leaveForm.reset();
+  els.leaveStart.value = today();
+  els.leaveEnd.value = today();
+  saveState();
+  render();
+}
+
+function reviewLeave(id, approved) {
+  const leave = state.leaveRequests.find((item) => item.id === id);
+  if (!leave || leave.status !== "pending") return;
+  leave.status = approved ? "approved" : "rejected";
+  leave.reviewedAt = new Date().toISOString();
+  leave.reviewedBy = "Admin";
+  state.approvals
+    .filter((item) => item.action === "leave_request" && item.payload?.id === id && item.status === "pending")
+    .forEach((item) => {
+      item.status = approved ? "approved" : "rejected";
+      item.reviewedAt = leave.reviewedAt;
+      item.reviewedBy = "Admin";
+    });
+  if (approved) {
+    applyLeaveToAttendance(leave);
+    addNotification("Leave Approval Alert", `${leave.employeeName}-এর leave approved হয়েছে: ${leave.start} to ${leave.end}`);
+  }
+  saveState();
+  render();
+}
+
+function togglePayrollLock() {
+  if (!isAdmin()) return;
+  const month = els.payrollMonth.value;
+  const existing = state.payrollLocks.find((item) => item.month === month);
+  if (existing?.locked) {
+    if (!confirm(`${month} payroll unlock করবেন? এরপর attendance edit করলে payroll বদলাবে।`)) return;
+    existing.locked = false;
+    existing.unlockedAt = new Date().toISOString();
+    existing.unlockedBy = "Admin";
+    saveState();
+    render();
+    return;
+  }
+
+  if (!confirm(`${month} payroll final করে lock করবেন? Lock হলে unlock না করা পর্যন্ত payroll বদলাবে না।`)) return;
+  const snapshot = calculatePayrollForMonth(month);
+  if (existing) {
+    Object.assign(existing, { locked: true, snapshot, lockedAt: new Date().toISOString(), lockedBy: "Admin" });
+  } else {
+    state.payrollLocks.push({ id: crypto.randomUUID(), month, locked: true, snapshot, lockedAt: new Date().toISOString(), lockedBy: "Admin" });
+  }
+  addNotification("Salary Generated Alert", `${month} payroll generated and locked হয়েছে। Payable: ${money(snapshot.payable)}`);
+  saveState();
+  render();
+}
+
 function saveFixed(event) {
   event.preventDefault();
   if (!isAdmin()) {
@@ -1766,6 +1961,9 @@ function applyApproval(id, approved) {
       const employee = employeeById(request.payload.employeeId) || { id: request.payload.employeeId, name: request.payload.employeeName };
       persistAttendance(request.payload, employee, false);
     }
+    if (request.action === "leave_request") {
+      reviewLeave(request.payload.id, true);
+    }
     if (request.action === "add_entry") {
       state.entries.push(approvedEntry(request.payload));
     }
@@ -1796,6 +1994,13 @@ function applyApproval(id, approved) {
       } else {
         state.fixedExpenses.push({ id: crypto.randomUUID(), ...request.payload });
       }
+    }
+  } else if (request.action === "leave_request") {
+    const leave = state.leaveRequests.find((item) => item.id === request.payload.id);
+    if (leave) {
+      leave.status = "rejected";
+      leave.reviewedAt = new Date().toISOString();
+      leave.reviewedBy = "Admin";
     }
   }
 
@@ -1904,6 +2109,38 @@ function downloadBackup() {
   downloadFile(`minus-style-auto-backups-${today()}.json`, payload, "application/json;charset=utf-8");
 }
 
+function restoreJson() {
+  if (!isAdmin()) return;
+  const text = els.exportOutput.value.trim();
+  if (!text) {
+    alert("Backup JSON paste করুন, তারপর restore চাপুন।");
+    return;
+  }
+  if (!confirm("এই JSON restore করলে current dashboard data replace হবে। চালাবেন?")) return;
+  try {
+    const parsed = JSON.parse(text);
+    const nextState = parsed.data || parsed.state || parsed.backups?.[0]?.data || parsed;
+    if (!nextState || typeof nextState !== "object" || !Array.isArray(nextState.fixedExpenses)) {
+      throw new Error("Valid dashboard backup পাওয়া যায়নি।");
+    }
+    const defaults = defaultState();
+    Object.keys(state).forEach((key) => delete state[key]);
+    Object.assign(state, {
+      ...defaults,
+      ...nextState,
+      settings: { ...defaults.settings, ...(nextState.settings || {}) },
+      categories: { ...defaults.categories, ...(nextState.categories || {}) },
+      leaveRequests: nextState.leaveRequests || [],
+      payrollLocks: nextState.payrollLocks || [],
+    });
+    saveState();
+    render();
+    alert("Backup restore হয়েছে। Cloud sync চালু থাকলে data cloud-এও save হবে।");
+  } catch (error) {
+    alert(`Restore failed: ${error.message}`);
+  }
+}
+
 async function clearAppCache() {
   if (!confirm("Cache clear করলে এই browser-এর local data/session মুছে যাবে। Google Sheets backend থাকলে reload-এর পর cloud থেকে data আসবে। চালিয়ে যাবেন?")) return;
   const savedCloudUrl = cloudUrl();
@@ -1965,6 +2202,8 @@ function initDates() {
   els.reportEnd.value = monthEnd(now);
   els.payrollMonth.value = now.slice(0, 7);
   els.advanceMonth.value = now.slice(0, 7);
+  if (els.leaveStart) els.leaveStart.value = now;
+  if (els.leaveEnd) els.leaveEnd.value = now;
 }
 
 document.querySelectorAll(".nav-button").forEach((button) => {
@@ -2057,6 +2296,8 @@ els.attendanceForm.addEventListener("submit", saveAttendance);
 els.attendanceCheckInNowBtn?.addEventListener("click", () => saveAttendancePunch("in"));
 els.attendanceCheckOutNowBtn?.addEventListener("click", () => saveAttendancePunch("out"));
 els.advanceForm.addEventListener("submit", saveAdvance);
+els.leaveForm?.addEventListener("submit", saveLeaveRequest);
+els.leaveEmployee?.addEventListener("change", renderLeave);
 els.fixedForm.addEventListener("submit", saveFixed);
 els.categoryForm.addEventListener("submit", addCategory);
 els.editEntryForm.addEventListener("submit", saveEditEntry);
@@ -2068,6 +2309,7 @@ document.querySelector("#quickAddBtn").addEventListener("click", () => {
 document.querySelector("#applyDailyFilter").addEventListener("click", renderEntriesTable);
 document.querySelector("#applyReportFilter").addEventListener("click", renderReports);
 document.querySelector("#applyPayrollBtn").addEventListener("click", renderPayroll);
+els.payrollLockBtn?.addEventListener("click", togglePayrollLock);
 els.attendanceDate.addEventListener("change", renderAttendance);
 els.attendanceEmployee?.addEventListener("change", renderAttendanceActionState);
 els.payrollMonth.addEventListener("change", () => {
@@ -2078,6 +2320,7 @@ document.querySelector("#csvExportBtn").addEventListener("click", exportCsv);
 document.querySelector("#pdfExportBtn").addEventListener("click", printPdf);
 document.querySelector("#exportBtn").addEventListener("click", exportJson);
 document.querySelector("#downloadBackupBtn").addEventListener("click", downloadBackup);
+document.querySelector("#restoreJsonBtn")?.addEventListener("click", restoreJson);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
@@ -2103,6 +2346,8 @@ document.body.addEventListener("click", (event) => {
   const attendanceDelete = event.target.closest("[data-delete-attendance]");
   const approveAdvance = event.target.closest("[data-approve-advance]");
   const rejectAdvance = event.target.closest("[data-reject-advance]");
+  const approveLeave = event.target.closest("[data-approve-leave]");
+  const rejectLeave = event.target.closest("[data-reject-leave]");
   const payslip = event.target.closest("[data-payslip]");
   const employeeAccessToggle = event.target.closest("[data-toggle-employee-access]");
   const employeeAccessDelete = event.target.closest("[data-delete-employee-access]");
@@ -2187,6 +2432,8 @@ document.body.addEventListener("click", (event) => {
 
   if (approveAdvance) reviewAdvance(approveAdvance.dataset.approveAdvance, true);
   if (rejectAdvance) reviewAdvance(rejectAdvance.dataset.rejectAdvance, false);
+  if (approveLeave) reviewLeave(approveLeave.dataset.approveLeave, true);
+  if (rejectLeave) reviewLeave(rejectLeave.dataset.rejectLeave, false);
   if (payslip) printPayslip(payslip.dataset.payslip);
 
   if (employeeAccessToggle) {
