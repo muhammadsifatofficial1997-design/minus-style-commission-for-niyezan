@@ -1564,38 +1564,51 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   });
 });
 
-els.loginForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const password = normalizePin(els.pinInput.value);
-
+function userForPin(password) {
   if (password === normalizePin(state.settings.adminPin)) {
-    els.loginError.textContent = "";
-    currentUser = { role: "admin", name: "Admin" };
-    unlockApp();
-    render();
-    return;
+    return { role: "admin", name: "Admin" };
   }
 
   const manager = state.managers.find((item) => item.active && password === normalizePin(item.pin));
   if (manager) {
-    els.loginError.textContent = "";
-    currentUser = { role: "manager", name: manager.name };
-    unlockApp();
-    render();
-    return;
+    return { role: "manager", name: manager.name };
   }
 
   const employeeAccess = state.employeeAccess.find((item) => {
-    const employee = employeeById(item.employeeId);
     return item.active && password === normalizePin(item.pin);
   });
   if (employeeAccess) {
     const employee = employeeById(employeeAccess.employeeId);
     if (employee) {
-      els.loginError.textContent = "";
-      currentUser = { role: "employee", name: employee.name, employeeId: employee.id };
-      unlockApp();
-      render();
+      return { role: "employee", name: employee.name, employeeId: employee.id };
+    }
+  }
+
+  return null;
+}
+
+function finishLogin(user) {
+  els.loginError.textContent = "";
+  currentUser = user;
+  unlockApp();
+  render();
+}
+
+els.loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const password = normalizePin(els.pinInput.value);
+  const user = userForPin(password);
+  if (user) {
+    finishLogin(user);
+    return;
+  }
+
+  if (cloudUrl()) {
+    els.loginError.textContent = "Cloud থেকে data আনা হচ্ছে, একটু অপেক্ষা করুন...";
+    await syncFromCloud(false);
+    const cloudUser = userForPin(password);
+    if (cloudUser) {
+      finishLogin(cloudUser);
       return;
     }
   }
