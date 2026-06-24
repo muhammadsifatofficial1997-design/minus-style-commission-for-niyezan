@@ -1232,6 +1232,7 @@ function saveEmployeeAccess(event) {
   }
   els.employeeAccessForm.reset();
   saveState();
+  alert("Employee login PIN সেভ হয়েছে। এখন logout করে মূল login screen থেকে এই PIN দিয়ে ঢুকুন।");
   render();
 }
 

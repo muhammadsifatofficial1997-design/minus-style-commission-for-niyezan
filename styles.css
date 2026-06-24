@@ -615,6 +615,10 @@ td:last-child {
   margin-bottom: 14px;
 }
 
+.manager-inline {
+  grid-template-columns: minmax(150px, 1fr) minmax(160px, 1.2fr) auto;
+}
+
 #pinForm {
   grid-template-columns: 1fr auto;
 }
