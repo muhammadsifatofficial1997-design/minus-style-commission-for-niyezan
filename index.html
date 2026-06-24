@@ -274,6 +274,35 @@
               </div>
             </div>
           </section>
+          <section class="panel report-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Monthly Break Report</h2>
+                <p>Employee-wise total break, average duration, longest break</p>
+              </div>
+            </div>
+            <div class="filter-bar report-actions">
+              <label>Month <input id="breakReportMonth" type="month" /></label>
+              <label>Employee <select id="breakReportEmployee"></select></label>
+              <label>Break Type
+                <select id="breakReportType">
+                  <option value="">All</option>
+                  <option value="prayer">Prayer</option>
+                  <option value="washroom">Washroom</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="personal">Personal</option>
+                  <option value="official">Official</option>
+                </select>
+              </label>
+              <button class="secondary-button" id="applyBreakReportFilter" type="button"><i data-lucide="filter"></i> Break Report</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Employee</th><th>Count</th><th>Prayer</th><th>Washroom</th><th>Lunch</th><th>Personal</th><th>Official</th><th>Total</th><th>Average</th><th>Longest</th></tr></thead>
+                <tbody id="breakMonthlyTable"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
 
         <section class="view" id="attendanceView">
@@ -308,6 +337,12 @@
                 <small>Pending Approval</small>
                 <strong id="employeePendingApproval">0</strong>
               </div>
+            </div>
+            <div class="employee-quick-actions">
+              <button class="primary-button" id="mobileCheckInBtn" type="button"><i data-lucide="log-in"></i> Check In</button>
+              <button class="secondary-button" id="mobileStartBreakBtn" type="button"><i data-lucide="pause-circle"></i> Start Break</button>
+              <button class="secondary-button" id="mobileEndBreakBtn" type="button"><i data-lucide="play-circle"></i> Back from Break</button>
+              <button class="secondary-button" id="mobileCheckOutBtn" type="button"><i data-lucide="log-out"></i> Check Out</button>
             </div>
           </section>
 
@@ -410,6 +445,30 @@
                   <p id="breakSummaryHint">নির্বাচিত তারিখের break history</p>
                 </div>
               </div>
+              <div class="filter-bar mini-filter">
+                <label>Search <input id="breakFilterName" type="search" placeholder="Employee name" /></label>
+                <label>Start <input id="breakFilterStart" type="date" /></label>
+                <label>End <input id="breakFilterEnd" type="date" /></label>
+                <label>Type
+                  <select id="breakFilterType">
+                    <option value="">All</option>
+                    <option value="prayer">Prayer</option>
+                    <option value="washroom">Washroom</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="personal">Personal</option>
+                    <option value="official">Official</option>
+                  </select>
+                </label>
+                <label>Status
+                  <select id="breakFilterStatus">
+                    <option value="">All</option>
+                    <option value="running">Running</option>
+                    <option value="closed">Closed</option>
+                    <option value="missed">Missed</option>
+                  </select>
+                </label>
+                <button class="secondary-button" id="applyBreakFilter" type="button"><i data-lucide="filter"></i> Filter</button>
+              </div>
               <div class="summary-row break-summary-row">
                 <div><small>Prayer</small><strong id="breakPrayerTotal">0 min</strong></div>
                 <div><small>Washroom</small><strong id="breakWashroomTotal">0 min</strong></div>
@@ -429,6 +488,47 @@
                 </table>
               </div>
             </section>
+          </div>
+
+          <div class="form-grid stacked-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Daily Employee Timeline</h2>
+                  <p>Check In, Break, Back from Break, Check Out একসাথে দেখা যাবে</p>
+                </div>
+              </div>
+              <label>Employee <select id="timelineEmployee"></select></label>
+              <div class="timeline-list" id="timelineList"></div>
+            </section>
+
+            <form class="panel form-panel" id="correctionForm">
+              <div class="panel-head">
+                <div>
+                  <h2>Attendance Correction Request</h2>
+                  <p>ভুল check-in/out বা break correction admin approve করলে apply হবে</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>Employee <select id="correctionEmployee" required></select></label>
+                <label>Date <input id="correctionDate" type="date" required /></label>
+              </div>
+              <div class="field-row">
+                <label>Correction Type
+                  <select id="correctionType" required>
+                    <option value="check_in">Check In Time</option>
+                    <option value="check_out">Check Out Time</option>
+                    <option value="break_start">Break Start Time</option>
+                    <option value="break_end">Break End Time</option>
+                    <option value="break_delete">Delete Break</option>
+                  </select>
+                </label>
+                <label>Time <input id="correctionTime" type="time" /></label>
+              </div>
+              <label>Break Record <select id="correctionBreak"></select></label>
+              <label>Reason <textarea id="correctionReason" rows="3" placeholder="কেন correction দরকার লিখুন" required></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="send"></i> Correction Request</button>
+            </form>
           </div>
 
           <section class="panel payroll-panel">
@@ -700,6 +800,16 @@
               </div>
               <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>
               <textarea id="exportOutput" rows="8" placeholder="Export JSON এখানে দেখাবে। Restore করতে backup JSON paste করে JSON Restore চাপুন।"></textarea>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Admin Activity Log</h2>
+                  <p>কে কখন কী add/edit/delete/approve করেছে</p>
+                </div>
+              </div>
+              <div class="fixed-list compact-log" id="activityLogList"></div>
             </section>
 
             <section class="panel">
