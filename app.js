@@ -53,6 +53,14 @@ const els = {
   attendanceLocationStatus: document.querySelector("#attendanceLocationStatus"),
   attendanceNote: document.querySelector("#attendanceNote"),
   attendanceTable: document.querySelector("#attendanceTable"),
+  employeeHomePanel: document.querySelector("#employeeHomePanel"),
+  employeeHomeTitle: document.querySelector("#employeeHomeTitle"),
+  employeeTodayHint: document.querySelector("#employeeTodayHint"),
+  employeeTodayStatus: document.querySelector("#employeeTodayStatus"),
+  employeeTodayCheckIn: document.querySelector("#employeeTodayCheckIn"),
+  employeeTodayCheckOut: document.querySelector("#employeeTodayCheckOut"),
+  employeeMonthPayable: document.querySelector("#employeeMonthPayable"),
+  employeePendingApproval: document.querySelector("#employeePendingApproval"),
   advanceForm: document.querySelector("#advanceForm"),
   advanceEmployee: document.querySelector("#advanceEmployee"),
   advanceMonth: document.querySelector("#advanceMonth"),
@@ -684,6 +692,7 @@ function render() {
   renderRoleUi();
   renderAttendance();
   renderPayroll();
+  renderEmployeeHome();
   renderAdvance();
   renderEmployeeAccess();
   renderNotifications();
@@ -728,6 +737,14 @@ function renderRoleUi() {
   [els.attendanceCheckIn, els.attendanceCheckOut].forEach((input) => {
     if (input) input.readOnly = isEmployee();
   });
+
+  [els.attendanceStatus, els.attendanceShift, els.attendanceBreak].forEach((field) => {
+    const label = field?.closest("label");
+    if (label) label.style.display = isEmployee() ? "none" : "";
+  });
+
+  const attendanceSubmit = els.attendanceForm?.querySelector('button[type="submit"]');
+  if (attendanceSubmit) attendanceSubmit.style.display = isEmployee() ? "none" : "";
 }
 
 function renderEntryCategories(type, select) {
@@ -921,6 +938,44 @@ function renderAttendanceActionState() {
     : hasCheckOut
       ? "আজ check-out already save আছে।"
       : "বর্তমান সময় দিয়ে check-out করুন।";
+}
+
+function renderEmployeeHome() {
+  if (!els.employeeHomePanel) return;
+  els.employeeHomePanel.hidden = !isEmployee();
+  if (!isEmployee()) return;
+
+  const employee = employeeById(currentEmployeeId());
+  if (!employee) {
+    els.employeeHomePanel.hidden = true;
+    return;
+  }
+
+  const record = attendanceFor(today(), employee.id);
+  const payroll = payrollForMonth(els.payrollMonth.value);
+  const payrollRow = payroll.rows.find((row) => row.id === employee.id);
+  const pendingAttendance = state.approvals.filter((item) => item.status === "pending" && item.payload?.employeeId === employee.id).length;
+  const pendingAdvance = state.advances.filter((item) => item.status === "pending" && item.employeeId === employee.id).length;
+  const pendingTotal = pendingAttendance + pendingAdvance;
+
+  const hasCheckIn = Boolean(record?.checkIn);
+  const hasCheckOut = Boolean(record?.checkOut);
+  const statusText = hasCheckIn && hasCheckOut ? "Complete" : hasCheckIn ? "Check-out baki" : "Check-in baki";
+
+  els.employeeHomeTitle.textContent = `${employee.name} - আজকের স্ট্যাটাস`;
+  els.employeeTodayStatus.textContent = statusText;
+  els.employeeTodayCheckIn.textContent = record?.checkIn || "বাকি";
+  els.employeeTodayCheckOut.textContent = record?.checkOut || "বাকি";
+  els.employeeMonthPayable.textContent = payrollRow ? money(payrollRow.payable) : money(0);
+  els.employeePendingApproval.textContent = bn.format(pendingTotal);
+
+  if (!hasCheckIn) {
+    els.employeeTodayHint.textContent = "আজ check-in বাকি আছে। অফিস লোকেশনে গিয়ে Check In Now চাপুন।";
+  } else if (!hasCheckOut) {
+    els.employeeTodayHint.textContent = "আজ check-out বাকি আছে। কাজ শেষ হলে Check Out Now চাপুন।";
+  } else {
+    els.employeeTodayHint.textContent = "আজকের attendance complete হয়েছে। নিচে নিজের payroll ও request history দেখতে পারবেন।";
+  }
 }
 
 function renderPayroll() {
@@ -2015,7 +2070,10 @@ document.querySelector("#applyReportFilter").addEventListener("click", renderRep
 document.querySelector("#applyPayrollBtn").addEventListener("click", renderPayroll);
 els.attendanceDate.addEventListener("change", renderAttendance);
 els.attendanceEmployee?.addEventListener("change", renderAttendanceActionState);
-els.payrollMonth.addEventListener("change", renderPayroll);
+els.payrollMonth.addEventListener("change", () => {
+  renderPayroll();
+  renderEmployeeHome();
+});
 document.querySelector("#csvExportBtn").addEventListener("click", exportCsv);
 document.querySelector("#pdfExportBtn").addEventListener("click", printPdf);
 document.querySelector("#exportBtn").addEventListener("click", exportJson);

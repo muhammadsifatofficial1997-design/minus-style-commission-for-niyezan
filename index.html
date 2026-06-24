@@ -81,6 +81,7 @@
             <h1>আজকের আয়, খরচ ও নেট লাভ</h1>
           </div>
           <div class="date-control">
+            <span class="notification-badge" id="pendingApprovalBadge"><i data-lucide="bell"></i> 0</span>
             <label for="selectedDate">তারিখ</label>
             <input id="selectedDate" type="date" />
           </div>
@@ -281,6 +282,34 @@
             <label>Payroll মাস <input id="payrollMonth" type="month" /></label>
             <button class="secondary-button" id="applyPayrollBtn" type="button"><i data-lucide="calculator"></i> Payroll দেখুন</button>
           </div>
+
+          <section class="panel employee-home-panel" id="employeeHomePanel" hidden>
+            <div class="panel-head">
+              <div>
+                <h2 id="employeeHomeTitle">আজকের স্ট্যাটাস</h2>
+                <p id="employeeTodayHint">নিজের attendance, salary ও request এক জায়গায়</p>
+              </div>
+              <span class="status-pill" id="employeeTodayStatus">Ready</span>
+            </div>
+            <div class="employee-status-grid">
+              <div>
+                <small>Check In</small>
+                <strong id="employeeTodayCheckIn">-</strong>
+              </div>
+              <div>
+                <small>Check Out</small>
+                <strong id="employeeTodayCheckOut">-</strong>
+              </div>
+              <div>
+                <small>এই মাসে পাবেন</small>
+                <strong id="employeeMonthPayable">৳0</strong>
+              </div>
+              <div>
+                <small>Pending Approval</small>
+                <strong id="employeePendingApproval">0</strong>
+              </div>
+            </div>
+          </section>
 
           <div class="form-grid">
             <form class="panel form-panel" id="attendanceForm">
