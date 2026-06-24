@@ -387,6 +387,20 @@ function employeeById(id) {
   return employees().find((employee) => employee.id === id);
 }
 
+function normalizeName(value) {
+  return String(value || "")
+    .replace(/\s*বেতন\s*$/u, "")
+    .trim()
+    .toLowerCase();
+}
+
+function employeeForAccess(access) {
+  return (
+    employeeById(access.employeeId) ||
+    employees().find((employee) => normalizeName(employee.name) === normalizeName(access.employeeName))
+  );
+}
+
 function shiftStart(shift) {
   return { morning: "09:00", evening: "15:00", night: "21:00" }[shift] || "09:00";
 }
@@ -822,7 +836,7 @@ function renderEmployeeAccess() {
   els.employeeAccessList.innerHTML =
     state.employeeAccess
       .map((access) => {
-        const employee = employeeById(access.employeeId);
+        const employee = employeeForAccess(access);
         return `
           <article class="fixed-item">
             <div class="item-line">
@@ -1221,18 +1235,21 @@ function saveEmployeeAccess(event) {
   if (!pin) return;
   const existing = state.employeeAccess.find((item) => item.employeeId === els.employeeAccessEmployee.value);
   if (existing) {
+    existing.employeeName = employeeById(els.employeeAccessEmployee.value)?.name || existing.employeeName || "";
     existing.pin = pin;
     existing.active = true;
   } else {
     state.employeeAccess.push({
       id: crypto.randomUUID(),
       employeeId: els.employeeAccessEmployee.value,
+      employeeName: employeeById(els.employeeAccessEmployee.value)?.name || "",
       pin,
       active: true,
     });
   }
   els.employeeAccessForm.reset();
   saveState();
+  if (cloudUrl()) syncToCloud(false);
   alert("Employee login PIN সেভ হয়েছে। এখন logout করে মূল login screen থেকে এই PIN দিয়ে ঢুকুন।");
   render();
 }
@@ -1578,7 +1595,7 @@ function userForPin(password) {
     return item.active && password === normalizePin(item.pin);
   });
   if (employeeAccess) {
-    const employee = employeeById(employeeAccess.employeeId);
+    const employee = employeeForAccess(employeeAccess);
     if (employee) {
       return { role: "employee", name: employee.name, employeeId: employee.id };
     }
@@ -1605,10 +1622,14 @@ els.loginForm.addEventListener("submit", async (event) => {
 
   if (cloudUrl()) {
     els.loginError.textContent = "Cloud থেকে data আনা হচ্ছে, একটু অপেক্ষা করুন...";
-    await syncFromCloud(false);
+    const loaded = await syncFromCloud(false);
     const cloudUser = userForPin(password);
     if (cloudUser) {
       finishLogin(cloudUser);
+      return;
+    }
+    if (!loaded) {
+      els.loginError.textContent = "Cloud থেকে data আনা যায়নি। internet/Apps Script URL চেক করুন।";
       return;
     }
   }
