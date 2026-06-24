@@ -31,6 +31,7 @@ const els = {
   loginScreen: document.querySelector("#loginScreen"),
   loginForm: document.querySelector("#loginForm"),
   pinInput: document.querySelector("#pinInput"),
+  loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
   selectedDate: document.querySelector("#selectedDate"),
   dailyStart: document.querySelector("#dailyStart"),
@@ -179,6 +180,13 @@ function cloudUrl() {
 
 function setCloudStatus(message) {
   if (els.cloudStatus) els.cloudStatus.textContent = message;
+  if (els.loginRoleHint && !isAdmin() && !isManager() && !isEmployee()) {
+    els.loginRoleHint.textContent = message;
+  }
+}
+
+function cloudLoginSummary() {
+  return `Cloud ready: ${bn.format(state.employeeAccess.length)} employee PIN, ${bn.format(employees().length)} employee`;
 }
 
 function queueCloudPush() {
@@ -233,6 +241,7 @@ async function syncFromCloud(showAlert = true) {
       isApplyingCloudState = false;
       ensureEmployeeAccess();
       render();
+      if (els.loginRoleHint) els.loginRoleHint.textContent = cloudLoginSummary();
     }
     setCloudStatus(`শেষ cloud load: ${new Date().toLocaleString("bn-BD")}`);
     if (showAlert) alert("Cloud থেকে data load হয়েছে।");
@@ -1634,7 +1643,7 @@ els.loginForm.addEventListener("submit", async (event) => {
     }
   }
 
-  els.loginError.textContent = "PIN ঠিক নয়।";
+  els.loginError.textContent = `PIN ঠিক নয়। ${cloudLoginSummary()}`;
 });
 
 document.querySelector("#logoutBtn").addEventListener("click", lockApp);
@@ -1833,6 +1842,7 @@ async function boot() {
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
+  if (els.loginRoleHint && currentUser.role === "guest") els.loginRoleHint.textContent = cloudLoginSummary();
 }
 
 boot();
