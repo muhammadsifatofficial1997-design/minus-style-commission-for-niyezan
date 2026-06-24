@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = "minus-style-affiliate-dashboard-v2";
+const STORAGE_KEY = "minus-style-affiliate-dashboard-v2";
 const LEGACY_KEY = "minus-style-affiliate-dashboard-v1";
 const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
@@ -23,16 +23,16 @@ let isApplyingCloudState = false;
 let breakTicker = null;
 
 const categoryLabels = {
-  commission: "à¦®à¦¾à¦‡à¦¨à¦¾à¦¸ à¦¸à§à¦Ÿà¦¾à¦‡à¦² à¦•à¦®à¦¿à¦¶à¦¨",
-  other_income: "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯ à¦†à§Ÿ",
-  dollar_boost: "à¦¡à¦²à¦¾à¦° à¦¬à§à¦¸à§à¦Ÿ",
-  office_other: "à¦…à¦«à¦¿à¦¸ à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯",
-  snack: "à¦¨à¦¾à¦¸à§à¦¤à¦¾",
-  salary: "à¦¬à§‡à¦¤à¦¨",
-  internet: "à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ à¦¬à¦¿à¦²",
-  rent: "à¦…à¦«à¦¿à¦¸ à¦­à¦¾à§œà¦¾",
-  electricity: "à¦¬à¦¿à¦¦à§à¦¯à§à§Ž à¦¬à¦¿à¦²",
-  other: "à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯",
+  commission: "মাইনাস স্টাইল কমিশন",
+  other_income: "অন্যান্য আয়",
+  dollar_boost: "ডলার বুস্ট",
+  office_other: "অফিস অন্যান্য",
+  snack: "নাস্তা",
+  salary: "বেতন",
+  internet: "ইন্টারনেট বিল",
+  rent: "অফিস ভাড়া",
+  electricity: "বিদ্যুৎ বিল",
+  other: "অন্যান্য",
 };
 
 const breakLabels = {
@@ -196,7 +196,7 @@ function defaultState() {
         radiusMeters: 100,
       },
     },
-    managers: [{ id: crypto.randomUUID(), name: "à¦«à¦¾à¦‡à¦œà§à¦° (à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°)", pin: "2222", active: true }],
+    managers: [{ id: crypto.randomUUID(), name: "ফাইজুর (ম্যানেজার)", pin: "2222", active: true }],
     employeeAccess: [],
     approvals: [],
     activityLogs: [],
@@ -207,16 +207,16 @@ function defaultState() {
     payrollLocks: [],
     notifications: [],
     fixedExpenses: [
-      fixed("à¦«à¦¾à¦‡à¦œà§à¦° à¦¬à§‡à¦¤à¦¨", "salary", 15000, true, "à¦à¦®à¦ªà§à¦²à§Ÿà§€"),
-      fixed("à¦…à¦®à¦¿à¦¤ à¦¬à§‡à¦¤à¦¨", "salary", 13000, true, "à¦à¦®à¦ªà§à¦²à§Ÿà§€"),
-      fixed("à¦¶à§à¦­ à¦­à¦¾à¦‡ à¦¬à§‡à¦¤à¦¨", "salary", 12000, true, "à¦à¦®à¦ªà§à¦²à§Ÿà§€"),
-      fixed("à¦¸à¦¾à¦•à¦¿à¦¬ à¦¬à§‡à¦¤à¦¨", "salary", 12000, true, "à¦à¦®à¦ªà§à¦²à§Ÿà§€"),
-      fixed("à¦¸à¦¿à¦«à¦¾à¦¤ à¦¬à§‡à¦¤à¦¨", "salary", 20000, true, "à¦à¦®à¦ªà§à¦²à§Ÿà§€"),
-      fixed("à¦¸à§à¦Ÿà¦¾à¦°à¦²à¦¿à¦‚à¦•", "internet", 4200, true, "à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ à¦¬à¦¿à¦²"),
-      fixed("à¦—à§à¦°à§€à¦¨ à¦¨à§‡à¦Ÿ", "internet", 1100, true, "à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ à¦¬à¦¿à¦²"),
-      fixed("à¦…à¦«à¦¿à¦¸ à¦­à¦¾à§œà¦¾", "rent", 9000, true, "à¦®à¦¾à¦¸à¦¿à¦• à¦…à¦«à¦¿à¦¸ à¦­à¦¾à§œà¦¾"),
-      fixed("à¦¬à¦¿à¦¦à§à¦¯à§à§Ž à¦¬à¦¿à¦²", "electricity", 2000, true, "à¦†à¦¨à§à¦®à¦¾à¦¨à¦¿à¦• à¦®à¦¾à¦¸à¦¿à¦•"),
-      fixed("à¦…à¦«à¦¿à¦¸à§‡à¦° à¦…à¦¨à§à¦¯à¦¾à¦¨à§à¦¯", "other", 0, true, "à¦ªà§à¦°à§Ÿà§‹à¦œà¦¨à§‡ à¦®à¦¾à¦¸à¦¿à¦• à¦¸à§à¦¥à¦¾à§Ÿà§€ à¦–à¦°à¦š à¦¦à¦¿à¦¨"),
+      fixed("ফাইজুর বেতন", "salary", 15000, true, "এমপ্লয়ী"),
+      fixed("অমিত বেতন", "salary", 13000, true, "এমপ্লয়ী"),
+      fixed("শুভ ভাই বেতন", "salary", 12000, true, "এমপ্লয়ী"),
+      fixed("সাকিব বেতন", "salary", 12000, true, "এমপ্লয়ী"),
+      fixed("সিফাত বেতন", "salary", 20000, true, "এমপ্লয়ী"),
+      fixed("স্টারলিংক", "internet", 4200, true, "ইন্টারনেট বিল"),
+      fixed("গ্রীন নেট", "internet", 1100, true, "ইন্টারনেট বিল"),
+      fixed("অফিস ভাড়া", "rent", 9000, true, "মাসিক অফিস ভাড়া"),
+      fixed("বিদ্যুৎ বিল", "electricity", 2000, true, "আনুমানিক মাসিক"),
+      fixed("অফিসের অন্যান্য", "other", 0, true, "প্রয়োজনে মাসিক স্থায়ী খরচ দিন"),
     ],
     entries: [],
     categories: {
@@ -289,12 +289,12 @@ function queueCloudPush() {
 async function syncToCloud(showAlert = true) {
   const url = cloudUrl();
   if (!url) {
-    setCloudStatus("Cloud URL à¦¦à§‡à¦“à§Ÿà¦¾ à¦¹à§Ÿà¦¨à¦¿à¥¤");
+    setCloudStatus("Cloud URL দেওয়া হয়নি।");
     return;
   }
 
   try {
-    setCloudStatus("Cloud-à¦ data à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à¦šà§à¦›à§‡...");
+    setCloudStatus("Cloud-এ data পাঠানো হচ্ছে...");
     const response = await fetch(url, {
       method: "POST",
       mode: "cors",
@@ -303,8 +303,8 @@ async function syncToCloud(showAlert = true) {
     });
     const result = await response.json();
     if (!result.ok) throw new Error(result.error || "Cloud save failed");
-    setCloudStatus(`à¦¶à§‡à¦· cloud save: ${new Date().toLocaleString("bn-BD")}`);
-    if (showAlert) alert("Cloud-à¦ data save à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+    setCloudStatus(`শেষ cloud save: ${new Date().toLocaleString("bn-BD")}`);
+    if (showAlert) alert("Cloud-এ data save হয়েছে।");
   } catch (error) {
     setCloudStatus(`Cloud save failed: ${error.message}`);
     if (showAlert) alert(`Cloud save failed: ${error.message}`);
@@ -314,12 +314,12 @@ async function syncToCloud(showAlert = true) {
 async function syncFromCloud(showAlert = true) {
   const url = cloudUrl();
   if (!url) {
-    setCloudStatus("Cloud URL à¦¦à§‡à¦“à§Ÿà¦¾ à¦¹à§Ÿà¦¨à¦¿à¥¤");
+    setCloudStatus("Cloud URL দেওয়া হয়নি।");
     return false;
   }
 
   try {
-    setCloudStatus("Cloud à¦¥à§‡à¦•à§‡ data à¦†à¦¨à¦¾ à¦¹à¦šà§à¦›à§‡...");
+    setCloudStatus("Cloud থেকে data আনা হচ্ছে...");
     const response = await fetch(`${url}?action=getState&cache=${Date.now()}`, { method: "GET", mode: "cors" });
     const result = await response.json();
     if (!result.ok) throw new Error(result.error || "Cloud load failed");
@@ -334,8 +334,8 @@ async function syncFromCloud(showAlert = true) {
       render();
       if (els.loginRoleHint) els.loginRoleHint.textContent = cloudLoginSummary();
     }
-    setCloudStatus(`à¦¶à§‡à¦· cloud load: ${new Date().toLocaleString("bn-BD")}`);
-    if (showAlert) alert("Cloud à¦¥à§‡à¦•à§‡ data load à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+    setCloudStatus(`শেষ cloud load: ${new Date().toLocaleString("bn-BD")}`);
+    if (showAlert) alert("Cloud থেকে data load হয়েছে।");
     return true;
   } catch (error) {
     isApplyingCloudState = false;
@@ -359,30 +359,30 @@ function isEmployee() {
 
 function normalizePin(value) {
   const digitMap = {
-    "à§¦": "0",
-    "à§§": "1",
-    "à§¨": "2",
-    "à§©": "3",
-    "à§ª": "4",
-    "à§«": "5",
-    "à§¬": "6",
-    "à§­": "7",
-    "à§®": "8",
-    "à§¯": "9",
-    "Ù ": "0",
-    "Ù¡": "1",
-    "Ù¢": "2",
-    "Ù£": "3",
-    "Ù¤": "4",
-    "Ù¥": "5",
-    "Ù¦": "6",
-    "Ù§": "7",
-    "Ù¨": "8",
-    "Ù©": "9",
+    "০": "0",
+    "১": "1",
+    "২": "2",
+    "৩": "3",
+    "৪": "4",
+    "৫": "5",
+    "৬": "6",
+    "৭": "7",
+    "৮": "8",
+    "৯": "9",
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9",
   };
   return String(value || "")
     .trim()
-    .replace(/[à§¦-à§¯Ù -Ù©]/g, (digit) => digitMap[digit] || digit);
+    .replace(/[০-৯٠-٩]/g, (digit) => digitMap[digit] || digit);
 }
 
 function createAutoBackup() {
@@ -411,7 +411,7 @@ function getBackups() {
 }
 
 function money(value) {
-  return `à§³${bn.format(Math.round(Number(value) || 0))}`;
+  return `৳${bn.format(Math.round(Number(value) || 0))}`;
 }
 
 function today() {
@@ -472,7 +472,7 @@ function employees() {
     .filter((item) => item.active && item.category === "salary")
     .map((item) => ({
       id: item.id,
-      name: item.name.replace(/\s*à¦¬à§‡à¦¤à¦¨\s*$/u, "").trim(),
+      name: item.name.replace(/\s*বেতন\s*$/u, "").trim(),
       salary: Number(item.amount || 0),
     }));
 }
@@ -508,7 +508,7 @@ function employeeById(id) {
 
 function normalizeName(value) {
   return String(value || "")
-    .replace(/\s*à¦¬à§‡à¦¤à¦¨\s*$/u, "")
+    .replace(/\s*বেতন\s*$/u, "")
     .trim()
     .toLowerCase();
 }
@@ -543,7 +543,7 @@ function distanceMeters(from, to) {
 function getCurrentPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error("à¦à¦‡ browser location support à¦•à¦°à§‡ à¦¨à¦¾à¥¤"));
+      reject(new Error("এই browser location support করে না।"));
       return;
     }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -602,10 +602,10 @@ function isCheckoutAllowed(value) {
 
 function attendanceApprovalReason(payload) {
   if (payload.checkIn && !isCheckInWindow(payload.checkIn)) {
-    return `Check-in ${payload.checkIn} allowed window 09:45-10:10-à¦à¦° à¦¬à¦¾à¦‡à¦°à§‡`;
+    return `Check-in ${payload.checkIn} allowed window 09:45-10:10-এর বাইরে`;
   }
   if (payload.checkOut && !isCheckoutAllowed(payload.checkOut)) {
-    return `Check-out ${payload.checkOut} à¦¸à¦¨à§à¦§à§à¦¯à¦¾ 7:00 PM-à¦à¦° à¦†à¦—à§‡`;
+    return `Check-out ${payload.checkOut} সন্ধ্যা 7:00 PM-এর আগে`;
   }
   return "";
 }
@@ -836,14 +836,14 @@ function render() {
   setText("todayExpense", money(day.expense));
   setText("dailyFixedShare", money(day.fixedTotal));
   setText("todayNet", money(day.net));
-  setText("todayNetHint", day.net >= 0 ? "à¦†à¦œ à¦²à¦¾à¦­à§‡ à¦†à¦›à§‡à¦¨" : "à¦†à¦œ à¦²à¦¸à§‡ à¦†à¦›à§‡à¦¨");
+  setText("todayNetHint", day.net >= 0 ? "আজ লাভে আছেন" : "আজ লসে আছেন");
   setText("sidebarFixedTotal", money(activeFixedTotal()));
   setText("monthIncome", money(month.income));
   setText("monthBoost", money(month.boost));
   setText("monthFixed", money(activeFixedTotal()));
   setText("monthNet", money(month.net));
-  setText("monthStatus", month.net >= 0 ? "à¦®à¦¾à¦¸à¦¿à¦• à¦²à¦¾à¦­" : "à¦®à¦¾à¦¸à¦¿à¦• à¦²à¦¸");
-  setText("monthLabel", `${formatMonth(date)} à¦¸à¦¾à¦°à¦¾à¦‚à¦¶`);
+  setText("monthStatus", month.net >= 0 ? "মাসিক লাভ" : "মাসিক লস");
+  setText("monthLabel", `${formatMonth(date)} সারাংশ`);
 
   document.querySelector("#todayNet").className = day.net >= 0 ? "amount good" : "amount bad";
   document.querySelector("#monthNet").className = month.net >= 0 ? "amount good" : "amount bad";
@@ -931,7 +931,7 @@ function renderEntryCategories(type, select) {
 
 function renderTodayEntries(entries) {
   if (!entries.length) {
-    els.todayEntries.innerHTML = `<div class="empty">à¦à¦‡ à¦¤à¦¾à¦°à¦¿à¦–à§‡ à¦à¦–à¦¨à§‹ à¦•à§‹à¦¨à§‹ à¦†à§Ÿ à¦¬à¦¾ à¦–à¦°à¦š à¦¯à§‹à¦— à¦•à¦°à¦¾ à¦¹à§Ÿà¦¨à¦¿à¥¤</div>`;
+    els.todayEntries.innerHTML = `<div class="empty">এই তারিখে এখনো কোনো আয় বা খরচ যোগ করা হয়নি।</div>`;
     return;
   }
 
@@ -945,7 +945,7 @@ function renderTodayEntries(entries) {
             <strong>${escapeHtml(labelFor(entry.category))}</strong>
             <span class="amount ${entry.type === "income" ? "good" : "bad"}">${entry.type === "income" ? "+" : "-"}${money(entry.amount)}</span>
           </div>
-          <small class="muted">${escapeHtml(entry.note || "à¦¨à§‹à¦Ÿ à¦¨à§‡à¦‡")}</small>
+          <small class="muted">${escapeHtml(entry.note || "নোট নেই")}</small>
         </article>
       `,
     )
@@ -956,7 +956,7 @@ function renderEntriesTable() {
   const start = els.dailyStart.value || "0000-01-01";
   const end = els.dailyEnd.value || "9999-12-31";
   const filtered = entriesInRange(start, end);
-  setText("entryTableHint", `${start} à¦¥à§‡à¦•à§‡ ${end} à¦ªà¦°à§à¦¯à¦¨à§à¦¤ ${bn.format(filtered.length)}à¦Ÿà¦¿ à¦à¦¨à§à¦Ÿà§à¦°à¦¿`);
+  setText("entryTableHint", `${start} থেকে ${end} পর্যন্ত ${bn.format(filtered.length)}টি এন্ট্রি`);
 
   const rows = filtered
     .slice()
@@ -965,14 +965,14 @@ function renderEntriesTable() {
       (entry) => `
         <tr>
           <td>${escapeHtml(entry.date)}</td>
-          <td><span class="type-pill">${entry.type === "income" ? "à¦†à§Ÿ" : "à¦–à¦°à¦š"}</span></td>
+          <td><span class="type-pill">${entry.type === "income" ? "আয়" : "খরচ"}</span></td>
           <td>${escapeHtml(labelFor(entry.category))}</td>
           <td class="amount ${entry.type === "income" ? "good" : "bad"}">${money(entry.amount)}</td>
           <td>${escapeHtml(entry.note || "-")}</td>
           <td>
             <div class="action-row">
-              <button class="small-action" data-edit-entry="${entry.id}" type="button">${isAdmin() ? "à¦à¦¡à¦¿à¦Ÿ" : "à¦à¦¡à¦¿à¦Ÿ à¦°à¦¿à¦•à§à§Ÿà§‡à¦¸à§à¦Ÿ"}</button>
-              <button class="small-action danger" data-delete-entry="${entry.id}" type="button">${isAdmin() ? "à¦¡à¦¿à¦²à¦¿à¦Ÿ" : "à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦°à¦¿à¦•à§à§Ÿà§‡à¦¸à§à¦Ÿ"}</button>
+              <button class="small-action" data-edit-entry="${entry.id}" type="button">${isAdmin() ? "এডিট" : "এডিট রিকুয়েস্ট"}</button>
+              <button class="small-action danger" data-delete-entry="${entry.id}" type="button">${isAdmin() ? "ডিলিট" : "ডিলিট রিকুয়েস্ট"}</button>
             </div>
           </td>
         </tr>
@@ -980,7 +980,7 @@ function renderEntriesTable() {
     )
     .join("");
 
-  els.entriesTable.innerHTML = rows || `<tr><td colspan="6" class="empty">à¦à¦‡ à¦°à§‡à¦žà§à¦œà§‡ à¦•à§‹à¦¨à§‹ à¦à¦¨à§à¦Ÿà§à¦°à¦¿ à¦¨à§‡à¦‡à¥¤</td></tr>`;
+  els.entriesTable.innerHTML = rows || `<tr><td colspan="6" class="empty">এই রেঞ্জে কোনো এন্ট্রি নেই।</td></tr>`;
 }
 
 function renderFixedList() {
@@ -993,13 +993,13 @@ function renderFixedList() {
             <span class="amount">${money(item.amount)}</span>
           </div>
           <div class="item-line">
-            <small class="muted">${escapeHtml(labelFor(item.category))} Â· ${escapeHtml(item.note || "à¦¨à§‹à¦Ÿ à¦¨à§‡à¦‡")}</small>
-            <span class="status-pill">${item.active ? "à¦¸à¦•à§à¦°à¦¿à§Ÿ" : "inactive"}</span>
+            <small class="muted">${escapeHtml(labelFor(item.category))} · ${escapeHtml(item.note || "নোট নেই")}</small>
+            <span class="status-pill">${item.active ? "সক্রিয়" : "inactive"}</span>
           </div>
           <div class="action-row">
-            <button class="small-action" data-edit-fixed="${item.id}" type="button">à¦à¦¡à¦¿à¦Ÿ</button>
+            <button class="small-action" data-edit-fixed="${item.id}" type="button">এডিট</button>
             <button class="small-action" data-toggle-fixed="${item.id}" type="button">${item.active ? "Inactive" : "Active"}</button>
-            <button class="small-action danger" data-delete-fixed="${item.id}" type="button">à¦¡à¦¿à¦²à¦¿à¦Ÿ</button>
+            <button class="small-action danger" data-delete-fixed="${item.id}" type="button">ডিলিট</button>
           </div>
         </article>
       `,
@@ -1021,12 +1021,12 @@ function renderManagers() {
             <small class="muted">PIN: ${"*".repeat(String(manager.pin).length)}</small>
             <div class="action-row">
               <button class="small-action" data-toggle-manager="${manager.id}" type="button">${manager.active ? "Inactive" : "Active"}</button>
-              <button class="small-action danger" data-delete-manager="${manager.id}" type="button">à¦¡à¦¿à¦²à¦¿à¦Ÿ</button>
+              <button class="small-action danger" data-delete-manager="${manager.id}" type="button">ডিলিট</button>
             </div>
           </article>
         `,
       )
-      .join("") || `<div class="empty">Manager access à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">Manager access নেই।</div>`;
 }
 
 function renderApprovals() {
@@ -1042,7 +1042,7 @@ function renderApprovals() {
               <strong>${escapeHtml(requestTitle(request))}</strong>
               <span class="status-pill">${escapeHtml(request.requestedBy)}</span>
             </div>
-            <small class="muted">${new Date(request.createdAt).toLocaleString("bn-BD")} Â· ${escapeHtml(requestDescription(request))}</small>
+            <small class="muted">${new Date(request.createdAt).toLocaleString("bn-BD")} · ${escapeHtml(requestDescription(request))}</small>
             <div class="action-row">
               <button class="small-action" data-approve-request="${request.id}" type="button">Approve</button>
               <button class="small-action danger" data-reject-request="${request.id}" type="button">Reject</button>
@@ -1050,7 +1050,7 @@ function renderApprovals() {
           </article>
         `,
       )
-      .join("") || `<div class="empty">à¦•à§‹à¦¨à§‹ pending request à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">কোনো pending request নেই।</div>`;
 }
 
 function renderPendingApprovalBadge(count = state.approvals.filter((request) => request.status === "pending").length) {
@@ -1066,12 +1066,12 @@ function renderAttendance() {
   const employeeOptions = visibleEmployees
     .map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)} - ${money(employee.salary)}</option>`)
     .join("");
-  els.attendanceEmployee.innerHTML = employeeOptions || `<option value="">à¦•à§‹à¦¨à§‹ active salary employee à¦¨à§‡à¦‡</option>`;
+  els.attendanceEmployee.innerHTML = employeeOptions || `<option value="">কোনো active salary employee নেই</option>`;
   if (visibleEmployees.some((employee) => employee.id === currentEmployee)) els.attendanceEmployee.value = currentEmployee;
   if (isEmployee()) els.attendanceEmployee.value = currentEmployeeId();
 
   const date = els.attendanceDate.value;
-  setText("attendanceHint", `${date} à¦¤à¦¾à¦°à¦¿à¦–à§‡à¦° à¦¹à¦¾à¦œà¦¿à¦°à¦¾`);
+  setText("attendanceHint", `${date} তারিখের হাজিরা`);
   const rows = visibleEmployees
     .map((employee) => {
       const record = attendanceFor(date, employee.id);
@@ -1087,13 +1087,13 @@ function renderAttendance() {
           <td>${escapeHtml(record?.note || "-")}</td>
           <td>${escapeHtml(record?.markedBy || "Default")}</td>
           <td>
-            ${record && !isEmployee() ? `<button class="small-action danger" data-delete-attendance="${record.id}" type="button">à¦¡à¦¿à¦²à¦¿à¦Ÿ</button>` : ""}
+            ${record && !isEmployee() ? `<button class="small-action danger" data-delete-attendance="${record.id}" type="button">ডিলিট</button>` : ""}
           </td>
         </tr>
       `;
     })
     .join("");
-  els.attendanceTable.innerHTML = rows || `<tr><td colspan="5" class="empty">à¦•à§‹à¦¨à§‹ employee à¦¨à§‡à¦‡à¥¤</td></tr>`;
+  els.attendanceTable.innerHTML = rows || `<tr><td colspan="5" class="empty">কোনো employee নেই।</td></tr>`;
   renderAttendanceActionState();
 }
 
@@ -1189,12 +1189,12 @@ function renderAttendanceActionState() {
 
   els.attendanceCheckInNowBtn.disabled = hasCheckIn;
   els.attendanceCheckOutNowBtn.disabled = !hasCheckIn || hasCheckOut;
-  els.attendanceCheckInNowBtn.title = hasCheckIn ? "à¦†à¦œ check-in already save à¦†à¦›à§‡à¥¤" : "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦¸à¦®à§Ÿ à¦¦à¦¿à§Ÿà§‡ check-in à¦•à¦°à§à¦¨à¥¤";
+  els.attendanceCheckInNowBtn.title = hasCheckIn ? "আজ check-in already save আছে।" : "বর্তমান সময় দিয়ে check-in করুন।";
   els.attendanceCheckOutNowBtn.title = !hasCheckIn
-    ? "à¦†à¦—à§‡ check-in à¦•à¦°à¦¤à§‡ à¦¹à¦¬à§‡à¥¤"
+    ? "আগে check-in করতে হবে।"
     : hasCheckOut
-      ? "à¦†à¦œ check-out already save à¦†à¦›à§‡à¥¤"
-      : "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦¸à¦®à§Ÿ à¦¦à¦¿à§Ÿà§‡ check-out à¦•à¦°à§à¦¨à¥¤";
+      ? "আজ check-out already save আছে।"
+      : "বর্তমান সময় দিয়ে check-out করুন।";
 
   if (els.mobileCheckInBtn) els.mobileCheckInBtn.disabled = hasCheckIn;
   if (els.mobileCheckOutBtn) els.mobileCheckOutBtn.disabled = !hasCheckIn || hasCheckOut;
@@ -1226,21 +1226,21 @@ function renderEmployeeHome() {
   const runningBreak = activeBreakFor(employee.id);
   const statusText = runningBreak ? `On ${breakLabel(runningBreak.type)}` : hasCheckIn && hasCheckOut ? "Complete" : hasCheckIn ? "Check-out baki" : "Check-in baki";
 
-  els.employeeHomeTitle.textContent = `${employee.name} - à¦†à¦œà¦•à§‡à¦° à¦¸à§à¦Ÿà§à¦¯à¦¾à¦Ÿà¦¾à¦¸`;
+  els.employeeHomeTitle.textContent = `${employee.name} - আজকের স্ট্যাটাস`;
   els.employeeTodayStatus.textContent = statusText;
-  els.employeeTodayCheckIn.textContent = record?.checkIn || "à¦¬à¦¾à¦•à¦¿";
-  els.employeeTodayCheckOut.textContent = record?.checkOut || "à¦¬à¦¾à¦•à¦¿";
+  els.employeeTodayCheckIn.textContent = record?.checkIn || "বাকি";
+  els.employeeTodayCheckOut.textContent = record?.checkOut || "বাকি";
   els.employeeMonthPayable.textContent = payrollRow ? money(payrollRow.payable) : money(0);
   els.employeePendingApproval.textContent = bn.format(pendingTotal);
 
   if (runningBreak) {
-    els.employeeTodayHint.textContent = `${breakLabel(runningBreak.type)} à¦šà¦²à¦›à§‡à¥¤ Started: ${runningBreak.startTime}, Duration: ${formatDuration(breakDurationSeconds(runningBreak))}`;
+    els.employeeTodayHint.textContent = `${breakLabel(runningBreak.type)} চলছে। Started: ${runningBreak.startTime}, Duration: ${formatDuration(breakDurationSeconds(runningBreak))}`;
   } else if (!hasCheckIn) {
-    els.employeeTodayHint.textContent = "à¦†à¦œ check-in à¦¬à¦¾à¦•à¦¿ à¦†à¦›à§‡à¥¤ à¦…à¦«à¦¿à¦¸ à¦²à§‹à¦•à§‡à¦¶à¦¨à§‡ à¦—à¦¿à§Ÿà§‡ Check In Now à¦šà¦¾à¦ªà§à¦¨à¥¤";
+    els.employeeTodayHint.textContent = "আজ check-in বাকি আছে। অফিস লোকেশনে গিয়ে Check In Now চাপুন।";
   } else if (!hasCheckOut) {
-    els.employeeTodayHint.textContent = "à¦†à¦œ check-out à¦¬à¦¾à¦•à¦¿ à¦†à¦›à§‡à¥¤ à¦•à¦¾à¦œ à¦¶à§‡à¦· à¦¹à¦²à§‡ Check Out Now à¦šà¦¾à¦ªà§à¦¨à¥¤";
+    els.employeeTodayHint.textContent = "আজ check-out বাকি আছে। কাজ শেষ হলে Check Out Now চাপুন।";
   } else {
-    els.employeeTodayHint.textContent = "à¦†à¦œà¦•à§‡à¦° attendance complete à¦¹à§Ÿà§‡à¦›à§‡à¥¤ à¦¨à¦¿à¦šà§‡ à¦¨à¦¿à¦œà§‡à¦° payroll à¦“ request history à¦¦à§‡à¦–à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡à¦¨à¥¤";
+    els.employeeTodayHint.textContent = "আজকের attendance complete হয়েছে। নিচে নিজের payroll ও request history দেখতে পারবেন।";
   }
 }
 
@@ -1383,7 +1383,7 @@ function renderPayroll() {
     payable: sum(rows, "payable"),
     cutDays: sum(rows, "cutDays"),
   };
-  setText("payrollHint", isEmployee() ? `${month} à¦®à¦¾à¦¸à§‡à¦° à¦†à¦ªà¦¨à¦¾à¦° payroll à¦¹à¦¿à¦¸à¦¾à¦¬` : `${month} à¦®à¦¾à¦¸à§‡à¦° payroll à¦¹à¦¿à¦¸à¦¾à¦¬`);
+  setText("payrollHint", isEmployee() ? `${month} মাসের আপনার payroll হিসাব` : `${month} মাসের payroll হিসাব`);
   setText("payrollGross", money(summary.gross));
   setText("payrollDeduction", money(summary.deduction));
   setText("payrollPayable", money(summary.payable));
@@ -1391,7 +1391,7 @@ function renderPayroll() {
   if (els.payrollLockBtn) {
     els.payrollLockBtn.hidden = !isAdmin();
     els.payrollLockBtn.innerHTML = locked ? `<i data-lucide="unlock"></i> Payroll Unlock` : `<i data-lucide="lock"></i> Payroll Lock`;
-    els.payrollLockBtn.title = locked ? `${month} payroll locked à¦†à¦›à§‡` : `${month} payroll final à¦•à¦°à§‡ lock à¦•à¦°à§à¦¨`;
+    els.payrollLockBtn.title = locked ? `${month} payroll locked আছে` : `${month} payroll final করে lock করুন`;
   }
   document.querySelector("#payrollTable").innerHTML =
     rows
@@ -1410,7 +1410,7 @@ function renderPayroll() {
           </tr>
         `,
       )
-      .join("") || `<tr><td colspan="9" class="empty">Payroll-à¦à¦° à¦œà¦¨à§à¦¯ à¦•à§‹à¦¨à§‹ employee à¦¨à§‡à¦‡à¥¤</td></tr>`;
+      .join("") || `<tr><td colspan="9" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
 }
 
 function renderAdvance() {
@@ -1426,10 +1426,10 @@ function renderAdvance() {
         (item) => `
           <article class="fixed-item">
             <div class="item-line">
-              <strong>${escapeHtml(item.employeeName)} Â· ${money(item.amount)}</strong>
+              <strong>${escapeHtml(item.employeeName)} · ${money(item.amount)}</strong>
               <span class="status-pill">${escapeHtml(item.status)}</span>
             </div>
-            <small class="muted">${escapeHtml(item.month)} Â· ${escapeHtml(item.reason || "No reason")} Â· Requested by ${escapeHtml(item.requestedBy)}</small>
+            <small class="muted">${escapeHtml(item.month)} · ${escapeHtml(item.reason || "No reason")} · Requested by ${escapeHtml(item.requestedBy)}</small>
             ${
               isAdmin() && item.status === "pending"
                 ? `<div class="action-row">
@@ -1441,7 +1441,7 @@ function renderAdvance() {
           </article>
         `,
       )
-      .join("") || `<div class="empty">Advance request à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">Advance request নেই।</div>`;
 }
 
 function leaveTypeLabel(type) {
@@ -1470,7 +1470,7 @@ function renderLeave() {
   setText("leaveUsed", bn.format(used));
   setText("leavePending", bn.format(pending));
   setText("leaveRemaining", bn.format(Math.max(total - used - pending, 0)));
-  setText("leaveHint", isEmployee() ? "à¦†à¦ªà¦¨à¦¾à¦° leave balance à¦“ request history" : "à¦¨à¦¿à¦°à§à¦¬à¦¾à¦šà¦¿à¦¤ à¦•à¦°à§à¦®à§€à¦° leave balance à¦à¦¬à¦‚ à¦¸à¦¬ request");
+  setText("leaveHint", isEmployee() ? "আপনার leave balance ও request history" : "নির্বাচিত কর্মীর leave balance এবং সব request");
 
   els.leaveList.innerHTML =
     visibleLeaves
@@ -1478,10 +1478,10 @@ function renderLeave() {
         (item) => `
           <article class="fixed-item">
             <div class="item-line">
-              <strong>${escapeHtml(item.employeeName)} Â· ${escapeHtml(leaveTypeLabel(item.type))}</strong>
+              <strong>${escapeHtml(item.employeeName)} · ${escapeHtml(leaveTypeLabel(item.type))}</strong>
               <span class="status-pill">${escapeHtml(item.status)}</span>
             </div>
-            <small class="muted">${escapeHtml(item.start)} to ${escapeHtml(item.end)} Â· ${bn.format(item.days || 0)} days Â· ${escapeHtml(item.reason || "No reason")}</small>
+            <small class="muted">${escapeHtml(item.start)} to ${escapeHtml(item.end)} · ${bn.format(item.days || 0)} days · ${escapeHtml(item.reason || "No reason")}</small>
             ${
               isAdmin() && item.status === "pending"
                 ? `<div class="action-row">
@@ -1493,7 +1493,7 @@ function renderLeave() {
           </article>
         `,
       )
-      .join("") || `<div class="empty">Leave request à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">Leave request নেই।</div>`;
 }
 
 function renderEmployeeAccess() {
@@ -1510,15 +1510,15 @@ function renderEmployeeAccess() {
               <strong>${escapeHtml(employee?.name || "Unknown employee")}</strong>
               <span class="status-pill">${access.active ? "Active" : "Inactive"}</span>
             </div>
-            <small class="muted">PIN: ${normalizePin(access.pin) ? "*".repeat(String(access.pin).length) : "à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¨à§‡à¦‡"}</small>
+            <small class="muted">PIN: ${normalizePin(access.pin) ? "*".repeat(String(access.pin).length) : "সেট করা নেই"}</small>
             <div class="action-row">
               <button class="small-action" data-toggle-employee-access="${access.id}" type="button">${access.active ? "Inactive" : "Active"}</button>
-              <button class="small-action danger" data-delete-employee-access="${access.id}" type="button">à¦¡à¦¿à¦²à¦¿à¦Ÿ</button>
+              <button class="small-action danger" data-delete-employee-access="${access.id}" type="button">ডিলিট</button>
             </div>
           </article>
         `;
       })
-      .join("") || `<div class="empty">Employee access à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">Employee access নেই।</div>`;
 }
 
 function renderNotifications() {
@@ -1543,13 +1543,13 @@ function renderNotifications() {
           </article>
         `;
       })
-      .join("") || `<div class="empty">Notification à¦¨à§‡à¦‡à¥¤</div>`;
+      .join("") || `<div class="empty">Notification নেই।</div>`;
 }
 
 function renderCloudSettings() {
   if (!els.cloudApiUrl) return;
   els.cloudApiUrl.value = cloudUrl();
-  if (!cloudUrl()) setCloudStatus("Cloud sync à¦¬à¦¨à§à¦§ à¦†à¦›à§‡à¥¤ Apps Script Web App URL à¦¦à¦¿à¦²à§‡ live data sync à¦¹à¦¬à§‡à¥¤");
+  if (!cloudUrl()) setCloudStatus("Cloud sync বন্ধ আছে। Apps Script Web App URL দিলে live data sync হবে।");
   renderOfficeLocationSettings();
 }
 
@@ -1562,13 +1562,13 @@ function renderOfficeLocationSettings() {
   els.officeRadius.value = office.radiusMeters || 100;
   const ready = officeLocationReady();
   const text = ready
-    ? `Office location à¦šà¦¾à¦²à§: ${office.latitude}, ${office.longitude} | Radius ${bn.format(office.radiusMeters)}m`
-    : "Office location à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¨à§‡à¦‡ à¦¬à¦¾ à¦¬à¦¨à§à¦§ à¦†à¦›à§‡à¥¤";
+    ? `Office location চালু: ${office.latitude}, ${office.longitude} | Radius ${bn.format(office.radiusMeters)}m`
+    : "Office location সেট করা নেই বা বন্ধ আছে।";
   if (els.officeLocationStatus) els.officeLocationStatus.textContent = text;
   if (els.attendanceLocationStatus) {
     els.attendanceLocationStatus.textContent = ready
-      ? `Employee check-in/check-out office radius ${bn.format(office.radiusMeters)}m-à¦à¦° à¦­à¦¿à¦¤à¦°à§‡ à¦¹à¦¤à§‡ à¦¹à¦¬à§‡à¥¤`
-      : "Office location verification à¦¬à¦¨à§à¦§ à¦†à¦›à§‡à¥¤";
+      ? `Employee check-in/check-out office radius ${bn.format(office.radiusMeters)}m-এর ভিতরে হতে হবে।`
+      : "Office location verification বন্ধ আছে।";
   }
 }
 
@@ -1605,17 +1605,17 @@ function requestTitle(request) {
 }
 
 function requestDescription(request) {
-  if (request.action === "add_entry") return `${labelFor(request.payload.category)} Â· ${money(request.payload.amount)} Â· ${request.payload.date}`;
-  if (request.action === "bulk_entries") return `${labelFor(request.payload.category)} Â· ${money(request.payload.total)} Â· ${request.payload.start} to ${request.payload.end} Â· ${bn.format(request.payload.entries?.length || 0)} entries`;
-  if (request.action === "attendance_punch") return `${request.payload.employeeName} Â· ${request.payload.date} Â· ${request.payload.reason}`;
+  if (request.action === "add_entry") return `${labelFor(request.payload.category)} · ${money(request.payload.amount)} · ${request.payload.date}`;
+  if (request.action === "bulk_entries") return `${labelFor(request.payload.category)} · ${money(request.payload.total)} · ${request.payload.start} to ${request.payload.end} · ${bn.format(request.payload.entries?.length || 0)} entries`;
+  if (request.action === "attendance_punch") return `${request.payload.employeeName} · ${request.payload.date} · ${request.payload.reason}`;
   if (request.action === "correction_request") return `${correctionDescription(request.payload)} · ${request.payload.reason || ""}`;
-  if (request.action === "edit_entry") return `${labelFor(request.payload.category)} Â· ${money(request.payload.amount)} Â· ${request.payload.date}`;
-  if (request.action === "leave_request") return `${request.payload.employeeName} Â· ${request.payload.start} to ${request.payload.end} Â· ${bn.format(request.payload.days)} days`;
+  if (request.action === "edit_entry") return `${labelFor(request.payload.category)} · ${money(request.payload.amount)} · ${request.payload.date}`;
+  if (request.action === "leave_request") return `${request.payload.employeeName} · ${request.payload.start} to ${request.payload.end} · ${bn.format(request.payload.days)} days`;
   if (request.action === "delete_entry") return `Entry ID: ${request.payload.id}`;
   if (request.action === "toggle_fixed" || request.action === "delete_fixed") return `Fixed ID: ${request.payload.id}`;
   if (request.action === "delete_category") return `${request.payload.type}: ${request.payload.category}`;
-  if (request.action === "save_fixed") return `${request.payload.name} Â· ${money(request.payload.amount)}`;
-  return "à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨à§‡à¦° à¦…à¦¨à§à¦°à§‹à¦§";
+  if (request.action === "save_fixed") return `${request.payload.name} · ${money(request.payload.amount)}`;
+  return "পরিবর্তনের অনুরোধ";
 }
 
 function renderCategories() {
@@ -1624,8 +1624,8 @@ function renderCategories() {
       state.categories[type].map(
         (category) => `
           <div class="chip">
-            <span>${type === "income" ? "à¦†à§Ÿ" : "à¦–à¦°à¦š"}: ${escapeHtml(labelFor(category))}</span>
-            <button class="small-action danger" data-delete-category="${type}:${category}" type="button">à¦¡à¦¿à¦²à¦¿à¦Ÿ</button>
+            <span>${type === "income" ? "আয়" : "খরচ"}: ${escapeHtml(labelFor(category))}</span>
+            <button class="small-action danger" data-delete-category="${type}:${category}" type="button">ডিলিট</button>
           </div>
         `,
       ),
@@ -1637,12 +1637,12 @@ function renderReports() {
   const start = els.reportStart.value;
   const end = els.reportEnd.value;
   const totals = totalsForRange(start, end);
-  setText("reportRangeLabel", `${start} à¦¥à§‡à¦•à§‡ ${end} à¦ªà¦°à§à¦¯à¦¨à§à¦¤ à¦°à¦¿à¦ªà§‹à¦°à§à¦Ÿ`);
+  setText("reportRangeLabel", `${start} থেকে ${end} পর্যন্ত রিপোর্ট`);
   setText("reportIncome", money(totals.income));
   setText("reportBoost", money(totals.boost));
   setText("reportFixed", money(totals.fixedTotal));
   setText("reportNet", money(totals.net));
-  setText("reportStatus", totals.net >= 0 ? "à¦²à¦¾à¦­" : "à¦²à¦¸");
+  setText("reportStatus", totals.net >= 0 ? "লাভ" : "লস");
   document.querySelector("#reportNet").className = totals.net >= 0 ? "amount good" : "amount bad";
 
   const categoryMap = new Map();
@@ -1658,8 +1658,8 @@ function renderReports() {
     .map(
       (row) => `
         <tr>
-          <td>${row.category === "fixed_cost" ? "à¦«à¦¿à¦•à§à¦¸à¦¡ à¦–à¦°à¦š" : escapeHtml(labelFor(row.category))}</td>
-          <td>${row.type === "income" ? "à¦†à§Ÿ" : "à¦–à¦°à¦š"}</td>
+          <td>${row.category === "fixed_cost" ? "ফিক্সড খরচ" : escapeHtml(labelFor(row.category))}</td>
+          <td>${row.type === "income" ? "আয়" : "খরচ"}</td>
           <td class="amount ${row.type === "income" ? "good" : "bad"}">${money(row.amount)}</td>
         </tr>
       `,
@@ -1685,11 +1685,11 @@ function renderBackupStatus() {
   const backups = getBackups();
   if (!els.backupStatus) return;
   if (!backups.length) {
-    els.backupStatus.textContent = "Auto backup à¦à¦–à¦¨à§‹ à¦¤à§ˆà¦°à¦¿ à¦¹à§Ÿà¦¨à¦¿à¥¤";
+    els.backupStatus.textContent = "Auto backup এখনো তৈরি হয়নি।";
     return;
   }
   const latest = new Date(backups[0].createdAt).toLocaleString("bn-BD");
-  els.backupStatus.textContent = `à¦¶à§‡à¦· auto backup: ${latest} | à¦®à§‹à¦Ÿ snapshot: ${bn.format(backups.length)}`;
+  els.backupStatus.textContent = `শেষ auto backup: ${latest} | মোট snapshot: ${bn.format(backups.length)}`;
 }
 
 function renderChart(dateString) {
@@ -1725,15 +1725,15 @@ function renderChart(dateString) {
     ctx.lineTo(width - padding.right, y);
     ctx.stroke();
     const value = maxValue - (maxValue / 4) * i;
-    ctx.fillText(`à§³${bn.format(Math.round(value))}`, 8, y + 5);
+    ctx.fillText(`৳${bn.format(Math.round(value))}`, 8, y + 5);
   }
 
   drawLine(ctx, points, "income", "#16804f", padding, plotW, plotH, maxValue);
   drawLine(ctx, points, "expense", "#b64242", padding, plotW, plotH, maxValue);
   ctx.fillStyle = "#17211d";
-  ctx.fillText("à¦¸à¦¬à§à¦œ: à¦†à§Ÿ", padding.left, height - 13);
+  ctx.fillText("সবুজ: আয়", padding.left, height - 13);
   ctx.fillStyle = "#b64242";
-  ctx.fillText("à¦²à¦¾à¦²: à¦–à¦°à¦š", padding.left + 95, height - 13);
+  ctx.fillText("লাল: খরচ", padding.left + 95, height - 13);
 }
 
 function drawLine(ctx, points, key, color, padding, plotW, plotH, maxValue) {
@@ -1779,7 +1779,7 @@ function addBulkEntries(event) {
   const start = els.bulkStart.value;
   const end = els.bulkEnd.value;
   if (end < start) {
-    alert("à¦¶à§‡à¦· à¦¤à¦¾à¦°à¦¿à¦– à¦¶à§à¦°à§ à¦¤à¦¾à¦°à¦¿à¦–à§‡à¦° à¦†à¦—à§‡ à¦¹à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡ à¦¨à¦¾à¥¤");
+    alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
     return;
   }
 
@@ -1799,7 +1799,7 @@ function addBulkEntries(event) {
       category,
       amount: total,
       date: end,
-      note: note || `à¦°à§‡à¦žà§à¦œ à¦à¦¨à§à¦Ÿà§à¦°à¦¿: ${start} à¦¥à§‡à¦•à§‡ ${end}`,
+      note: note || `রেঞ্জ এন্ট্রি: ${start} থেকে ${end}`,
       createdBy: currentUser.name || "Admin",
       createdAt: new Date().toISOString(),
       batchId,
@@ -1816,7 +1816,7 @@ function addBulkEntries(event) {
         category,
         amount,
         date,
-        note: note || `à¦°à§‡à¦žà§à¦œ à¦à¦¨à§à¦Ÿà§à¦°à¦¿: ${start} à¦¥à§‡à¦•à§‡ ${end}`,
+        note: note || `রেঞ্জ এন্ট্রি: ${start} থেকে ${end}`,
         createdBy: currentUser.name || "Admin",
         createdAt: new Date().toISOString(),
         batchId,
@@ -1845,26 +1845,26 @@ function addBulkEntries(event) {
   els.bulkStart.value = els.dailyStart.value;
   els.bulkEnd.value = els.dailyEnd.value;
   render();
-  if (isAdmin()) alert(`${bn.format(entries.length)}à¦Ÿà¦¿ à¦à¦¨à§à¦Ÿà§à¦°à¦¿ à¦¯à§‹à¦— à¦¹à§Ÿà§‡à¦›à§‡à¥¤`);
+  if (isAdmin()) alert(`${bn.format(entries.length)}টি এন্ট্রি যোগ হয়েছে।`);
 }
 
 async function attachLocationIfNeeded(payload) {
   if (!isEmployee() || payload.status !== "present" || !officeLocationReady()) return true;
 
   try {
-    if (els.attendanceLocationStatus) els.attendanceLocationStatus.textContent = "Location verify à¦•à¦°à¦¾ à¦¹à¦šà§à¦›à§‡...";
+    if (els.attendanceLocationStatus) els.attendanceLocationStatus.textContent = "Location verify করা হচ্ছে...";
     const location = await verifyOfficeLocation();
     if (!location.allowed) {
-      els.attendanceLocationStatus.textContent = `Office radius-à¦à¦° à¦¬à¦¾à¦‡à¦°à§‡: ${bn.format(location.distance)}m à¦¦à§‚à¦°à§‡à¥¤ Attendance save à¦¹à§Ÿà¦¨à¦¿à¥¤`;
-      alert(`à¦†à¦ªà¦¨à¦¿ office radius-à¦à¦° à¦¬à¦¾à¦‡à¦°à§‡ à¦†à¦›à§‡à¦¨ (${location.distance}m)à¥¤ Attendance save à¦¹à§Ÿà¦¨à¦¿à¥¤`);
+      els.attendanceLocationStatus.textContent = `Office radius-এর বাইরে: ${bn.format(location.distance)}m দূরে। Attendance save হয়নি।`;
+      alert(`আপনি office radius-এর বাইরে আছেন (${location.distance}m)। Attendance save হয়নি।`);
       return false;
     }
     payload.location = location;
-    els.attendanceLocationStatus.textContent = `Location verified: office à¦¥à§‡à¦•à§‡ ${bn.format(location.distance)}m à¦¦à§‚à¦°à§‡à¥¤`;
+    els.attendanceLocationStatus.textContent = `Location verified: office থেকে ${bn.format(location.distance)}m দূরে।`;
     return true;
   } catch (error) {
-    els.attendanceLocationStatus.textContent = `Location à¦ªà¦¾à¦“à§Ÿà¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿: ${error.message}`;
-    alert("Location permission allow à¦¨à¦¾ à¦•à¦°à¦²à§‡ employee attendance save à¦¹à¦¬à§‡ à¦¨à¦¾à¥¤");
+    els.attendanceLocationStatus.textContent = `Location পাওয়া যায়নি: ${error.message}`;
+    alert("Location permission allow না করলে employee attendance save হবে না।");
     return false;
   }
 }
@@ -1879,10 +1879,10 @@ function persistAttendance(payload, employee, resetForm = true) {
   }
 
   if (payload.status === "present" && isLate(payload.shift, payload.checkIn)) {
-    addNotification("Late Arrival Alert", `${employee.name} ${payload.date} à¦¤à¦¾à¦°à¦¿à¦–à§‡ ${shiftLabel(payload.shift)}-à¦ late check-in à¦•à¦°à§‡à¦›à§‡: ${payload.checkIn}`);
+    addNotification("Late Arrival Alert", `${employee.name} ${payload.date} তারিখে ${shiftLabel(payload.shift)}-এ late check-in করেছে: ${payload.checkIn}`);
   }
   if (payload.status === "leave") {
-    addNotification("Leave Approval Alert", `${employee.name}-à¦à¦° ${payload.date} à¦¤à¦¾à¦°à¦¿à¦–à§‡à¦° leave marked/approved à¦¹à§Ÿà§‡à¦›à§‡à¥¤`);
+    addNotification("Leave Approval Alert", `${employee.name}-এর ${payload.date} তারিখের leave marked/approved হয়েছে।`);
   }
 
   if (resetForm) {
@@ -1900,7 +1900,7 @@ function requestAttendanceApproval(payload, employee, reason) {
     reason,
     requestedAt: new Date().toISOString(),
   });
-  addNotification("Attendance Approval Alert", `${employee.name} ${payload.date} attendance approval à¦¦à¦°à¦•à¦¾à¦°: ${reason}`);
+  addNotification("Attendance Approval Alert", `${employee.name} ${payload.date} attendance approval দরকার: ${reason}`);
   saveState();
   render();
 }
@@ -1927,7 +1927,7 @@ async function saveAttendancePunch(kind) {
 
   if (kind === "in") {
     if (payload.checkIn) {
-      alert("à¦†à¦œ check-in already save à¦†à¦›à§‡à¥¤ Update à¦¦à¦°à¦•à¦¾à¦° à¦¹à¦²à§‡ Admin/Manager correction à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§à¦¨à¥¤");
+      alert("আজ check-in already save আছে। Update দরকার হলে Admin/Manager correction ব্যবহার করুন।");
       renderAttendanceActionState();
       return;
     }
@@ -1936,12 +1936,12 @@ async function saveAttendancePunch(kind) {
 
   if (kind === "out") {
     if (!payload.checkIn) {
-      alert("à¦†à¦—à§‡ check-in à¦•à¦°à¦¤à§‡ à¦¹à¦¬à§‡, à¦¤à¦¾à¦°à¦ªà¦° check-out à¦•à¦°à¦¾ à¦¯à¦¾à¦¬à§‡à¥¤");
+      alert("আগে check-in করতে হবে, তারপর check-out করা যাবে।");
       renderAttendanceActionState();
       return;
     }
     if (payload.checkOut) {
-      alert("à¦†à¦œ check-out already save à¦†à¦›à§‡à¥¤ Update à¦¦à¦°à¦•à¦¾à¦° à¦¹à¦²à§‡ Admin/Manager correction à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§à¦¨à¥¤");
+      alert("আজ check-out already save আছে। Update দরকার হলে Admin/Manager correction ব্যবহার করুন।");
       renderAttendanceActionState();
       return;
     }
@@ -1954,12 +1954,12 @@ async function saveAttendancePunch(kind) {
   const reason = !isAdmin() ? attendanceApprovalReason(payload) : "";
   if (reason) {
     requestAttendanceApproval(payload, employee, reason);
-    alert("à¦à¦‡ attendance admin approval à¦²à¦¾à¦—à¦¬à§‡à¥¤ Request à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+    alert("এই attendance admin approval লাগবে। Request পাঠানো হয়েছে।");
     return;
   }
 
   persistAttendance(payload, employee, false);
-  alert(kind === "in" ? "Check-in save à¦¹à§Ÿà§‡à¦›à§‡à¥¤" : "Check-out save à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+  alert(kind === "in" ? "Check-in save হয়েছে।" : "Check-out save হয়েছে।");
 }
 
 async function saveAttendance(event) {
@@ -1987,7 +1987,7 @@ async function saveAttendance(event) {
   const reason = !isAdmin() ? attendanceApprovalReason(payload) : "";
   if (reason) {
     requestAttendanceApproval(payload, employee, reason);
-    alert("à¦à¦‡ attendance admin approval à¦²à¦¾à¦—à¦¬à§‡à¥¤ Request à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+    alert("এই attendance admin approval লাগবে। Request পাঠানো হয়েছে।");
     return;
   }
 
@@ -2000,10 +2000,10 @@ async function saveAttendance(event) {
   }
 
   if (payload.status === "present" && isLate(payload.shift, payload.checkIn)) {
-    addNotification("Late Arrival Alert", `${employee.name} ${payload.date} à¦¤à¦¾à¦°à¦¿à¦–à§‡ ${shiftLabel(payload.shift)}-à¦ late check-in à¦•à¦°à§‡à¦›à§‡: ${payload.checkIn}`);
+    addNotification("Late Arrival Alert", `${employee.name} ${payload.date} তারিখে ${shiftLabel(payload.shift)}-এ late check-in করেছে: ${payload.checkIn}`);
   }
   if (payload.status === "leave") {
-    addNotification("Leave Approval Alert", `${employee.name}-à¦à¦° ${payload.date} à¦¤à¦¾à¦°à¦¿à¦–à§‡à¦° leave marked/approved à¦¹à§Ÿà§‡à¦›à§‡à¥¤`);
+    addNotification("Leave Approval Alert", `${employee.name}-এর ${payload.date} তারিখের leave marked/approved হয়েছে।`);
   }
 
   els.attendanceForm.reset();
@@ -2037,7 +2037,7 @@ function startBreak(event) {
 
   const attendance = attendanceFor(today(), employee.id);
   if (isEmployee() && (!attendance?.checkIn || attendance?.checkOut)) {
-    alert("Break start à¦•à¦°à¦¾à¦° à¦†à¦—à§‡ à¦†à¦œà¦•à§‡à¦° check-in à¦¥à¦¾à¦•à¦¤à§‡ à¦¹à¦¬à§‡ à¦à¦¬à¦‚ check-out à¦¹à§Ÿà§‡ à¦—à§‡à¦²à§‡ à¦†à¦° break start à¦•à¦°à¦¾ à¦¯à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤");
+    alert("Break start করার আগে আজকের check-in থাকতে হবে এবং check-out হয়ে গেলে আর break start করা যাবে না।");
     return;
   }
 
@@ -2070,7 +2070,7 @@ function endBreak() {
   if (!employee) return;
   const running = activeBreakFor(employee.id);
   if (!running) {
-    alert("Running break à¦¨à§‡à¦‡à¥¤");
+    alert("Running break নেই।");
     return;
   }
 
@@ -2092,20 +2092,20 @@ function editBreak(id) {
   if (!isAdmin()) return;
   const item = state.breaks.find((breakItem) => breakItem.id === id);
   if (!item) return;
-  const type = prompt("Break type à¦²à¦¿à¦–à§à¦¨: prayer, washroom, lunch, personal, official", item.type);
+  const type = prompt("Break type লিখুন: prayer, washroom, lunch, personal, official", item.type);
   if (!type || !breakLabels[type]) {
-    alert("Valid break type à¦¦à¦¿à¦¨à¥¤");
+    alert("Valid break type দিন।");
     return;
   }
-  const startTime = prompt("Start time à¦¦à¦¿à¦¨ (HH:MM)", item.startTime || "");
+  const startTime = prompt("Start time দিন (HH:MM)", item.startTime || "");
   if (!startTime || timeToMinutes(startTime) === null) return;
-  const endTime = prompt("End time à¦¦à¦¿à¦¨ (HH:MM). Running à¦°à¦¾à¦–à¦¤à§‡ à¦–à¦¾à¦²à¦¿ à¦°à¦¾à¦–à§à¦¨à¥¤", item.endTime || "");
+  const endTime = prompt("End time দিন (HH:MM). Running রাখতে খালি রাখুন।", item.endTime || "");
   if (endTime && timeToMinutes(endTime) === null) return;
   if (endTime && timeToMinutes(endTime) < timeToMinutes(startTime)) {
-    alert("End time start time-à¦à¦° à¦†à¦—à§‡ à¦¹à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡ à¦¨à¦¾à¥¤");
+    alert("End time start time-এর আগে হতে পারবে না।");
     return;
   }
-  const note = prompt("Note à¦²à¦¿à¦–à§à¦¨", item.note || "");
+  const note = prompt("Note লিখুন", item.note || "");
 
   item.type = type;
   item.startTime = startTime;
@@ -2123,7 +2123,7 @@ function editBreak(id) {
 
 function deleteBreak(id) {
   if (!isAdmin()) return;
-  if (!confirm("à¦à¦‡ break record delete à¦•à¦°à¦¬à§‡à¦¨?")) return;
+  if (!confirm("এই break record delete করবেন?")) return;
   const item = state.breaks.find((breakItem) => breakItem.id === id);
   state.breaks = state.breaks.filter((item) => item.id !== id);
   logActivity("Delete Break", item ? `${item.employeeName} ${breakLabel(item.type)} deleted` : id, item?.employeeId || "");
@@ -2276,7 +2276,7 @@ function reviewAdvance(id, approved) {
   item.reviewedAt = new Date().toISOString();
   item.reviewedBy = "Admin";
   if (approved) {
-    addNotification("Advance Approval Alert", `${item.employeeName}-à¦à¦° advance salary request approved à¦¹à§Ÿà§‡à¦›à§‡: ${money(item.amount)} (${item.month})`);
+    addNotification("Advance Approval Alert", `${item.employeeName}-এর advance salary request approved হয়েছে: ${money(item.amount)} (${item.month})`);
   }
   saveState();
   render();
@@ -2304,21 +2304,21 @@ function saveEmployeeAccess(event) {
   els.employeeAccessForm.reset();
   saveState();
   if (cloudUrl()) syncToCloud(false);
-  alert("Employee login PIN à¦¸à§‡à¦­ à¦¹à§Ÿà§‡à¦›à§‡à¥¤ à¦à¦–à¦¨ logout à¦•à¦°à§‡ à¦®à§‚à¦² login screen à¦¥à§‡à¦•à§‡ à¦à¦‡ PIN à¦¦à¦¿à§Ÿà§‡ à¦¢à§à¦•à§à¦¨à¥¤");
+  alert("Employee login PIN সেভ হয়েছে। এখন logout করে মূল login screen থেকে এই PIN দিয়ে ঢুকুন।");
   render();
 }
 
 async function setOfficeLocationFromCurrentPosition() {
   if (!isAdmin()) return;
   try {
-    if (els.officeLocationStatus) els.officeLocationStatus.textContent = "à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ location à¦¨à§‡à¦“à§Ÿà¦¾ à¦¹à¦šà§à¦›à§‡...";
+    if (els.officeLocationStatus) els.officeLocationStatus.textContent = "বর্তমান location নেওয়া হচ্ছে...";
     const position = await getCurrentPosition();
     els.officeLatitude.value = position.coords.latitude.toFixed(7);
     els.officeLongitude.value = position.coords.longitude.toFixed(7);
-    els.officeLocationStatus.textContent = `Current location set à¦¹à§Ÿà§‡à¦›à§‡à¥¤ Accuracy: ${bn.format(Math.round(position.coords.accuracy || 0))}m`;
+    els.officeLocationStatus.textContent = `Current location set হয়েছে। Accuracy: ${bn.format(Math.round(position.coords.accuracy || 0))}m`;
   } catch (error) {
-    els.officeLocationStatus.textContent = `Location à¦¨à§‡à¦“à§Ÿà¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿: ${error.message}`;
-    alert("Browser location permission allow à¦•à¦°à§à¦¨, à¦¤à¦¾à¦°à¦ªà¦° à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤");
+    els.officeLocationStatus.textContent = `Location নেওয়া যায়নি: ${error.message}`;
+    alert("Browser location permission allow করুন, তারপর আবার চেষ্টা করুন।");
   }
 }
 
@@ -2332,7 +2332,7 @@ function saveOfficeLocation() {
   };
   saveState();
   renderOfficeLocationSettings();
-  alert("Office location attendance settings à¦¸à§‡à¦­ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+  alert("Office location attendance settings সেভ হয়েছে।");
 }
 
 function printPayslip(employeeId) {
@@ -2341,7 +2341,7 @@ function printPayslip(employeeId) {
   const payroll = payrollForMonth(month);
   const row = payroll.rows.find((item) => item.id === employeeId);
   if (!row) return;
-  addNotification("Salary Generated Alert", `${row.name}-à¦à¦° ${month} payslip generated à¦¹à§Ÿà§‡à¦›à§‡à¥¤ Net Salary: ${money(row.payable)}`);
+  addNotification("Salary Generated Alert", `${row.name}-এর ${month} payslip generated হয়েছে। Net Salary: ${money(row.payable)}`);
   saveState();
   const html = `
     <!doctype html>
@@ -2409,7 +2409,7 @@ function saveLeaveRequest(event) {
   const start = els.leaveStart.value;
   const end = els.leaveEnd.value;
   if (end < start) {
-    alert("à¦¶à§‡à¦· à¦¤à¦¾à¦°à¦¿à¦– à¦¶à§à¦°à§ à¦¤à¦¾à¦°à¦¿à¦–à§‡à¦° à¦†à¦—à§‡ à¦¹à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡ à¦¨à¦¾à¥¤");
+    alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
     return;
   }
 
@@ -2430,10 +2430,10 @@ function saveLeaveRequest(event) {
   state.leaveRequests.unshift(leave);
   if (isAdmin()) {
     applyLeaveToAttendance(leave);
-    addNotification("Leave Approval Alert", `${employee.name}-à¦à¦° leave approved à¦¹à§Ÿà§‡à¦›à§‡: ${start} to ${end}`);
+    addNotification("Leave Approval Alert", `${employee.name}-এর leave approved হয়েছে: ${start} to ${end}`);
   } else {
     addApproval("leave_request", leave);
-    addNotification("Leave Approval Alert", `${employee.name}-à¦à¦° leave approval à¦¦à¦°à¦•à¦¾à¦°: ${start} to ${end}`);
+    addNotification("Leave Approval Alert", `${employee.name}-এর leave approval দরকার: ${start} to ${end}`);
   }
 
   els.leaveForm.reset();
@@ -2458,7 +2458,7 @@ function reviewLeave(id, approved) {
     });
   if (approved) {
     applyLeaveToAttendance(leave);
-    addNotification("Leave Approval Alert", `${leave.employeeName}-à¦à¦° leave approved à¦¹à§Ÿà§‡à¦›à§‡: ${leave.start} to ${leave.end}`);
+    addNotification("Leave Approval Alert", `${leave.employeeName}-এর leave approved হয়েছে: ${leave.start} to ${leave.end}`);
   }
   saveState();
   render();
@@ -2469,7 +2469,7 @@ function togglePayrollLock() {
   const month = els.payrollMonth.value;
   const existing = state.payrollLocks.find((item) => item.month === month);
   if (existing?.locked) {
-    if (!confirm(`${month} payroll unlock à¦•à¦°à¦¬à§‡à¦¨? à¦à¦°à¦ªà¦° attendance edit à¦•à¦°à¦²à§‡ payroll à¦¬à¦¦à¦²à¦¾à¦¬à§‡à¥¤`)) return;
+    if (!confirm(`${month} payroll unlock করবেন? এরপর attendance edit করলে payroll বদলাবে।`)) return;
     existing.locked = false;
     existing.unlockedAt = new Date().toISOString();
     existing.unlockedBy = "Admin";
@@ -2478,14 +2478,14 @@ function togglePayrollLock() {
     return;
   }
 
-  if (!confirm(`${month} payroll final à¦•à¦°à§‡ lock à¦•à¦°à¦¬à§‡à¦¨? Lock à¦¹à¦²à§‡ unlock à¦¨à¦¾ à¦•à¦°à¦¾ à¦ªà¦°à§à¦¯à¦¨à§à¦¤ payroll à¦¬à¦¦à¦²à¦¾à¦¬à§‡ à¦¨à¦¾à¥¤`)) return;
+  if (!confirm(`${month} payroll final করে lock করবেন? Lock হলে unlock না করা পর্যন্ত payroll বদলাবে না।`)) return;
   const snapshot = calculatePayrollForMonth(month);
   if (existing) {
     Object.assign(existing, { locked: true, snapshot, lockedAt: new Date().toISOString(), lockedBy: "Admin" });
   } else {
     state.payrollLocks.push({ id: crypto.randomUUID(), month, locked: true, snapshot, lockedAt: new Date().toISOString(), lockedBy: "Admin" });
   }
-  addNotification("Salary Generated Alert", `${month} payroll generated and locked à¦¹à§Ÿà§‡à¦›à§‡à¥¤ Payable: ${money(snapshot.payable)}`);
+  addNotification("Salary Generated Alert", `${month} payroll generated and locked হয়েছে। Payable: ${money(snapshot.payable)}`);
   saveState();
   render();
 }
@@ -2533,7 +2533,7 @@ function addManager(event) {
   if (!baseName || !pin) return;
   state.managers.push({
     id: crypto.randomUUID(),
-    name: baseName.includes("à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°") ? baseName : `${baseName} (à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°)`,
+    name: baseName.includes("ম্যানেজার") ? baseName : `${baseName} (ম্যানেজার)`,
     pin,
     active: true,
   });
@@ -2553,7 +2553,7 @@ function addApproval(action, payload) {
   });
   logActivity("Create Approval Request", requestTitle({ action, payload }), payload?.employeeId || payload?.id || "");
   saveState();
-  alert("Admin approval request à¦ªà¦¾à¦ à¦¾à¦¨à§‹ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+  alert("Admin approval request পাঠানো হয়েছে।");
   render();
 }
 
@@ -2727,15 +2727,15 @@ function restoreJson() {
   if (!isAdmin()) return;
   const text = els.exportOutput.value.trim();
   if (!text) {
-    alert("Backup JSON paste à¦•à¦°à§à¦¨, à¦¤à¦¾à¦°à¦ªà¦° restore à¦šà¦¾à¦ªà§à¦¨à¥¤");
+    alert("Backup JSON paste করুন, তারপর restore চাপুন।");
     return;
   }
-  if (!confirm("à¦à¦‡ JSON restore à¦•à¦°à¦²à§‡ current dashboard data replace à¦¹à¦¬à§‡à¥¤ à¦šà¦¾à¦²à¦¾à¦¬à§‡à¦¨?")) return;
+  if (!confirm("এই JSON restore করলে current dashboard data replace হবে। চালাবেন?")) return;
   try {
     const parsed = JSON.parse(text);
     const nextState = parsed.data || parsed.state || parsed.backups?.[0]?.data || parsed;
     if (!nextState || typeof nextState !== "object" || !Array.isArray(nextState.fixedExpenses)) {
-      throw new Error("Valid dashboard backup à¦ªà¦¾à¦“à§Ÿà¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿à¥¤");
+      throw new Error("Valid dashboard backup পাওয়া যায়নি।");
     }
     const defaults = defaultState();
     Object.keys(state).forEach((key) => delete state[key]);
@@ -2751,14 +2751,14 @@ function restoreJson() {
     });
     saveState();
     render();
-    alert("Backup restore à¦¹à§Ÿà§‡à¦›à§‡à¥¤ Cloud sync à¦šà¦¾à¦²à§ à¦¥à¦¾à¦•à¦²à§‡ data cloud-à¦à¦“ save à¦¹à¦¬à§‡à¥¤");
+    alert("Backup restore হয়েছে। Cloud sync চালু থাকলে data cloud-এও save হবে।");
   } catch (error) {
     alert(`Restore failed: ${error.message}`);
   }
 }
 
 async function clearAppCache() {
-  if (!confirm("Cache clear à¦•à¦°à¦²à§‡ à¦à¦‡ browser-à¦à¦° local data/session à¦®à§à¦›à§‡ à¦¯à¦¾à¦¬à§‡à¥¤ Google Sheets backend à¦¥à¦¾à¦•à¦²à§‡ reload-à¦à¦° à¦ªà¦° cloud à¦¥à§‡à¦•à§‡ data à¦†à¦¸à¦¬à§‡à¥¤ à¦šà¦¾à¦²à¦¿à§Ÿà§‡ à¦¯à¦¾à¦¬à§‡à¦¨?")) return;
+  if (!confirm("Cache clear করলে এই browser-এর local data/session মুছে যাবে। Google Sheets backend থাকলে reload-এর পর cloud থেকে data আসবে। চালিয়ে যাবেন?")) return;
   const savedCloudUrl = cloudUrl();
 
   sessionStorage.clear();
@@ -2770,15 +2770,15 @@ async function clearAppCache() {
     await Promise.all(keys.map((key) => caches.delete(key)));
   }
 
-  alert("Cache clear à¦¹à§Ÿà§‡à¦›à§‡à¥¤ à¦ªà§‡à¦œ reload à¦¹à¦¬à§‡à¥¤");
+  alert("Cache clear হয়েছে। পেজ reload হবে।");
   location.reload();
 }
 
 function copyCurrentLink() {
   navigator.clipboard
     ?.writeText(location.href)
-    .then(() => alert("à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ dashboard link à¦•à¦ªà¦¿ à¦¹à§Ÿà§‡à¦›à§‡à¥¤"))
-    .catch(() => alert("à¦²à¦¿à¦‚à¦• à¦•à¦ªà¦¿ à¦•à¦°à¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿à¥¤ address bar à¦¥à§‡à¦•à§‡ link à¦•à¦ªà¦¿ à¦•à¦°à§à¦¨à¥¤"));
+    .then(() => alert("বর্তমান dashboard link কপি হয়েছে।"))
+    .catch(() => alert("লিংক কপি করা যায়নি। address bar থেকে link কপি করুন।"));
 }
 
 function escapeHtml(value) {
@@ -2875,7 +2875,7 @@ els.loginForm.addEventListener("submit", async (event) => {
   }
 
   if (cloudUrl()) {
-    els.loginError.textContent = "Cloud à¦¥à§‡à¦•à§‡ data à¦†à¦¨à¦¾ à¦¹à¦šà§à¦›à§‡, à¦à¦•à¦Ÿà§ à¦…à¦ªà§‡à¦•à§à¦·à¦¾ à¦•à¦°à§à¦¨...";
+    els.loginError.textContent = "Cloud থেকে data আনা হচ্ছে, একটু অপেক্ষা করুন...";
     const loaded = await syncFromCloud(false);
     const cloudUser = userForPin(password);
     if (cloudUser) {
@@ -2883,12 +2883,12 @@ els.loginForm.addEventListener("submit", async (event) => {
       return;
     }
     if (!loaded) {
-      els.loginError.textContent = "Cloud à¦¥à§‡à¦•à§‡ data à¦†à¦¨à¦¾ à¦¯à¦¾à§Ÿà¦¨à¦¿à¥¤ internet/Apps Script URL à¦šà§‡à¦• à¦•à¦°à§à¦¨à¥¤";
+      els.loginError.textContent = "Cloud থেকে data আনা যায়নি। internet/Apps Script URL চেক করুন।";
       return;
     }
   }
 
-  els.loginError.textContent = `PIN à¦ à¦¿à¦• à¦¨à§Ÿà¥¤ ${cloudLoginSummary()}`;
+  els.loginError.textContent = `PIN ঠিক নয়। ${cloudLoginSummary()}`;
 });
 
 document.querySelector("#logoutBtn").addEventListener("click", lockApp);
@@ -2898,7 +2898,7 @@ els.pinForm.addEventListener("submit", (event) => {
   state.settings.adminPin = normalizePin(els.newPin.value);
   els.newPin.value = "";
   saveState();
-  alert("à¦¨à¦¤à§à¦¨ PIN à¦¸à§‡à¦­ à¦¹à§Ÿà§‡à¦›à§‡à¥¤");
+  alert("নতুন PIN সেভ হয়েছে।");
 });
 els.managerForm.addEventListener("submit", addManager);
 els.employeeAccessForm.addEventListener("submit", saveEmployeeAccess);
@@ -2970,7 +2970,7 @@ document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
   localStorage.setItem(CLOUD_URL_KEY, els.cloudApiUrl.value.trim());
-  setCloudStatus(cloudUrl() ? "Cloud URL à¦¸à§‡à¦­ à¦¹à§Ÿà§‡à¦›à§‡à¥¤" : "Cloud sync à¦¬à¦¨à§à¦§ à¦†à¦›à§‡à¥¤");
+  setCloudStatus(cloudUrl() ? "Cloud URL সেভ হয়েছে।" : "Cloud sync বন্ধ আছে।");
 });
 document.querySelector("#syncFromCloudBtn").addEventListener("click", () => syncFromCloud(true));
 document.querySelector("#syncToCloudBtn").addEventListener("click", () => syncToCloud(true));
@@ -3005,7 +3005,7 @@ document.body.addEventListener("click", (event) => {
 
   if (entryDelete && isManager()) {
     addApproval("delete_entry", { id: entryDelete.dataset.deleteEntry });
-  } else if (entryDelete && confirm("à¦à¦‡ à¦à¦¨à§à¦Ÿà§à¦°à¦¿ à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¬à§‡à¦¨?")) {
+  } else if (entryDelete && confirm("এই এন্ট্রি ডিলিট করবেন?")) {
     state.entries = state.entries.filter((entry) => entry.id !== entryDelete.dataset.deleteEntry);
     saveState();
     render();
@@ -3035,7 +3035,7 @@ document.body.addEventListener("click", (event) => {
 
   if (fixedDelete && isManager()) {
     addApproval("delete_fixed", { id: fixedDelete.dataset.deleteFixed });
-  } else if (fixedDelete && confirm("à¦à¦‡ à¦«à¦¿à¦•à§à¦¸à¦¡ à¦–à¦°à¦š à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¬à§‡à¦¨?")) {
+  } else if (fixedDelete && confirm("এই ফিক্সড খরচ ডিলিট করবেন?")) {
     state.fixedExpenses = state.fixedExpenses.filter((item) => item.id !== fixedDelete.dataset.deleteFixed);
     saveState();
     render();
@@ -3048,7 +3048,7 @@ document.body.addEventListener("click", (event) => {
     const [type, category] = categoryDelete.dataset.deleteCategory.split(":");
     const used = state.entries.some((entry) => entry.category === category);
     if (used) {
-      alert("à¦à¦‡ à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿à¦¤à§‡ à¦à¦¨à§à¦Ÿà§à¦°à¦¿ à¦†à¦›à§‡, à¦¤à¦¾à¦‡ à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¾à¦° à¦†à¦—à§‡ à¦à¦¨à§à¦Ÿà§à¦°à¦¿à¦—à§à¦²à§‹ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à§à¦¨à¥¤");
+      alert("এই ক্যাটাগরিতে এন্ট্রি আছে, তাই ডিলিট করার আগে এন্ট্রিগুলো পরিবর্তন করুন।");
       return;
     }
     state.categories[type] = state.categories[type].filter((item) => item !== category);
@@ -3063,7 +3063,7 @@ document.body.addEventListener("click", (event) => {
     render();
   }
 
-  if (managerDelete && confirm("à¦à¦‡ manager access à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¬à§‡à¦¨?")) {
+  if (managerDelete && confirm("এই manager access ডিলিট করবেন?")) {
     state.managers = state.managers.filter((item) => item.id !== managerDelete.dataset.deleteManager);
     saveState();
     render();
@@ -3072,7 +3072,7 @@ document.body.addEventListener("click", (event) => {
   if (approveRequest) applyApproval(approveRequest.dataset.approveRequest, true);
   if (rejectRequest) applyApproval(rejectRequest.dataset.rejectRequest, false);
 
-  if (attendanceDelete && !isEmployee() && confirm("à¦à¦‡ à¦¹à¦¾à¦œà¦¿à¦°à¦¾ record à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¬à§‡à¦¨?")) {
+  if (attendanceDelete && !isEmployee() && confirm("এই হাজিরা record ডিলিট করবেন?")) {
     state.attendance = state.attendance.filter((item) => item.id !== attendanceDelete.dataset.deleteAttendance);
     saveState();
     render();
@@ -3094,7 +3094,7 @@ document.body.addEventListener("click", (event) => {
     render();
   }
 
-  if (employeeAccessDelete && confirm("à¦à¦‡ employee access à¦¡à¦¿à¦²à¦¿à¦Ÿ à¦•à¦°à¦¬à§‡à¦¨?")) {
+  if (employeeAccessDelete && confirm("এই employee access ডিলিট করবেন?")) {
     state.employeeAccess = state.employeeAccess.filter((item) => item.id !== employeeAccessDelete.dataset.deleteEmployeeAccess);
     saveState();
     render();
@@ -3109,7 +3109,7 @@ document.body.addEventListener("click", (event) => {
 });
 
 document.querySelector("#resetBtn").addEventListener("click", () => {
-  if (!confirm("à¦¸à¦¬ à¦¡à§‡à¦Ÿà¦¾ à¦°à¦¿à¦¸à§‡à¦Ÿ à¦•à¦°à§‡ à¦¡à¦¿à¦«à¦²à§à¦Ÿ à¦–à¦°à¦š à¦«à¦¿à¦°à¦¿à§Ÿà§‡ à¦†à¦¨à¦¬à§‡à¦¨?")) return;
+  if (!confirm("সব ডেটা রিসেট করে ডিফল্ট খরচ ফিরিয়ে আনবেন?")) return;
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(BACKUP_KEY);
   Object.assign(state, defaultState());
