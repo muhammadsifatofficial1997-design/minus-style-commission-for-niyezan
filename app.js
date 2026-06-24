@@ -433,7 +433,20 @@ function fixedForRange(start, end) {
 }
 
 function entriesInRange(start, end) {
-  return state.entries.filter((entry) => entry.date >= start && entry.date <= end);
+  return state.entries.filter((entry) => entry.date >= start && entry.date <= end && isEntryApproved(entry));
+}
+
+function isEntryApproved(entry) {
+  return entry.status !== "pending" && entry.status !== "rejected";
+}
+
+function approvedEntry(entry) {
+  return {
+    ...entry,
+    status: "approved",
+    approvedAt: new Date().toISOString(),
+    approvedBy: "Admin",
+  };
 }
 
 function totalsForDate(dateString) {
@@ -847,6 +860,8 @@ function shiftLabel(shift) {
 
 function requestTitle(request) {
   return {
+    add_entry: "Daily entry approval request",
+    bulk_entries: "Range entries approval request",
     edit_entry: "Entry edit request",
     delete_entry: "Entry delete request",
     toggle_fixed: "Fixed expense update request",
@@ -857,6 +872,8 @@ function requestTitle(request) {
 }
 
 function requestDescription(request) {
+  if (request.action === "add_entry") return `${labelFor(request.payload.category)} · ${money(request.payload.amount)} · ${request.payload.date}`;
+  if (request.action === "bulk_entries") return `${labelFor(request.payload.category)} · ${money(request.payload.total)} · ${request.payload.start} to ${request.payload.end} · ${bn.format(request.payload.entries?.length || 0)} entries`;
   if (request.action === "edit_entry") return `${labelFor(request.payload.category)} · ${money(request.payload.amount)} · ${request.payload.date}`;
   if (request.action === "delete_entry") return `Entry ID: ${request.payload.id}`;
   if (request.action === "toggle_fixed" || request.action === "delete_fixed") return `Fixed ID: ${request.payload.id}`;
@@ -998,7 +1015,7 @@ function drawLine(ctx, points, key, color, padding, plotW, plotH, maxValue) {
 
 function addEntry(event) {
   event.preventDefault();
-  state.entries.push({
+  const entry = {
     id: crypto.randomUUID(),
     type: els.entryType.value,
     category: els.entryCategory.value,
@@ -1007,8 +1024,15 @@ function addEntry(event) {
     note: els.entryNote.value.trim(),
     createdBy: currentUser.name || "Admin",
     createdAt: new Date().toISOString(),
-  });
-  saveState();
+  };
+
+  if (isAdmin()) {
+    state.entries.push(approvedEntry(entry));
+    saveState();
+  } else {
+    addApproval("add_entry", entry);
+  }
+
   els.entryForm.reset();
   els.entryDate.value = els.selectedDate.value;
   render();
@@ -1030,9 +1054,10 @@ function addBulkEntries(event) {
   const category = els.bulkCategory.value;
   const mode = els.bulkMode.value;
   const batchId = crypto.randomUUID();
+  const entries = [];
 
   if (mode === "single") {
-    state.entries.push({
+    entries.push({
       id: crypto.randomUUID(),
       type,
       category,
@@ -1049,7 +1074,7 @@ function addBulkEntries(event) {
     const perDay = total / dates.length;
     dates.forEach((date, index) => {
       const amount = index === dates.length - 1 ? total - perDay * (dates.length - 1) : perDay;
-      state.entries.push({
+      entries.push({
         id: crypto.randomUUID(),
         type,
         category,
@@ -1065,12 +1090,26 @@ function addBulkEntries(event) {
     });
   }
 
-  saveState();
+  if (isAdmin()) {
+    state.entries.push(...entries.map(approvedEntry));
+    saveState();
+  } else {
+    addApproval("bulk_entries", {
+      entries,
+      start,
+      end,
+      type,
+      category,
+      total,
+      mode,
+    });
+  }
+
   els.bulkEntryForm.reset();
   els.bulkStart.value = els.dailyStart.value;
   els.bulkEnd.value = els.dailyEnd.value;
   render();
-  alert(`${bn.format(mode === "single" ? 1 : dates.length)}টি এন্ট্রি যোগ হয়েছে।`);
+  if (isAdmin()) alert(`${bn.format(entries.length)}টি এন্ট্রি যোগ হয়েছে।`);
 }
 
 function saveAttendance(event) {
@@ -1283,9 +1322,15 @@ function applyApproval(id, approved) {
   request.reviewedBy = "Admin";
 
   if (approved) {
+    if (request.action === "add_entry") {
+      state.entries.push(approvedEntry(request.payload));
+    }
+    if (request.action === "bulk_entries") {
+      state.entries.push(...(request.payload.entries || []).map(approvedEntry));
+    }
     if (request.action === "edit_entry") {
       const entry = state.entries.find((item) => item.id === request.payload.id);
-      if (entry) Object.assign(entry, request.payload);
+      if (entry) Object.assign(entry, approvedEntry(request.payload));
     }
     if (request.action === "delete_entry") {
       state.entries = state.entries.filter((entry) => entry.id !== request.payload.id);
@@ -1354,7 +1399,7 @@ function saveEditEntry(event) {
     createdAt: entry.createdAt,
   };
   if (isAdmin()) {
-    Object.assign(entry, payload);
+    Object.assign(entry, approvedEntry(payload));
     saveState();
   } else {
     addApproval("edit_entry", payload);
