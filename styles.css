@@ -435,6 +435,10 @@ canvas {
   margin-top: 16px;
 }
 
+.bulk-panel {
+  margin-top: 16px;
+}
+
 .entry-list,
 .fixed-list,
 .chip-list {

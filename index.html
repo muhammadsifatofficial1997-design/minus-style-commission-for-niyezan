@@ -203,6 +203,37 @@
               </div>
             </section>
           </div>
+
+          <section class="panel bulk-panel">
+            <div class="panel-head">
+              <div>
+                <h2>রেঞ্জ ধরে একসাথে হিসাব যোগ করুন</h2>
+                <p>যেমন জুন ১-২৪ এর মোট ডলার বুস্ট বা মোট কমিশন একবারে বসান</p>
+              </div>
+            </div>
+            <form id="bulkEntryForm">
+              <div class="field-row">
+                <label>ধরন <select id="bulkType" required><option value="expense">খরচ</option><option value="income">আয়</option></select></label>
+                <label>ক্যাটাগরি <select id="bulkCategory" required></select></label>
+              </div>
+              <div class="field-row">
+                <label>শুরু <input id="bulkStart" type="date" required /></label>
+                <label>শেষ <input id="bulkEnd" type="date" required /></label>
+              </div>
+              <div class="field-row">
+                <label>মোট পরিমাণ <input id="bulkAmount" type="number" min="0" step="1" placeholder="যেমন 24000" required /></label>
+                <label>
+                  ভাগ করার নিয়ম
+                  <select id="bulkMode">
+                    <option value="split">প্রতিদিন সমান ভাগ</option>
+                    <option value="single">শেষ তারিখে এক এন্ট্রি</option>
+                  </select>
+                </label>
+              </div>
+              <label>নোট <textarea id="bulkNote" rows="2" placeholder="যেমন: জুন ১-২৪ ডলার বুস্ট / কমিশন"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="calendar-plus"></i> রেঞ্জ এন্ট্রি সেভ করুন</button>
+            </form>
+          </section>
         </section>
 
         <section class="view" id="reportsView">
@@ -508,6 +539,7 @@
               <div class="button-row">
                 <button class="secondary-button" id="exportBtn" type="button"><i data-lucide="download"></i> JSON এক্সপোর্ট</button>
                 <button class="secondary-button" id="downloadBackupBtn" type="button"><i data-lucide="archive"></i> Backup ডাউনলোড</button>
+                <button class="secondary-button" id="clearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
                 <button class="danger-button" id="resetBtn" type="button"><i data-lucide="trash-2"></i> সব ডেটা রিসেট</button>
               </div>
               <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>

@@ -59,6 +59,14 @@ const els = {
   entryAmount: document.querySelector("#entryAmount"),
   entryDate: document.querySelector("#entryDate"),
   entryNote: document.querySelector("#entryNote"),
+  bulkEntryForm: document.querySelector("#bulkEntryForm"),
+  bulkType: document.querySelector("#bulkType"),
+  bulkCategory: document.querySelector("#bulkCategory"),
+  bulkStart: document.querySelector("#bulkStart"),
+  bulkEnd: document.querySelector("#bulkEnd"),
+  bulkAmount: document.querySelector("#bulkAmount"),
+  bulkMode: document.querySelector("#bulkMode"),
+  bulkNote: document.querySelector("#bulkNote"),
   entriesTable: document.querySelector("#entriesTable"),
   todayEntries: document.querySelector("#todayEntries"),
   fixedForm: document.querySelector("#fixedForm"),
@@ -486,6 +494,7 @@ function render() {
 
   renderEntryCategories(els.entryType.value, els.entryCategory);
   renderEntryCategories(els.editType.value, els.editCategory);
+  renderEntryCategories(els.bulkType.value, els.bulkCategory);
   renderTodayEntries(day.entries);
   renderEntriesTable();
   renderFixedList();
@@ -531,6 +540,10 @@ function renderRoleUi() {
   if (isEmployee() && !["attendanceView", "advanceView"].some((id) => document.querySelector(`#${id}`).classList.contains("active"))) {
     document.querySelector('[data-view="attendance"]').click();
   }
+
+  document.querySelectorAll("#entryForm, #attendanceForm, #advanceForm, #fixedForm, #pinForm, #managerForm, #employeeAccessForm").forEach((form) => {
+    form.style.display = "";
+  });
 }
 
 function renderEntryCategories(type, select) {
@@ -1001,6 +1014,65 @@ function addEntry(event) {
   render();
 }
 
+function addBulkEntries(event) {
+  event.preventDefault();
+  const start = els.bulkStart.value;
+  const end = els.bulkEnd.value;
+  if (end < start) {
+    alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
+    return;
+  }
+
+  const dates = dateRange(start, end);
+  const total = Number(els.bulkAmount.value || 0);
+  const note = els.bulkNote.value.trim();
+  const type = els.bulkType.value;
+  const category = els.bulkCategory.value;
+  const mode = els.bulkMode.value;
+  const batchId = crypto.randomUUID();
+
+  if (mode === "single") {
+    state.entries.push({
+      id: crypto.randomUUID(),
+      type,
+      category,
+      amount: total,
+      date: end,
+      note: note || `রেঞ্জ এন্ট্রি: ${start} থেকে ${end}`,
+      createdBy: currentUser.name || "Admin",
+      createdAt: new Date().toISOString(),
+      batchId,
+      rangeStart: start,
+      rangeEnd: end,
+    });
+  } else {
+    const perDay = total / dates.length;
+    dates.forEach((date, index) => {
+      const amount = index === dates.length - 1 ? total - perDay * (dates.length - 1) : perDay;
+      state.entries.push({
+        id: crypto.randomUUID(),
+        type,
+        category,
+        amount,
+        date,
+        note: note || `রেঞ্জ এন্ট্রি: ${start} থেকে ${end}`,
+        createdBy: currentUser.name || "Admin",
+        createdAt: new Date().toISOString(),
+        batchId,
+        rangeStart: start,
+        rangeEnd: end,
+      });
+    });
+  }
+
+  saveState();
+  els.bulkEntryForm.reset();
+  els.bulkStart.value = els.dailyStart.value;
+  els.bulkEnd.value = els.dailyEnd.value;
+  render();
+  alert(`${bn.format(mode === "single" ? 1 : dates.length)}টি এন্ট্রি যোগ হয়েছে।`);
+}
+
 function saveAttendance(event) {
   event.preventDefault();
   const employee = employees().find((item) => item.id === els.attendanceEmployee.value);
@@ -1343,6 +1415,23 @@ function downloadBackup() {
   downloadFile(`minus-style-auto-backups-${today()}.json`, payload, "application/json;charset=utf-8");
 }
 
+async function clearAppCache() {
+  if (!confirm("Cache clear করলে এই browser-এর local data/session মুছে যাবে। Google Sheets backend থাকলে reload-এর পর cloud থেকে data আসবে। চালিয়ে যাবেন?")) return;
+  const savedCloudUrl = cloudUrl();
+
+  sessionStorage.clear();
+  localStorage.clear();
+  if (savedCloudUrl) localStorage.setItem(CLOUD_URL_KEY, savedCloudUrl);
+
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+  }
+
+  alert("Cache clear হয়েছে। পেজ reload হবে।");
+  location.reload();
+}
+
 function copyCurrentLink() {
   navigator.clipboard
     ?.writeText(location.href)
@@ -1381,6 +1470,8 @@ function initDates() {
   els.attendanceDate.value = now;
   els.dailyStart.value = monthStart(now);
   els.dailyEnd.value = monthEnd(now);
+  els.bulkStart.value = monthStart(now);
+  els.bulkEnd.value = now;
   els.reportStart.value = monthStart(now);
   els.reportEnd.value = monthEnd(now);
   els.payrollMonth.value = now.slice(0, 7);
@@ -1398,7 +1489,9 @@ document.querySelectorAll(".nav-button").forEach((button) => {
 
 els.loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  if (els.pinInput.value === state.settings.adminPin) {
+  const password = els.pinInput.value;
+
+  if (password === state.settings.adminPin) {
     els.loginError.textContent = "";
     currentUser = { role: "admin", name: "Admin" };
     unlockApp();
@@ -1406,7 +1499,7 @@ els.loginForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const manager = state.managers.find((item) => item.active && item.pin === els.pinInput.value);
+  const manager = state.managers.find((item) => item.active && password === item.pin);
   if (manager) {
     els.loginError.textContent = "";
     currentUser = { role: "manager", name: manager.name };
@@ -1415,7 +1508,10 @@ els.loginForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const employeeAccess = state.employeeAccess.find((item) => item.active && item.pin === els.pinInput.value);
+  const employeeAccess = state.employeeAccess.find((item) => {
+    const employee = employeeById(item.employeeId);
+    return item.active && password === item.pin;
+  });
   if (employeeAccess) {
     const employee = employeeById(employeeAccess.employeeId);
     if (employee) {
@@ -1447,8 +1543,10 @@ els.selectedDate.addEventListener("change", () => {
   render();
 });
 els.entryType.addEventListener("change", () => renderEntryCategories(els.entryType.value, els.entryCategory));
+els.bulkType.addEventListener("change", () => renderEntryCategories(els.bulkType.value, els.bulkCategory));
 els.editType.addEventListener("change", () => renderEntryCategories(els.editType.value, els.editCategory));
 els.entryForm.addEventListener("submit", addEntry);
+els.bulkEntryForm.addEventListener("submit", addBulkEntries);
 els.attendanceForm.addEventListener("submit", saveAttendance);
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.fixedForm.addEventListener("submit", saveFixed);
@@ -1468,6 +1566,7 @@ document.querySelector("#csvExportBtn").addEventListener("click", exportCsv);
 document.querySelector("#pdfExportBtn").addEventListener("click", printPdf);
 document.querySelector("#exportBtn").addEventListener("click", exportJson);
 document.querySelector("#downloadBackupBtn").addEventListener("click", downloadBackup);
+document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
   localStorage.setItem(CLOUD_URL_KEY, els.cloudApiUrl.value.trim());
