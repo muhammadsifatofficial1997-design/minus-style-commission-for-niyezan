@@ -896,7 +896,7 @@ function renderAttendance() {
           <td>${escapeHtml(record?.note || "-")}</td>
           <td>${escapeHtml(record?.markedBy || "Default")}</td>
           <td>
-            ${record ? `<button class="small-action danger" data-delete-attendance="${record.id}" type="button">ডিলিট</button>` : ""}
+            ${record && !isEmployee() ? `<button class="small-action danger" data-delete-attendance="${record.id}" type="button">ডিলিট</button>` : ""}
           </td>
         </tr>
       `;
@@ -927,13 +927,20 @@ function renderPayroll() {
   if (!els.payrollMonth) return;
   const month = els.payrollMonth.value;
   const payroll = payrollForMonth(month);
-  setText("payrollHint", `${month} মাসের payroll হিসাব`);
-  setText("payrollGross", money(payroll.gross));
-  setText("payrollDeduction", money(payroll.deduction));
-  setText("payrollPayable", money(payroll.payable));
-  setText("payrollCutDays", bn.format(payroll.cutDays));
+  const rows = isEmployee() ? payroll.rows.filter((row) => row.id === currentEmployeeId()) : payroll.rows;
+  const summary = {
+    gross: sum(rows, "salary"),
+    deduction: sum(rows, "totalDeduction"),
+    payable: sum(rows, "payable"),
+    cutDays: sum(rows, "cutDays"),
+  };
+  setText("payrollHint", isEmployee() ? `${month} মাসের আপনার payroll হিসাব` : `${month} মাসের payroll হিসাব`);
+  setText("payrollGross", money(summary.gross));
+  setText("payrollDeduction", money(summary.deduction));
+  setText("payrollPayable", money(summary.payable));
+  setText("payrollCutDays", bn.format(summary.cutDays));
   document.querySelector("#payrollTable").innerHTML =
-    payroll.rows
+    rows
       .map(
         (row) => `
           <tr>
@@ -1583,6 +1590,7 @@ function saveOfficeLocation() {
 }
 
 function printPayslip(employeeId) {
+  if (isEmployee() && employeeId !== currentEmployeeId()) return;
   const month = els.payrollMonth.value;
   const payroll = payrollForMonth(month);
   const row = payroll.rows.find((item) => item.id === employeeId);
@@ -2113,7 +2121,7 @@ document.body.addEventListener("click", (event) => {
   if (approveRequest) applyApproval(approveRequest.dataset.approveRequest, true);
   if (rejectRequest) applyApproval(rejectRequest.dataset.rejectRequest, false);
 
-  if (attendanceDelete && confirm("এই হাজিরা record ডিলিট করবেন?")) {
+  if (attendanceDelete && !isEmployee() && confirm("এই হাজিরা record ডিলিট করবেন?")) {
     state.attendance = state.attendance.filter((item) => item.id !== attendanceDelete.dataset.deleteAttendance);
     saveState();
     render();
