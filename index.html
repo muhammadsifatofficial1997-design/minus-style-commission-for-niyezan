@@ -339,11 +339,13 @@
                 <strong id="employeePendingApproval">0</strong>
               </div>
             </div>
+            <div class="employee-profile-summary" id="employeeProfileSummary"></div>
             <div class="employee-quick-actions">
               <button class="primary-button" id="mobileCheckInBtn" type="button"><i data-lucide="log-in"></i> Check In</button>
               <button class="secondary-button" id="mobileStartBreakBtn" type="button"><i data-lucide="pause-circle"></i> Start Break</button>
               <button class="secondary-button" id="mobileEndBreakBtn" type="button"><i data-lucide="play-circle"></i> Back from Break</button>
               <button class="secondary-button" id="mobileCheckOutBtn" type="button"><i data-lucide="log-out"></i> Check Out</button>
+              <button class="secondary-button" id="mobileLeaveBtn" type="button"><i data-lucide="calendar-plus"></i> Leave Request</button>
             </div>
             <div class="employee-self-dashboard">
               <div class="panel-head slim-head">
@@ -760,6 +762,17 @@
             </form>
             <div class="fixed-list" id="holidayList"></div>
           </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Leave Calendar View</h2>
+                <p>মাসের calendar-এ leave, fixed holiday এবং Friday work দেখা যাবে।</p>
+              </div>
+              <input id="leaveCalendarMonth" type="month" />
+            </div>
+            <div class="leave-calendar-grid" id="leaveCalendarGrid"></div>
+          </section>
         </section>
 
         <section class="view" id="fixedView">
@@ -887,6 +900,33 @@
                 <button class="secondary-button" type="submit"><i data-lucide="user-round-plus"></i> PIN সেভ করুন</button>
               </form>
               <div class="fixed-list" id="employeeAccessList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Employee Profile Page</h2>
+                  <p>Salary, shift, PIN status, join date, phone এবং emergency contact এক জায়গায়।</p>
+                </div>
+              </div>
+              <form class="inline-form employee-profile-form" id="employeeProfileForm">
+                <select id="profileEmployee" required></select>
+                <select id="profileShift" required>
+                  <option value="morning">Morning Shift</option>
+                  <option value="evening">Evening Shift</option>
+                  <option value="night">Night Shift</option>
+                </select>
+                <input id="profileJoinDate" type="date" />
+                <input id="profilePhone" type="tel" placeholder="Phone" />
+                <input id="profileEmergency" type="tel" placeholder="Emergency contact" />
+                <select id="profileStatus">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="left">Left</option>
+                </select>
+                <button class="secondary-button" type="submit"><i data-lucide="save"></i> Profile Save</button>
+              </form>
+              <div class="fixed-list profile-list" id="employeeProfileList"></div>
             </section>
 
             <section class="panel">

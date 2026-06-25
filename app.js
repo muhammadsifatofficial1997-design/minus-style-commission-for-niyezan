@@ -153,6 +153,7 @@ const els = {
   mobileStartBreakBtn: document.querySelector("#mobileStartBreakBtn"),
   mobileEndBreakBtn: document.querySelector("#mobileEndBreakBtn"),
   mobileCheckOutBtn: document.querySelector("#mobileCheckOutBtn"),
+  mobileLeaveBtn: document.querySelector("#mobileLeaveBtn"),
   employeeHomePanel: document.querySelector("#employeeHomePanel"),
   employeeHomeTitle: document.querySelector("#employeeHomeTitle"),
   employeeTodayHint: document.querySelector("#employeeTodayHint"),
@@ -161,6 +162,7 @@ const els = {
   employeeTodayCheckOut: document.querySelector("#employeeTodayCheckOut"),
   employeeMonthPayable: document.querySelector("#employeeMonthPayable"),
   employeePendingApproval: document.querySelector("#employeePendingApproval"),
+  employeeProfileSummary: document.querySelector("#employeeProfileSummary"),
   employeeMonthPresent: document.querySelector("#employeeMonthPresent"),
   employeeMonthAbsent: document.querySelector("#employeeMonthAbsent"),
   employeeMonthBreak: document.querySelector("#employeeMonthBreak"),
@@ -185,6 +187,8 @@ const els = {
   leaveList: document.querySelector("#leaveList"),
   leaveFixedHolidayTotal: document.querySelector("#leaveFixedHolidayTotal"),
   leaveAdvanceBalance: document.querySelector("#leaveAdvanceBalance"),
+  leaveCalendarMonth: document.querySelector("#leaveCalendarMonth"),
+  leaveCalendarGrid: document.querySelector("#leaveCalendarGrid"),
   holidayForm: document.querySelector("#holidayForm"),
   holidayDate: document.querySelector("#holidayDate"),
   holidayName: document.querySelector("#holidayName"),
@@ -233,6 +237,14 @@ const els = {
   employeeAccessEmployee: document.querySelector("#employeeAccessEmployee"),
   employeeAccessPin: document.querySelector("#employeeAccessPin"),
   employeeAccessList: document.querySelector("#employeeAccessList"),
+  employeeProfileForm: document.querySelector("#employeeProfileForm"),
+  profileEmployee: document.querySelector("#profileEmployee"),
+  profileShift: document.querySelector("#profileShift"),
+  profileJoinDate: document.querySelector("#profileJoinDate"),
+  profilePhone: document.querySelector("#profilePhone"),
+  profileEmergency: document.querySelector("#profileEmergency"),
+  profileStatus: document.querySelector("#profileStatus"),
+  employeeProfileList: document.querySelector("#employeeProfileList"),
   notificationList: document.querySelector("#notificationList"),
   cloudApiUrl: document.querySelector("#cloudApiUrl"),
   cloudStatus: document.querySelector("#cloudStatus"),
@@ -279,6 +291,7 @@ function defaultState() {
     },
     managers: [{ id: crypto.randomUUID(), name: "ফাইজুর (ম্যানেজার)", pin: "2222", active: true }],
     employeeAccess: [],
+    employeeProfiles: [],
     approvals: [],
     activityLogs: [],
     attendance: [],
@@ -327,6 +340,7 @@ function loadState() {
       settings: { ...defaults.settings, ...parsed.settings },
       managers: parsed.managers || defaults.managers,
       employeeAccess: parsed.employeeAccess || defaults.employeeAccess,
+      employeeProfiles: parsed.employeeProfiles || defaults.employeeProfiles,
       approvals: parsed.approvals || defaults.approvals,
       activityLogs: parsed.activityLogs || defaults.activityLogs,
       attendance: parsed.attendance || defaults.attendance,
@@ -609,6 +623,29 @@ function employees() {
       name: item.name.replace(/\s*বেতন\s*$/u, "").trim(),
       salary: Number(item.amount || 0),
     }));
+}
+
+function employeeProfileFor(employeeId) {
+  let profile = state.employeeProfiles.find((item) => item.employeeId === employeeId);
+  if (!profile) {
+    profile = {
+      id: crypto.randomUUID(),
+      employeeId,
+      shift: "morning",
+      joinDate: "",
+      phone: "",
+      emergencyContact: "",
+      status: "active",
+      createdAt: new Date().toISOString(),
+    };
+    state.employeeProfiles.push(profile);
+  }
+  return profile;
+}
+
+function employeePinFor(employeeId) {
+  const access = state.employeeAccess.find((item) => item.employeeId === employeeId);
+  return access?.pin ? "*".repeat(String(access.pin).length) : "Not set";
 }
 
 function ensureEmployeeAccess() {
@@ -1218,10 +1255,12 @@ function render() {
   renderAdvance();
   renderLeave();
   renderLeaveDecisionPreview();
+  renderLeaveCalendar();
   renderHolidayCalendar();
   renderSalaryAdjustments();
   renderWarningReport();
   renderEmployeeAccess();
+  renderEmployeeProfiles();
   renderNotifications();
   renderActivityLog();
   renderCloudSettings();
@@ -1757,6 +1796,17 @@ function renderEmployeeHome() {
   els.employeeTodayCheckOut.textContent = record?.checkOut || "বাকি";
   els.employeeMonthPayable.textContent = payrollRow ? money(payrollRow.payable) : money(0);
   els.employeePendingApproval.textContent = bn.format(pendingTotal);
+
+  if (els.employeeProfileSummary) {
+    const profile = employeeProfileFor(employee.id);
+    els.employeeProfileSummary.innerHTML = `
+      <span>Shift: ${escapeHtml(shiftLabel(profile.shift || "morning"))}</span>
+      <span>Salary: ${money(employee.salary)}</span>
+      <span>Join: ${escapeHtml(profile.joinDate || "-")}</span>
+      <span>Phone: ${escapeHtml(profile.phone || "-")}</span>
+      <span>Emergency: ${escapeHtml(profile.emergencyContact || "-")}</span>
+    `;
+  }
 
   if (runningBreak) {
     els.employeeTodayHint.textContent = `${breakLabel(runningBreak.type)} চলছে। Started: ${runningBreak.startTime}, Duration: ${formatDuration(breakDurationSeconds(runningBreak))}`;
@@ -2378,13 +2428,113 @@ function renderEmployeeAccess() {
       .join("") || `<div class="empty">Employee access নেই।</div>`;
 }
 
+function renderEmployeeProfiles() {
+  if (!els.employeeProfileList) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  if (els.employeeProfileForm) els.employeeProfileForm.hidden = isEmployee();
+  if (els.profileEmployee) {
+    const current = els.profileEmployee.value;
+    els.profileEmployee.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+    if (visibleEmployees.some((employee) => employee.id === current)) els.profileEmployee.value = current;
+    fillEmployeeProfileForm();
+  }
+
+  els.employeeProfileList.innerHTML =
+    visibleEmployees
+      .map((employee) => {
+        const profile = employeeProfileFor(employee.id);
+        const pin = employeePinFor(employee.id);
+        return `
+          <article class="fixed-item profile-card">
+            <div class="item-line">
+              <strong>${escapeHtml(employee.name)} · ${money(employee.salary)}</strong>
+              <span class="status-pill">${escapeHtml(profile.status || "active")}</span>
+            </div>
+            <div class="profile-details">
+              <span>Shift: ${escapeHtml(shiftLabel(profile.shift || "morning"))}</span>
+              <span>PIN: ${escapeHtml(pin)}</span>
+              <span>Join: ${escapeHtml(profile.joinDate || "-")}</span>
+              <span>Phone: ${escapeHtml(profile.phone || "-")}</span>
+              <span>Emergency: ${escapeHtml(profile.emergencyContact || "-")}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join("") || `<div class="empty">Employee profile নেই।</div>`;
+}
+
+function fillEmployeeProfileForm() {
+  if (!els.profileEmployee || !els.profileShift) return;
+  const profile = employeeProfileFor(els.profileEmployee.value);
+  els.profileShift.value = profile.shift || "morning";
+  els.profileJoinDate.value = profile.joinDate || "";
+  els.profilePhone.value = profile.phone || "";
+  els.profileEmergency.value = profile.emergencyContact || "";
+  els.profileStatus.value = profile.status || "active";
+}
+
+function saveEmployeeProfile(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const employee = employeeById(els.profileEmployee.value);
+  if (!employee) return;
+  const profile = employeeProfileFor(employee.id);
+  profile.employeeName = employee.name;
+  profile.shift = els.profileShift.value;
+  profile.joinDate = els.profileJoinDate.value;
+  profile.phone = els.profilePhone.value.trim();
+  profile.emergencyContact = els.profileEmergency.value.trim();
+  profile.status = els.profileStatus.value;
+  profile.updatedAt = new Date().toISOString();
+  profile.updatedBy = currentUser.name || "Admin";
+  logActivity("Employee Profile", `${employee.name} profile updated`, employee.id);
+  saveState();
+  render();
+}
+
+function renderLeaveCalendar() {
+  if (!els.leaveCalendarGrid || !els.leaveCalendarMonth) return;
+  const month = els.leaveCalendarMonth.value || els.payrollMonth.value || today().slice(0, 7);
+  els.leaveCalendarMonth.value = month;
+  const start = `${month}-01`;
+  const end = monthEnd(start);
+  const visibleIds = isEmployee() ? [currentEmployeeId()] : employees().map((employee) => employee.id);
+  const visibleNames = new Map(employees().map((employee) => [employee.id, employee.name]));
+
+  els.leaveCalendarGrid.innerHTML = dateRange(start, end)
+    .map((date) => {
+      const items = [];
+      state.fixedHolidays
+        .filter((holiday) => holiday.date === date)
+        .forEach((holiday) => items.push(`<span class="calendar-tag holiday">${escapeHtml(holiday.name)}</span>`));
+      state.leaveRequests
+        .filter((leave) => {
+          const leaveStart = leave.startDate || leave.start;
+          const leaveEnd = leave.endDate || leave.end;
+          return leave.status === "approved" && visibleIds.includes(leave.employeeId) && leaveStart <= date && leaveEnd >= date;
+        })
+        .forEach((leave) => items.push(`<span class="calendar-tag leave">${escapeHtml(visibleNames.get(leave.employeeId) || leave.employeeName)} · ${escapeHtml(leaveTypeLabel(leave.type))}</span>`));
+      state.fridayWorkRequests
+        .filter((request) => ["approved", "completed"].includes(request.status) && visibleIds.includes(request.employeeId) && request.work_date === date)
+        .forEach((request) => items.push(`<span class="calendar-tag friday">${escapeHtml(visibleNames.get(request.employeeId) || request.employeeName)} · Friday Work</span>`));
+
+      return `
+        <article class="calendar-day ${items.length ? "has-items" : ""}">
+          <strong>${bn.format(Number(date.slice(8, 10)))}</strong>
+          ${items.join("") || `<span class="muted">-</span>`}
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderNotifications() {
   if (!els.notificationList) return;
   els.notificationList.innerHTML =
     state.notifications
       .slice(0, 20)
       .map((item) => {
-        const waPhone = item.phone.replace(/^0/, "880");
+        const waPhone = String(item.phone || "01676182447").replace(/^0/, "880");
         const url = `https://wa.me/${waPhone}?text=${encodeURIComponent(item.message)}`;
         return `
           <article class="fixed-item">
@@ -2395,6 +2545,7 @@ function renderNotifications() {
             <small class="muted">${escapeHtml(item.message)}</small>
             <div class="action-row">
               <a class="small-action" href="${url}" target="_blank" rel="noreferrer">WhatsApp</a>
+              <button class="small-action" data-copy-notification="${item.id}" type="button">Copy</button>
               <button class="small-action" data-mark-notification="${item.id}" type="button">Sent Mark</button>
             </div>
           </article>
@@ -2585,6 +2736,7 @@ function normalizeRestoredState(nextState) {
       fridayWorkRequests: nextState.fridayWorkRequests || [],
       activityLogs: nextState.activityLogs || [],
     leaveRequests: nextState.leaveRequests || [],
+    employeeProfiles: nextState.employeeProfiles || [],
     fixedHolidays: nextState.fixedHolidays || defaults.fixedHolidays,
     salaryAdjustments: nextState.salaryAdjustments || [],
     payrollLocks: nextState.payrollLocks || [],
@@ -3874,6 +4026,7 @@ function initDates() {
   els.reportEnd.value = monthEnd(now);
   if (els.breakFilterStart) els.breakFilterStart.value = now;
   if (els.breakFilterEnd) els.breakFilterEnd.value = now;
+  if (els.leaveCalendarMonth) els.leaveCalendarMonth.value = now.slice(0, 7);
   els.payrollMonth.value = now.slice(0, 7);
   if (els.salaryAdjustmentMonth) els.salaryAdjustmentMonth.value = now.slice(0, 7);
   if (els.breakReportMonth) els.breakReportMonth.value = now.slice(0, 7);
@@ -3995,6 +4148,10 @@ els.mobileCheckInBtn?.addEventListener("click", () => saveAttendancePunch("in"))
 els.mobileCheckOutBtn?.addEventListener("click", () => saveAttendancePunch("out"));
 els.mobileStartBreakBtn?.addEventListener("click", () => els.breakForm?.requestSubmit());
 els.mobileEndBreakBtn?.addEventListener("click", endBreak);
+els.mobileLeaveBtn?.addEventListener("click", () => {
+  document.querySelector('[data-view="advance"]')?.click();
+  els.leaveReason?.focus();
+});
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.leaveForm?.addEventListener("submit", saveLeaveRequest);
 els.leaveEmployee?.addEventListener("change", renderLeave);
@@ -4003,7 +4160,10 @@ els.leaveType?.addEventListener("change", renderLeaveDecisionPreview);
 els.leaveStart?.addEventListener("change", renderLeaveDecisionPreview);
 els.leaveEnd?.addEventListener("change", renderLeaveDecisionPreview);
 els.leaveReason?.addEventListener("input", renderLeaveDecisionPreview);
+els.leaveCalendarMonth?.addEventListener("change", renderLeaveCalendar);
 els.holidayForm?.addEventListener("submit", saveHoliday);
+els.employeeProfileForm?.addEventListener("submit", saveEmployeeProfile);
+els.profileEmployee?.addEventListener("change", fillEmployeeProfileForm);
 els.salaryAdjustmentForm?.addEventListener("submit", saveSalaryAdjustment);
 els.runWarningReportBtn?.addEventListener("click", renderWarningReport);
 els.fixedForm.addEventListener("submit", saveFixed);
@@ -4075,6 +4235,7 @@ document.body.addEventListener("click", (event) => {
   const payslip = event.target.closest("[data-payslip]");
   const employeeAccessToggle = event.target.closest("[data-toggle-employee-access]");
   const employeeAccessDelete = event.target.closest("[data-delete-employee-access]");
+  const notificationCopy = event.target.closest("[data-copy-notification]");
   const notificationMark = event.target.closest("[data-mark-notification]");
   const approveFriday = event.target.closest("[data-approve-friday]");
   const rejectFriday = event.target.closest("[data-reject-friday]");
@@ -4183,6 +4344,15 @@ document.body.addEventListener("click", (event) => {
     state.employeeAccess = state.employeeAccess.filter((item) => item.id !== employeeAccessDelete.dataset.deleteEmployeeAccess);
     saveState();
     render();
+  }
+
+  if (notificationCopy) {
+    const item = state.notifications.find((notification) => notification.id === notificationCopy.dataset.copyNotification);
+    if (!item) return;
+    navigator.clipboard
+      .writeText(item.message)
+      .then(() => alert("WhatsApp message copy হয়েছে।"))
+      .catch(() => alert(item.message));
   }
 
   if (notificationMark) {

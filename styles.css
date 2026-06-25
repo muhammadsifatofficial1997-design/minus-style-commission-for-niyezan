@@ -525,9 +525,88 @@ canvas {
 
 .employee-quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-top: 16px;
+}
+
+.employee-profile-form {
+  grid-template-columns: minmax(160px, 1.1fr) 150px 150px 150px 190px 130px auto;
+}
+
+.profile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.employee-profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.employee-profile-summary span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  color: var(--primary-dark);
+  background: #edf5ef;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.leave-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-day {
+  min-height: 110px;
+  padding: 10px;
+  border: 1px solid rgba(19, 111, 99, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.calendar-day.has-items {
+  background: #f8fcf9;
+  border-color: rgba(19, 111, 99, 0.28);
+}
+
+.calendar-day strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.calendar-tag {
+  display: block;
+  margin-top: 5px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.calendar-tag.leave {
+  color: #215c76;
+  background: #eaf6fb;
+}
+
+.calendar-tag.holiday {
+  color: #7a4b00;
+  background: #fff3d7;
+}
+
+.calendar-tag.friday {
+  color: #7d2f2f;
+  background: #fdecec;
 }
 
 .mini-filter {
@@ -1067,8 +1146,13 @@ td:last-child {
   .mini-filter,
   .employee-quick-actions,
   .mini-summary-grid,
-  .self-data-grid {
+  .self-data-grid,
+  .employee-profile-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .leave-calendar-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -1114,8 +1198,14 @@ td:last-child {
   .self-data-grid,
   .mini-filter,
   .field-row,
-  .inline-form {
+  .inline-form,
+  .employee-profile-form,
+  .profile-details {
     grid-template-columns: 1fr;
+  }
+
+  .leave-calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   #pinForm,
