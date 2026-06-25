@@ -1547,3 +1547,173 @@ td {
     min-height: 54px;
   }
 }
+
+/* Purple iOS-style dashboard palette */
+:root {
+  --bg: #eef2ff;
+  --surface: #ffffff;
+  --surface-2: #f5f7ff;
+  --ink: #172033;
+  --muted: #667085;
+  --line: rgba(93, 88, 176, 0.16);
+  --primary: #6b4fd8;
+  --primary-dark: #4e37b7;
+  --accent: #ff6f9f;
+  --danger: #e14b72;
+  --good: #38b88f;
+  --bad: #e14b72;
+  --glass: rgba(255, 255, 255, 0.72);
+  --shadow: 0 22px 55px rgba(85, 80, 155, 0.16);
+  --shadow-soft: 0 12px 30px rgba(85, 80, 155, 0.1);
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(133, 116, 255, 0.2), transparent 30%),
+    radial-gradient(circle at 86% 2%, rgba(255, 111, 159, 0.18), transparent 26%),
+    radial-gradient(circle at 76% 88%, rgba(96, 201, 255, 0.18), transparent 30%),
+    linear-gradient(145deg, #e8edff 0%, #f9fbff 48%, #eef3ff 100%);
+}
+
+.login-screen {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 111, 159, 0.24), transparent 28%),
+    radial-gradient(circle at 78% 78%, rgba(96, 201, 255, 0.2), transparent 30%),
+    linear-gradient(145deg, #5a42d1 0%, #221a57 100%);
+}
+
+.sidebar {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.15), transparent 28%),
+    linear-gradient(180deg, rgba(103, 77, 216, 0.98), rgba(71, 48, 176, 0.98));
+  box-shadow: 0 26px 62px rgba(54, 38, 137, 0.28);
+}
+
+.brand-mark {
+  background: linear-gradient(145deg, #ff73a6, #6b4fd8);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
+.brand small,
+.sidebar-footer span,
+.nav-button {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.nav-button:hover,
+.nav-button.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sidebar-footer {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.topbar {
+  background: rgba(238, 242, 255, 0.7);
+  border-bottom-color: rgba(93, 88, 176, 0.1);
+}
+
+.eyebrow,
+.metric-icon,
+.icon-button,
+.status-pill,
+.type-pill,
+.calendar-tag {
+  color: var(--primary-dark);
+}
+
+.metric-icon {
+  background: linear-gradient(145deg, rgba(107, 79, 216, 0.14), rgba(255, 111, 159, 0.12));
+}
+
+.metric.highlight,
+.employee-home-panel {
+  border-color: rgba(255, 111, 159, 0.22);
+  background:
+    radial-gradient(circle at 16% 14%, rgba(255, 255, 255, 0.78), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 237, 245, 0.82));
+}
+
+.metric:nth-of-type(1) {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.76), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(234, 247, 255, 0.8));
+}
+
+.metric:nth-of-type(2) {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.76), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 237, 245, 0.82));
+}
+
+.metric:nth-of-type(3) {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.76), transparent 28%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(242, 238, 255, 0.82));
+}
+
+.panel,
+.filter-bar,
+.modal-card,
+.entry-item,
+.fixed-item,
+.employee-status-grid div,
+.summary-row div,
+.break-current-box,
+.decision-preview,
+.calendar-day,
+.login-card {
+  border-color: rgba(93, 88, 176, 0.15);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.primary-button {
+  background: linear-gradient(145deg, #ff73a6, #6b4fd8);
+  box-shadow: 0 14px 28px rgba(107, 79, 216, 0.25);
+}
+
+.primary-button:hover {
+  background: linear-gradient(145deg, #ff5f99, #6044d0);
+}
+
+.secondary-button,
+.small-action,
+.icon-button {
+  color: var(--primary-dark);
+  border-color: rgba(107, 79, 216, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.cloud-sync-bar,
+.status-pill,
+.type-pill {
+  background: rgba(243, 240, 255, 0.86);
+}
+
+.notification-badge {
+  border-color: rgba(255, 190, 87, 0.35);
+  background: rgba(255, 247, 226, 0.86);
+  color: #765108;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(107, 79, 216, 0.48);
+  box-shadow:
+    0 0 0 4px rgba(107, 79, 216, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+th {
+  background: rgba(243, 240, 255, 0.9);
+}
+
+.bad,
+.danger,
+.negative {
+  color: var(--danger);
+}
