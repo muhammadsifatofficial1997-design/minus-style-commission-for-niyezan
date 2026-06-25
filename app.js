@@ -3,6 +3,7 @@ const LEGACY_KEY = "minus-style-affiliate-dashboard-v1";
 const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
+const THEME_KEY = "minus-style-theme-mode";
 const DEFAULT_CLOUD_URL = "https://script.google.com/macros/s/AKfycbzbdWRDAn5c7tVyX53oVbQgQUYG5LnN3KwguGODW27JpLj7tpJXSbDWuA_79IyMEf84/exec";
 const CLOUD_PUSH_DELAY = 900;
 const MISSED_BREAK_SECONDS = 2 * 60 * 60;
@@ -89,6 +90,8 @@ const els = {
   pinInput: document.querySelector("#pinInput"),
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
+  themeToggleBtn: document.querySelector("#themeToggleBtn"),
+  themeToggleText: document.querySelector("#themeToggleText"),
   cloudSyncBar: document.querySelector("#cloudSyncBar"),
   homeClearCacheBtn: document.querySelector("#homeClearCacheBtn"),
   pendingApprovalBadge: document.querySelector("#pendingApprovalBadge"),
@@ -278,6 +281,26 @@ const els = {
   editDate: document.querySelector("#editDate"),
   editNote: document.querySelector("#editNote"),
 };
+
+function savedThemeMode() {
+  return localStorage.getItem(THEME_KEY) === "night" ? "night" : "day";
+}
+
+function applyThemeMode(mode = savedThemeMode()) {
+  const nextMode = mode === "night" ? "night" : "day";
+  document.body.dataset.theme = nextMode;
+  localStorage.setItem(THEME_KEY, nextMode);
+  if (els.themeToggleBtn) {
+    els.themeToggleBtn.setAttribute("aria-pressed", String(nextMode === "night"));
+    els.themeToggleBtn.innerHTML = `<i data-lucide="${nextMode === "night" ? "moon" : "sun"}"></i><span id="themeToggleText">${nextMode === "night" ? "Night" : "Day"}</span>`;
+    els.themeToggleText = document.querySelector("#themeToggleText");
+  }
+}
+
+function toggleThemeMode() {
+  applyThemeMode(savedThemeMode() === "night" ? "day" : "night");
+  if (window.lucide) lucide.createIcons();
+}
 
 function defaultState() {
   return {
@@ -1272,6 +1295,7 @@ function setText(id, value) {
 }
 
 function render() {
+  applyThemeMode();
   ensureHolidayAttendance();
   const date = els.selectedDate.value;
   const day = totalsForDate(date);
@@ -4000,10 +4024,12 @@ function restoreJson() {
 async function clearAppCache() {
   if (!confirm("Cache clear করলে এই browser-এর local data/session মুছে যাবে। Google Sheets backend থাকলে reload-এর পর cloud থেকে data আসবে। চালিয়ে যাবেন?")) return;
   const savedCloudUrl = cloudUrl();
+  const savedTheme = savedThemeMode();
 
   sessionStorage.clear();
   localStorage.clear();
   if (savedCloudUrl) localStorage.setItem(CLOUD_URL_KEY, savedCloudUrl);
+  localStorage.setItem(THEME_KEY, savedTheme);
 
   if ("caches" in window) {
     const keys = await caches.keys();
@@ -4276,6 +4302,7 @@ els.clearAllBackupsBtn?.addEventListener("click", clearAllBackups);
 els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
+els.themeToggleBtn?.addEventListener("click", toggleThemeMode);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
   localStorage.setItem(CLOUD_URL_KEY, els.cloudApiUrl.value.trim());
@@ -4457,6 +4484,7 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
 
 window.addEventListener("resize", () => renderChart(els.selectedDate.value));
 
+applyThemeMode();
 initDates();
 if (cleanupPayrollOnlyAdminData()) saveState();
 ensureEmployeeAccess();

@@ -2052,3 +2052,177 @@ td {
     min-height: auto;
   }
 }
+
+/* Day/Night mode */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--primary-dark);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-soft);
+  font-weight: 800;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+body[data-theme="night"] {
+  --bg: #131029;
+  --surface: rgba(37, 31, 72, 0.9);
+  --surface-2: rgba(48, 41, 88, 0.88);
+  --ink: #f8f7ff;
+  --muted: #c5c0df;
+  --line: rgba(214, 208, 255, 0.14);
+  --primary: #a996ff;
+  --primary-dark: #f5f2ff;
+  --accent: #c9ff55;
+  --danger: #ff7aa8;
+  --good: #78e8bb;
+  --bad: #ff7aa8;
+  --glass: rgba(35, 29, 68, 0.78);
+  --shadow: 0 24px 68px rgba(0, 0, 0, 0.34);
+  --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.24);
+  background:
+    radial-gradient(circle at 18% 4%, rgba(169, 150, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 14%, rgba(255, 122, 168, 0.16), transparent 24%),
+    radial-gradient(circle at 70% 88%, rgba(201, 255, 85, 0.08), transparent 28%),
+    linear-gradient(135deg, #0f0c23 0%, #191534 52%, #0e0b1f 100%);
+}
+
+body[data-theme="night"] .app-shell {
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at 62% 22%, rgba(169, 150, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 42% 0%, rgba(201, 255, 85, 0.08), transparent 24%),
+    linear-gradient(135deg, #2c285c 0%, #201b49 48%, #15122f 100%);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.42);
+}
+
+body[data-theme="night"] .login-screen {
+  background:
+    radial-gradient(circle at 26% 18%, rgba(169, 150, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 78% 76%, rgba(255, 122, 168, 0.16), transparent 28%),
+    linear-gradient(145deg, #15122f 0%, #090817 100%);
+}
+
+body[data-theme="night"] .sidebar {
+  background:
+    radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.1), transparent 25%),
+    linear-gradient(180deg, rgba(58, 49, 118, 0.88), rgba(29, 24, 66, 0.9));
+}
+
+body[data-theme="night"] .panel,
+body[data-theme="night"] .metric,
+body[data-theme="night"] .filter-bar,
+body[data-theme="night"] .login-card,
+body[data-theme="night"] .modal-card,
+body[data-theme="night"] .entry-item,
+body[data-theme="night"] .fixed-item,
+body[data-theme="night"] .employee-status-grid div,
+body[data-theme="night"] .summary-row div,
+body[data-theme="night"] .break-current-box,
+body[data-theme="night"] .decision-preview,
+body[data-theme="night"] .calendar-day {
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="night"] .metric strong,
+body[data-theme="night"] .panel-head,
+body[data-theme="night"] h2,
+body[data-theme="night"] h3,
+body[data-theme="night"] label {
+  color: var(--ink);
+}
+
+body[data-theme="night"] .metric small,
+body[data-theme="night"] .metric p,
+body[data-theme="night"] .panel-head p,
+body[data-theme="night"] .summary-row small,
+body[data-theme="night"] .muted {
+  color: var(--muted);
+}
+
+body[data-theme="night"] .metric.highlight,
+body[data-theme="night"] .employee-home-panel,
+body[data-theme="night"] .metrics-grid .metric:nth-child(1),
+body[data-theme="night"] .metrics-grid .metric:nth-child(2),
+body[data-theme="night"] .metrics-grid .metric:nth-child(3),
+body[data-theme="night"] .metrics-grid .metric:nth-child(4),
+body[data-theme="night"] .summary-row div:nth-child(1),
+body[data-theme="night"] .summary-row div:nth-child(2),
+body[data-theme="night"] .summary-row div:nth-child(3),
+body[data-theme="night"] .summary-row div:nth-child(4) {
+  background:
+    radial-gradient(circle at 84% 14%, rgba(201, 255, 85, 0.08), transparent 22%),
+    linear-gradient(145deg, rgba(48, 41, 91, 0.96), rgba(31, 26, 65, 0.94));
+}
+
+body[data-theme="night"] input,
+body[data-theme="night"] select,
+body[data-theme="night"] textarea {
+  color: var(--ink);
+  border-color: rgba(214, 208, 255, 0.12);
+  background: rgba(19, 16, 41, 0.72);
+}
+
+body[data-theme="night"] input::placeholder,
+body[data-theme="night"] textarea::placeholder {
+  color: rgba(245, 242, 255, 0.45);
+}
+
+body[data-theme="night"] .secondary-button,
+body[data-theme="night"] .small-action,
+body[data-theme="night"] .icon-button,
+body[data-theme="night"] .theme-toggle,
+body[data-theme="night"] .topbar .date-control input {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+body[data-theme="night"] .primary-button {
+  color: #21183d;
+  background: linear-gradient(145deg, #c9ff55, #a996ff);
+}
+
+body[data-theme="night"] .table-wrap {
+  background: rgba(31, 26, 65, 0.78);
+}
+
+body[data-theme="night"] th {
+  color: #d7d1ff;
+  background: rgba(54, 46, 103, 0.92);
+}
+
+body[data-theme="night"] td {
+  color: var(--ink);
+  background: rgba(37, 31, 72, 0.58);
+}
+
+body[data-theme="night"] .status-pill,
+body[data-theme="night"] .type-pill,
+body[data-theme="night"] .cloud-sync-bar,
+body[data-theme="night"] .calendar-tag {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+body[data-theme="night"] .date-control,
+body[data-theme="night"] .topbar .date-control {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 680px) {
+  .theme-toggle {
+    width: 100%;
+  }
+}
