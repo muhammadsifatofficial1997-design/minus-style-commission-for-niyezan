@@ -112,6 +112,14 @@ const els = {
   employeeTodayCheckOut: document.querySelector("#employeeTodayCheckOut"),
   employeeMonthPayable: document.querySelector("#employeeMonthPayable"),
   employeePendingApproval: document.querySelector("#employeePendingApproval"),
+  employeeMonthPresent: document.querySelector("#employeeMonthPresent"),
+  employeeMonthAbsent: document.querySelector("#employeeMonthAbsent"),
+  employeeMonthBreak: document.querySelector("#employeeMonthBreak"),
+  employeeMonthAdvance: document.querySelector("#employeeMonthAdvance"),
+  employeeMonthLeave: document.querySelector("#employeeMonthLeave"),
+  employeeSelfAttendanceList: document.querySelector("#employeeSelfAttendanceList"),
+  employeeSelfBreakList: document.querySelector("#employeeSelfBreakList"),
+  employeeSelfLeaveAdvanceList: document.querySelector("#employeeSelfLeaveAdvanceList"),
   advanceForm: document.querySelector("#advanceForm"),
   advanceEmployee: document.querySelector("#advanceEmployee"),
   advanceMonth: document.querySelector("#advanceMonth"),
@@ -175,6 +183,11 @@ const els = {
   newPin: document.querySelector("#newPin"),
   exportOutput: document.querySelector("#exportOutput"),
   backupStatus: document.querySelector("#backupStatus"),
+  backupVersionSelect: document.querySelector("#backupVersionSelect"),
+  restoreBackupVersionBtn: document.querySelector("#restoreBackupVersionBtn"),
+  backupVersionHint: document.querySelector("#backupVersionHint"),
+  healthCheckList: document.querySelector("#healthCheckList"),
+  runHealthCheckBtn: document.querySelector("#runHealthCheckBtn"),
   editModal: document.querySelector("#editModal"),
   editEntryForm: document.querySelector("#editEntryForm"),
   editId: document.querySelector("#editId"),
@@ -874,6 +887,7 @@ function render() {
   renderMonthlyBreakReport();
   renderChart(date);
   renderBackupStatus();
+  renderHealthCheck();
 
   if (window.lucide) lucide.createIcons();
 }
@@ -1242,6 +1256,91 @@ function renderEmployeeHome() {
   } else {
     els.employeeTodayHint.textContent = "আজকের attendance complete হয়েছে। নিচে নিজের payroll ও request history দেখতে পারবেন।";
   }
+
+  renderEmployeeSelfDashboard(employee, payrollRow);
+}
+
+function renderEmployeeSelfDashboard(employee, payrollRow) {
+  const month = els.payrollMonth.value || today().slice(0, 7);
+  const start = `${month}-01`;
+  const end = monthEnd(start);
+  const monthAttendance = state.attendance
+    .filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const monthBreaks = breaksInRange(start, end, [employee.id]).sort((a, b) => String(b.startAt).localeCompare(String(a.startAt)));
+  const monthLeaves = state.leaveRequests
+    .filter((item) => {
+      const leaveStart = item.startDate || item.start;
+      const leaveEnd = item.endDate || item.end;
+      return item.employeeId === employee.id && leaveStart <= end && leaveEnd >= start;
+    })
+    .sort((a, b) => String(b.createdAt || b.requestedAt).localeCompare(String(a.createdAt || a.requestedAt)));
+  const monthAdvances = state.advances
+    .filter((item) => item.employeeId === employee.id && item.month === month)
+    .sort((a, b) => String(b.createdAt || b.requestedAt).localeCompare(String(a.createdAt || a.requestedAt)));
+  const breakTotal = breakTotals(monthBreaks).total;
+  const approvedAdvance = monthAdvances.filter((item) => item.status === "approved").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  if (els.employeeMonthPresent) els.employeeMonthPresent.textContent = bn.format(monthAttendance.filter((item) => item.status === "present").length || payrollRow?.present || 0);
+  if (els.employeeMonthAbsent) els.employeeMonthAbsent.textContent = bn.format(monthAttendance.filter((item) => item.status === "absent").length || payrollRow?.absent || 0);
+  if (els.employeeMonthBreak) els.employeeMonthBreak.textContent = formatBreakMinutes(breakTotal);
+  if (els.employeeMonthAdvance) els.employeeMonthAdvance.textContent = money(approvedAdvance);
+  if (els.employeeMonthLeave) {
+    els.employeeMonthLeave.textContent = bn.format(
+      monthLeaves
+        .filter((item) => item.status === "approved")
+        .reduce((sum, item) => sum + (item.days || dateRange(item.startDate || item.start, item.endDate || item.end).length), 0),
+    );
+  }
+
+  if (els.employeeSelfAttendanceList) {
+    els.employeeSelfAttendanceList.innerHTML =
+      monthAttendance
+        .slice(0, 5)
+        .map(
+          (item) => `
+            <article class="mini-list-item">
+              <strong>${escapeHtml(item.date)}</strong>
+              <small>${escapeHtml(statusLabel(item.status))} · In ${escapeHtml(item.checkIn || "-")} · Out ${escapeHtml(item.checkOut || "-")}</small>
+            </article>
+          `,
+        )
+        .join("") || `<div class="empty">এই মাসে attendance নেই।</div>`;
+  }
+
+  if (els.employeeSelfBreakList) {
+    els.employeeSelfBreakList.innerHTML =
+      monthBreaks
+        .slice(0, 5)
+        .map(
+          (item) => `
+            <article class="mini-list-item ${!item.endAt ? "warning-row" : ""}">
+              <strong>${escapeHtml(item.date)} · ${escapeHtml(breakLabel(item.type))}</strong>
+              <small>${escapeHtml(item.startTime || "-")} - ${escapeHtml(item.endTime || "Running")} · ${formatBreakMinutes(breakDurationSeconds(item))}</small>
+            </article>
+          `,
+        )
+        .join("") || `<div class="empty">এই মাসে break নেই।</div>`;
+  }
+
+  if (els.employeeSelfLeaveAdvanceList) {
+    const items = [
+      ...monthLeaves.map((item) => ({ createdAt: item.createdAt || item.requestedAt, title: `${item.startDate || item.start} to ${item.endDate || item.end}`, detail: `${item.type || "Leave"} · ${item.status}` })),
+      ...monthAdvances.map((item) => ({ createdAt: item.createdAt || item.requestedAt, title: money(item.amount), detail: `Advance · ${item.status}` })),
+    ].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    els.employeeSelfLeaveAdvanceList.innerHTML =
+      items
+        .slice(0, 5)
+        .map(
+          (item) => `
+            <article class="mini-list-item">
+              <strong>${escapeHtml(item.title)}</strong>
+              <small>${escapeHtml(item.detail)}</small>
+            </article>
+          `,
+        )
+        .join("") || `<div class="empty">Leave বা advance request নেই।</div>`;
+  }
 }
 
 function renderTimeline() {
@@ -1369,6 +1468,77 @@ function renderActivityLog() {
         `,
       )
       .join("") || `<div class="empty">Activity log এখনো নেই।</div>`;
+}
+
+function dataHealthIssues() {
+  const issues = [];
+  const attendanceGroups = new Map();
+
+  state.attendance.forEach((record) => {
+    const key = `${record.date}|${record.employeeId}`;
+    const list = attendanceGroups.get(key) || [];
+    list.push(record);
+    attendanceGroups.set(key, list);
+
+    if (record.checkIn && !record.checkOut && record.status === "present") {
+      issues.push({
+        type: "Missing Checkout",
+        level: "warning",
+        employee: record.employeeName || employeeById(record.employeeId)?.name || "Unknown",
+        date: record.date,
+        detail: `Check-in আছে (${record.checkIn}) কিন্তু checkout নেই।`,
+      });
+    }
+  });
+
+  attendanceGroups.forEach((records) => {
+    if (records.length <= 1) return;
+    const first = records[0];
+    issues.push({
+      type: "Duplicate Attendance",
+      level: "danger",
+      employee: first.employeeName || employeeById(first.employeeId)?.name || "Unknown",
+      date: first.date,
+      detail: `${bn.format(records.length)}টি attendance record পাওয়া গেছে।`,
+    });
+  });
+
+  (state.breaks || []).forEach((item) => {
+    if (item.startAt && !item.endAt) {
+      issues.push({
+        type: "Break Not Closed",
+        level: isMissedBreak(item) ? "danger" : "warning",
+        employee: item.employeeName || employeeById(item.employeeId)?.name || "Unknown",
+        date: item.date,
+        detail: `${breakLabel(item.type)} ${item.startTime || "-"} থেকে running আছে।`,
+      });
+    }
+  });
+
+  return issues.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+
+function renderHealthCheck() {
+  if (!els.healthCheckList) return;
+  if (!isAdmin()) {
+    els.healthCheckList.innerHTML = `<div class="empty">Only admin can run data health check.</div>`;
+    return;
+  }
+  const issues = dataHealthIssues();
+  els.healthCheckList.innerHTML =
+    issues
+      .map(
+        (issue) => `
+          <article class="fixed-item health-item ${issue.level === "danger" ? "danger-row" : "warning-row"}">
+            <div class="item-line">
+              <strong>${escapeHtml(issue.type)}</strong>
+              <span class="status-pill">${escapeHtml(issue.date || "-")}</span>
+            </div>
+            <small class="muted">${escapeHtml(issue.employee)} · ${escapeHtml(issue.detail)}</small>
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">Data health OK. Duplicate, missing checkout বা running break নেই।</div>`;
 }
 
 function renderPayroll() {
@@ -1686,10 +1856,75 @@ function renderBackupStatus() {
   if (!els.backupStatus) return;
   if (!backups.length) {
     els.backupStatus.textContent = "Auto backup এখনো তৈরি হয়নি।";
+    renderBackupVersions(backups);
     return;
   }
   const latest = new Date(backups[0].createdAt).toLocaleString("bn-BD");
   els.backupStatus.textContent = `শেষ auto backup: ${latest} | মোট snapshot: ${bn.format(backups.length)}`;
+  renderBackupVersions(backups);
+}
+
+function renderBackupVersions(backups = getBackups()) {
+  if (!els.backupVersionSelect) return;
+  els.backupVersionSelect.innerHTML =
+    backups
+      .map((backup, index) => {
+        const created = new Date(backup.createdAt).toLocaleString("bn-BD");
+        const data = backup.data || {};
+        const count = Number(data.entries?.length || 0) + Number(data.attendance?.length || 0) + Number(data.breaks?.length || 0);
+        return `<option value="${index}">${created} · ${bn.format(count)} records</option>`;
+      })
+      .join("") || `<option value="">Backup নেই</option>`;
+  if (els.restoreBackupVersionBtn) els.restoreBackupVersionBtn.disabled = !backups.length;
+  if (els.backupVersionHint) {
+    els.backupVersionHint.textContent = backups.length
+      ? "Restore করার আগে তারিখ দেখে version select করুন।"
+      : "Auto backup তৈরি হলে এখানে version list দেখা যাবে।";
+  }
+}
+
+function normalizeRestoredState(nextState) {
+  const defaults = defaultState();
+  return {
+    ...defaults,
+    ...nextState,
+    settings: { ...defaults.settings, ...(nextState.settings || {}) },
+    categories: { ...defaults.categories, ...(nextState.categories || {}) },
+    breaks: nextState.breaks || [],
+    activityLogs: nextState.activityLogs || [],
+    leaveRequests: nextState.leaveRequests || [],
+    payrollLocks: nextState.payrollLocks || [],
+  };
+}
+
+function applyRestoredState(nextState) {
+  if (!nextState || typeof nextState !== "object" || !Array.isArray(nextState.fixedExpenses)) {
+    throw new Error("Valid dashboard backup পাওয়া যায়নি।");
+  }
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, normalizeRestoredState(nextState));
+}
+
+function restoreBackupVersion() {
+  if (!isAdmin()) return;
+  const backups = getBackups();
+  const index = Number(els.backupVersionSelect?.value);
+  const selected = backups[index];
+  if (!selected?.data) {
+    alert("Restore করার মতো backup version পাওয়া যায়নি।");
+    return;
+  }
+  const created = new Date(selected.createdAt).toLocaleString("bn-BD");
+  if (!confirm(`${created} backup restore করলে current dashboard data replace হবে। চালাবেন?`)) return;
+  try {
+    applyRestoredState(selected.data);
+    logActivity("Restore Backup", created, "backup");
+    saveState();
+    render();
+    alert("Selected backup restore হয়েছে।");
+  } catch (error) {
+    alert(`Restore failed: ${error.message}`);
+  }
 }
 
 function renderChart(dateString) {
@@ -2734,21 +2969,8 @@ function restoreJson() {
   try {
     const parsed = JSON.parse(text);
     const nextState = parsed.data || parsed.state || parsed.backups?.[0]?.data || parsed;
-    if (!nextState || typeof nextState !== "object" || !Array.isArray(nextState.fixedExpenses)) {
-      throw new Error("Valid dashboard backup পাওয়া যায়নি।");
-    }
-    const defaults = defaultState();
-    Object.keys(state).forEach((key) => delete state[key]);
-    Object.assign(state, {
-      ...defaults,
-      ...nextState,
-      settings: { ...defaults.settings, ...(nextState.settings || {}) },
-      categories: { ...defaults.categories, ...(nextState.categories || {}) },
-      breaks: nextState.breaks || [],
-      activityLogs: nextState.activityLogs || [],
-      leaveRequests: nextState.leaveRequests || [],
-      payrollLocks: nextState.payrollLocks || [],
-    });
+    applyRestoredState(nextState);
+    logActivity("Restore JSON", "Manual JSON restore", "backup");
     saveState();
     render();
     alert("Backup restore হয়েছে। Cloud sync চালু থাকলে data cloud-এও save হবে।");
@@ -2966,6 +3188,8 @@ document.querySelector("#pdfExportBtn").addEventListener("click", printPdf);
 document.querySelector("#exportBtn").addEventListener("click", exportJson);
 document.querySelector("#downloadBackupBtn").addEventListener("click", downloadBackup);
 document.querySelector("#restoreJsonBtn")?.addEventListener("click", restoreJson);
+els.restoreBackupVersionBtn?.addEventListener("click", restoreBackupVersion);
+els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {

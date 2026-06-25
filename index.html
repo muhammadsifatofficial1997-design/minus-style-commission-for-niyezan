@@ -344,6 +344,35 @@
               <button class="secondary-button" id="mobileEndBreakBtn" type="button"><i data-lucide="play-circle"></i> Back from Break</button>
               <button class="secondary-button" id="mobileCheckOutBtn" type="button"><i data-lucide="log-out"></i> Check Out</button>
             </div>
+            <div class="employee-self-dashboard">
+              <div class="panel-head slim-head">
+                <div>
+                  <h3>নিজের মাসিক সারাংশ</h3>
+                  <p>Attendance, break, salary, leave এবং advance শুধু নিজেরটাই দেখা যাবে</p>
+                </div>
+              </div>
+              <div class="mini-summary-grid">
+                <div><small>Present</small><strong id="employeeMonthPresent">0</strong></div>
+                <div><small>Absent</small><strong id="employeeMonthAbsent">0</strong></div>
+                <div><small>Total Break</small><strong id="employeeMonthBreak">0 min</strong></div>
+                <div><small>Advance</small><strong id="employeeMonthAdvance">৳0</strong></div>
+                <div><small>Leave</small><strong id="employeeMonthLeave">0</strong></div>
+              </div>
+              <div class="self-data-grid">
+                <div>
+                  <h4>Recent Attendance</h4>
+                  <div class="mini-list" id="employeeSelfAttendanceList"></div>
+                </div>
+                <div>
+                  <h4>Recent Break</h4>
+                  <div class="mini-list" id="employeeSelfBreakList"></div>
+                </div>
+                <div>
+                  <h4>Leave & Advance</h4>
+                  <div class="mini-list" id="employeeSelfLeaveAdvanceList"></div>
+                </div>
+              </div>
+            </div>
           </section>
 
           <div class="form-grid">
@@ -799,7 +828,23 @@
                 <button class="danger-button" id="resetBtn" type="button"><i data-lucide="trash-2"></i> সব ডেটা রিসেট</button>
               </div>
               <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>
+              <div class="backup-version-box">
+                <label>Backup version select করুন <select id="backupVersionSelect"></select></label>
+                <button class="secondary-button" id="restoreBackupVersionBtn" type="button"><i data-lucide="rotate-ccw"></i> Selected Backup Restore</button>
+                <small id="backupVersionHint">Restore করার আগে তারিখ দেখে select করুন।</small>
+              </div>
               <textarea id="exportOutput" rows="8" placeholder="Export JSON এখানে দেখাবে। Restore করতে backup JSON paste করে JSON Restore চাপুন।"></textarea>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>Data Health Check</h2>
+                  <p>Duplicate attendance, missing checkout এবং running break দ্রুত চেক করুন</p>
+                </div>
+                <button class="secondary-button" id="runHealthCheckBtn" type="button"><i data-lucide="shield-check"></i> Check Now</button>
+              </div>
+              <div class="fixed-list health-list" id="healthCheckList"></div>
             </section>
 
             <section class="panel">

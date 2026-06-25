@@ -824,6 +824,97 @@ td:last-child {
   margin-top: 12px;
 }
 
+.employee-self-dashboard {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.slim-head {
+  margin-bottom: 0;
+}
+
+.slim-head h3,
+.self-data-grid h4 {
+  margin: 0;
+}
+
+.mini-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-summary-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.mini-summary-grid small,
+.mini-list-item small {
+  color: var(--muted);
+}
+
+.mini-summary-grid strong {
+  font-size: 22px;
+}
+
+.self-data-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.self-data-grid > div,
+.backup-version-box {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mini-list-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.backup-version-box {
+  margin-top: 12px;
+}
+
+.backup-version-box select {
+  margin-top: 6px;
+}
+
+.health-item {
+  border-left: 4px solid #d89c22;
+}
+
+.health-item.danger-row {
+  border-left-color: #b64242;
+}
+
+.health-list .empty {
+  margin: 0;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -898,7 +989,9 @@ td:last-child {
   }
 
   .mini-filter,
-  .employee-quick-actions {
+  .employee-quick-actions,
+  .mini-summary-grid,
+  .self-data-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -941,6 +1034,8 @@ td:last-child {
   .summary-row,
   .employee-status-grid,
   .employee-quick-actions,
+  .mini-summary-grid,
+  .self-data-grid,
   .mini-filter,
   .field-row,
   .inline-form {
