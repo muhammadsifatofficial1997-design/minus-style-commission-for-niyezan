@@ -2544,9 +2544,11 @@ function renderNotifications() {
             </div>
             <small class="muted">${escapeHtml(item.message)}</small>
             <div class="action-row">
-              <a class="small-action" href="${url}" target="_blank" rel="noreferrer">WhatsApp</a>
+              <a class="small-action" href="${url}" target="_blank" rel="noreferrer">Send WhatsApp</a>
               <button class="small-action" data-copy-notification="${item.id}" type="button">Copy</button>
-              <button class="small-action" data-mark-notification="${item.id}" type="button">Sent Mark</button>
+              <button class="small-action" data-mark-notification="${item.id}" type="button" ${item.sent ? "disabled" : ""}>
+                ${item.sent ? "Already Sent" : "Mark Sent"}
+              </button>
             </div>
           </article>
         `;
@@ -4357,7 +4359,10 @@ document.body.addEventListener("click", (event) => {
 
   if (notificationMark) {
     const item = state.notifications.find((notification) => notification.id === notificationMark.dataset.markNotification);
-    if (item) item.sent = true;
+    if (item) {
+      item.sent = true;
+      item.sentAt = new Date().toISOString();
+    }
     saveState();
     render();
   }
