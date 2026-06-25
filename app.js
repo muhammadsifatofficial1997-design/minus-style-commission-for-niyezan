@@ -27,6 +27,9 @@ let currentUser = { role: "guest", name: "" };
 let cloudPushTimer = null;
 let isApplyingCloudState = false;
 let breakTicker = null;
+let cloudDirty = false;
+let lastCloudSyncAt = "";
+let lastCloudSyncFailed = false;
 
 const categoryLabels = {
   commission: "মাইনাস স্টাইল কমিশন",
@@ -86,6 +89,7 @@ const els = {
   pinInput: document.querySelector("#pinInput"),
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
+  cloudSyncBar: document.querySelector("#cloudSyncBar"),
   pendingApprovalBadge: document.querySelector("#pendingApprovalBadge"),
   selectedDate: document.querySelector("#selectedDate"),
   dailyStart: document.querySelector("#dailyStart"),
@@ -177,6 +181,7 @@ const els = {
   leaveStart: document.querySelector("#leaveStart"),
   leaveEnd: document.querySelector("#leaveEnd"),
   leaveReason: document.querySelector("#leaveReason"),
+  leaveDecisionPreview: document.querySelector("#leaveDecisionPreview"),
   leaveList: document.querySelector("#leaveList"),
   leaveFixedHolidayTotal: document.querySelector("#leaveFixedHolidayTotal"),
   leaveAdvanceBalance: document.querySelector("#leaveAdvanceBalance"),
@@ -186,6 +191,15 @@ const els = {
   holidayNote: document.querySelector("#holidayNote"),
   holidayList: document.querySelector("#holidayList"),
   payrollLockBtn: document.querySelector("#payrollLockBtn"),
+  salaryAdjustmentForm: document.querySelector("#salaryAdjustmentForm"),
+  salaryAdjustmentEmployee: document.querySelector("#salaryAdjustmentEmployee"),
+  salaryAdjustmentMonth: document.querySelector("#salaryAdjustmentMonth"),
+  salaryAdjustmentType: document.querySelector("#salaryAdjustmentType"),
+  salaryAdjustmentAmount: document.querySelector("#salaryAdjustmentAmount"),
+  salaryAdjustmentNote: document.querySelector("#salaryAdjustmentNote"),
+  salaryAdjustmentList: document.querySelector("#salaryAdjustmentList"),
+  runWarningReportBtn: document.querySelector("#runWarningReportBtn"),
+  warningReportList: document.querySelector("#warningReportList"),
   entryForm: document.querySelector("#entryForm"),
   entryType: document.querySelector("#entryType"),
   entryCategory: document.querySelector("#entryCategory"),
@@ -273,6 +287,7 @@ function defaultState() {
     advances: [],
     leaveRequests: [],
     fixedHolidays: defaultFixedHolidays(),
+    salaryAdjustments: [],
     payrollLocks: [],
     notifications: [],
     fixedExpenses: [
@@ -320,6 +335,7 @@ function loadState() {
       advances: parsed.advances || defaults.advances,
       leaveRequests: parsed.leaveRequests || defaults.leaveRequests,
       fixedHolidays: parsed.fixedHolidays || defaults.fixedHolidays,
+      salaryAdjustments: parsed.salaryAdjustments || defaults.salaryAdjustments,
       payrollLocks: parsed.payrollLocks || defaults.payrollLocks,
       notifications: parsed.notifications || defaults.notifications,
       categories: { ...defaults.categories, ...parsed.categories },
@@ -332,6 +348,9 @@ function loadState() {
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   createAutoBackup();
+  cloudDirty = true;
+  lastCloudSyncFailed = false;
+  updateCloudSyncBar();
   queueCloudPush();
 }
 
@@ -341,9 +360,31 @@ function cloudUrl() {
 
 function setCloudStatus(message) {
   if (els.cloudStatus) els.cloudStatus.textContent = message;
+  updateCloudSyncBar(message);
   if (els.loginRoleHint && !isAdmin() && !isManager() && !isEmployee()) {
     els.loginRoleHint.textContent = message;
   }
+}
+
+function updateCloudSyncBar(message = "") {
+  if (!els.cloudSyncBar) return;
+  if (lastCloudSyncFailed) {
+    els.cloudSyncBar.textContent = message || "Sync failed";
+    els.cloudSyncBar.dataset.status = "failed";
+    return;
+  }
+  if (cloudDirty) {
+    els.cloudSyncBar.textContent = "Unsaved changes";
+    els.cloudSyncBar.dataset.status = "dirty";
+    return;
+  }
+  if (lastCloudSyncAt) {
+    els.cloudSyncBar.textContent = `Cloud synced ${timeAgo(lastCloudSyncAt)}`;
+    els.cloudSyncBar.dataset.status = "synced";
+    return;
+  }
+  els.cloudSyncBar.textContent = cloudUrl() ? "Cloud sync ready" : "Cloud sync off";
+  els.cloudSyncBar.dataset.status = cloudUrl() ? "ready" : "off";
 }
 
 function cloudLoginSummary() {
@@ -374,9 +415,13 @@ async function syncToCloud(showAlert = true) {
     });
     const result = await response.json();
     if (!result.ok) throw new Error(result.error || "Cloud save failed");
+    cloudDirty = false;
+    lastCloudSyncFailed = false;
+    lastCloudSyncAt = new Date().toISOString();
     setCloudStatus(`শেষ cloud save: ${new Date().toLocaleString("bn-BD")}`);
     if (showAlert) alert("Cloud-এ data save হয়েছে।");
   } catch (error) {
+    lastCloudSyncFailed = true;
     setCloudStatus(`Cloud save failed: ${error.message}`);
     if (showAlert) alert(`Cloud save failed: ${error.message}`);
   }
@@ -400,6 +445,9 @@ async function syncFromCloud(showAlert = true) {
       state.settings = { ...defaultState().settings, ...result.state.settings };
       state.categories = { ...defaultState().categories, ...result.state.categories };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      cloudDirty = false;
+      lastCloudSyncFailed = false;
+      lastCloudSyncAt = new Date().toISOString();
       isApplyingCloudState = false;
       ensureEmployeeAccess();
       render();
@@ -410,6 +458,7 @@ async function syncFromCloud(showAlert = true) {
     return true;
   } catch (error) {
     isApplyingCloudState = false;
+    lastCloudSyncFailed = true;
     setCloudStatus(`Cloud load failed: ${error.message}`);
     if (showAlert) alert(`Cloud load failed: ${error.message}`);
     return false;
@@ -532,6 +581,16 @@ function getDaysInMonth(dateString) {
 
 function monthKey(dateString) {
   return dateString.slice(0, 7);
+}
+
+function timeAgo(isoString) {
+  const diff = Math.max(Date.now() - new Date(isoString).getTime(), 0);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  return `${Math.floor(hours / 24)} day ago`;
 }
 
 function labelFor(category) {
@@ -972,6 +1031,39 @@ function payrollLockFor(month) {
   return state.payrollLocks.find((item) => item.month === month && item.locked);
 }
 
+function monthClosed(month) {
+  return Boolean(payrollLockFor(month));
+}
+
+function lockedMonthMessage(month) {
+  return `${month} মাস Monthly Closing করা আছে। edit করতে হলে আগে Payroll Unlock করুন।`;
+}
+
+function ensureMonthEditable(dateOrMonth) {
+  const month = dateOrMonth.length === 7 ? dateOrMonth : monthKey(dateOrMonth);
+  if (!monthClosed(month)) return true;
+  alert(lockedMonthMessage(month));
+  return false;
+}
+
+function salaryAdjustmentSign(type) {
+  return ["penalty", "special_deduction"].includes(type) ? -1 : 1;
+}
+
+function salaryAdjustmentLabel(type) {
+  return {
+    bonus: "Bonus",
+    allowance: "Allowance",
+    overtime: "Overtime",
+    penalty: "Penalty",
+    special_deduction: "Special Deduction",
+  }[type] || type;
+}
+
+function salaryAdjustmentsFor(employeeId, month) {
+  return (state.salaryAdjustments || []).filter((item) => item.employeeId === employeeId && item.month === month);
+}
+
 function calculatePayrollForMonth(month) {
   const start = `${month}-01`;
   const end = monthEnd(start);
@@ -986,6 +1078,9 @@ function calculatePayrollForMonth(month) {
     const dailySalary = employee.salary / days;
     const deduction = dailySalary * cutDays;
     const fridayPay = fridayWorkPayForMonth(employee, month);
+    const adjustments = salaryAdjustmentsFor(employee.id, month);
+    const additions = sum(adjustments.filter((item) => salaryAdjustmentSign(item.type) > 0), "amount");
+    const manualDeductions = sum(adjustments.filter((item) => salaryAdjustmentSign(item.type) < 0), "amount");
     const advance = sum(
       state.advances.filter((item) => item.status === "approved" && item.employeeId === employee.id && item.month === month),
       "amount",
@@ -999,11 +1094,14 @@ function calculatePayrollForMonth(month) {
       absent,
       fridayWorkDays: fridayPay.count,
       weekendPay: fridayPay.amount,
+      adjustments,
+      additions,
+      manualDeductions,
       cutDays,
       deduction,
       advance,
-      totalDeduction: deduction + advance,
-      payable: employee.salary - deduction - advance + fridayPay.amount,
+      totalDeduction: deduction + advance + manualDeductions,
+      payable: employee.salary - deduction - advance - manualDeductions + fridayPay.amount + additions,
     };
   });
 
@@ -1119,7 +1217,10 @@ function render() {
   renderEmployeeHome();
   renderAdvance();
   renderLeave();
+  renderLeaveDecisionPreview();
   renderHolidayCalendar();
+  renderSalaryAdjustments();
+  renderWarningReport();
   renderEmployeeAccess();
   renderNotifications();
   renderActivityLog();
@@ -1129,6 +1230,7 @@ function render() {
   renderChart(date);
   renderBackupStatus();
   renderHealthCheck();
+  updateCloudSyncBar();
 
   if (window.lucide) lucide.createIcons();
 }
@@ -1969,8 +2071,8 @@ function renderPayroll() {
   setText("payrollCutDays", bn.format(summary.cutDays));
   if (els.payrollLockBtn) {
     els.payrollLockBtn.hidden = !isAdmin();
-    els.payrollLockBtn.innerHTML = locked ? `<i data-lucide="unlock"></i> Payroll Unlock` : `<i data-lucide="lock"></i> Payroll Lock`;
-    els.payrollLockBtn.title = locked ? `${month} payroll locked আছে` : `${month} payroll final করে lock করুন`;
+    els.payrollLockBtn.innerHTML = locked ? `<i data-lucide="unlock"></i> Monthly Unlock` : `<i data-lucide="lock"></i> Close Month`;
+    els.payrollLockBtn.title = locked ? `${month} monthly closing locked আছে` : `${month} payroll final করে month close করুন`;
   }
   document.querySelector("#payrollTable").innerHTML =
     rows
@@ -1986,12 +2088,127 @@ function renderPayroll() {
             <td class="amount bad">${money(row.deduction)}</td>
             <td class="amount bad">${money(row.advance)}</td>
             <td class="amount good">${money(row.weekendPay || 0)}</td>
+            <td class="amount good">${money(row.additions || 0)}</td>
+            <td class="amount bad">${money(row.manualDeductions || 0)}</td>
             <td class="amount good">${money(row.payable)}</td>
             <td><button class="small-action" data-payslip="${row.id}" type="button">PDF</button></td>
           </tr>
         `,
       )
-      .join("") || `<tr><td colspan="11" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
+      .join("") || `<tr><td colspan="13" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
+}
+
+function renderSalaryAdjustments() {
+  if (!els.salaryAdjustmentList) return;
+  const month = els.payrollMonth.value || today().slice(0, 7);
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  if (els.salaryAdjustmentEmployee) {
+    els.salaryAdjustmentEmployee.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+  }
+  if (els.salaryAdjustmentMonth) els.salaryAdjustmentMonth.value = month;
+  if (els.salaryAdjustmentForm) els.salaryAdjustmentForm.hidden = !isAdmin();
+
+  const visible = (state.salaryAdjustments || [])
+    .filter((item) => item.month === month)
+    .filter((item) => !isEmployee() || item.employeeId === currentEmployeeId());
+
+  els.salaryAdjustmentList.innerHTML =
+    visible
+      .map(
+        (item) => `
+          <article class="fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(item.employeeName)} · ${escapeHtml(salaryAdjustmentLabel(item.type))} · ${money(item.amount)}</strong>
+              <span class="status-pill">${salaryAdjustmentSign(item.type) > 0 ? "Addition" : "Deduction"}</span>
+            </div>
+            <small class="muted">${escapeHtml(item.month)} · ${escapeHtml(item.note || "No note")} · ${escapeHtml(item.createdBy || "Admin")}</small>
+            ${
+              isAdmin() && !monthClosed(item.month)
+                ? `<div class="action-row"><button class="small-action danger" data-delete-salary-adjustment="${item.id}" type="button">Delete</button></div>`
+                : ""
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">এই মাসে manual salary adjustment নেই।</div>`;
+}
+
+function saveSalaryAdjustment(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const month = els.salaryAdjustmentMonth.value || els.payrollMonth.value;
+  if (monthClosed(month)) {
+    alert("এই মাস payroll closed/locked আছে। আগে unlock করুন, তারপর adjustment add করুন।");
+    return;
+  }
+  const employee = employeeById(els.salaryAdjustmentEmployee.value);
+  if (!employee) return;
+  state.salaryAdjustments.unshift({
+    id: crypto.randomUUID(),
+    employeeId: employee.id,
+    employeeName: employee.name,
+    month,
+    type: els.salaryAdjustmentType.value,
+    amount: Number(els.salaryAdjustmentAmount.value || 0),
+    note: els.salaryAdjustmentNote.value.trim(),
+    createdBy: currentUser.name || "Admin",
+    createdAt: new Date().toISOString(),
+  });
+  logActivity("Salary Adjustment", `${employee.name} ${month} ${els.salaryAdjustmentType.value} ${els.salaryAdjustmentAmount.value}`, employee.id);
+  els.salaryAdjustmentForm.reset();
+  if (els.salaryAdjustmentMonth) els.salaryAdjustmentMonth.value = month;
+  saveState();
+  render();
+}
+
+function deleteSalaryAdjustment(id) {
+  if (!isAdmin()) return;
+  const item = state.salaryAdjustments.find((adjustment) => adjustment.id === id);
+  if (!item) return;
+  if (monthClosed(item.month)) {
+    alert("এই মাস payroll closed/locked আছে। আগে unlock করুন।");
+    return;
+  }
+  if (!confirm("এই salary adjustment delete করবেন?")) return;
+  state.salaryAdjustments = state.salaryAdjustments.filter((adjustment) => adjustment.id !== id);
+  logActivity("Delete Salary Adjustment", `${item.employeeName} ${item.month} ${salaryAdjustmentLabel(item.type)}`, item.employeeId);
+  saveState();
+  render();
+}
+
+function warningReportForMonth(month) {
+  const start = `${month}-01`;
+  const end = monthEnd(start);
+  return employees().map((employee) => {
+    const records = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
+    const breaks = (state.breaks || []).filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
+    const late = records.filter((item) => item.status === "present" && isLate(item.shift, item.checkIn)).length;
+    const earlyCheckout = records.filter((item) => item.status === "present" && item.checkOut && !isCheckoutAllowed(item.checkOut)).length;
+    const missingCheckout = records.filter((item) => item.status === "present" && item.checkIn && !item.checkOut).length;
+    const longBreak = breaks.filter((item) => item.endAt && BREAK_LIMIT_MINUTES[item.type] && breakDurationSeconds(item) / 60 > BREAK_LIMIT_MINUTES[item.type]).length;
+    const missedBreak = breaks.filter((item) => item.startAt && !item.endAt).length;
+    return { employee, late, earlyCheckout, missingCheckout, longBreak, missedBreak, total: late + earlyCheckout + missingCheckout + longBreak + missedBreak };
+  });
+}
+
+function renderWarningReport() {
+  if (!els.warningReportList) return;
+  const month = els.payrollMonth.value || today().slice(0, 7);
+  const rows = warningReportForMonth(month).filter((row) => !isEmployee() || row.employee.id === currentEmployeeId());
+  els.warningReportList.innerHTML =
+    rows
+      .map(
+        (row) => `
+          <article class="fixed-item ${row.total ? "warning-row" : ""}">
+            <div class="item-line">
+              <strong>${escapeHtml(row.employee.name)}</strong>
+              <span class="status-pill">${row.total ? `${bn.format(row.total)} warning` : "Clear"}</span>
+            </div>
+            <small class="muted">Late: ${bn.format(row.late)} · Early checkout: ${bn.format(row.earlyCheckout)} · Long break: ${bn.format(row.longBreak)} · Missing checkout: ${bn.format(row.missingCheckout)} · Open break: ${bn.format(row.missedBreak)}</small>
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">Warning report empty.</div>`;
 }
 
 function renderAdvance() {
@@ -2113,6 +2330,27 @@ function renderLeave() {
         `,
       )
       .join("") || `<div class="empty">Leave request নেই।</div>`;
+}
+
+function renderLeaveDecisionPreview() {
+  if (!els.leaveDecisionPreview || !els.leaveEmployee) return;
+  const employeeId = isEmployee() ? currentEmployeeId() : els.leaveEmployee.value;
+  const employee = employeeById(employeeId);
+  const start = els.leaveStart.value;
+  const end = els.leaveEnd.value;
+  if (!employee || !start || !end || end < start) {
+    els.leaveDecisionPreview.textContent = "Leave date/type দিলে এখানে auto decision দেখাবে।";
+    els.leaveDecisionPreview.dataset.status = "empty";
+    return;
+  }
+  const breakdown = buildLeaveBreakdown(employee.id, els.leaveType.value, start, end, els.leaveReason.value);
+  const counts = breakdown.reduce((result, day) => {
+    result[day.type] = (result[day.type] || 0) + 1;
+    return result;
+  }, {});
+  const parts = Object.entries(counts).map(([type, count]) => `${bn.format(count)} দিন ${leaveTypeLabel(type)}`);
+  els.leaveDecisionPreview.textContent = `Auto decision: ${parts.join(", ")}।`;
+  els.leaveDecisionPreview.dataset.status = counts.lwp ? "warning" : "ok";
 }
 
 function renderEmployeeAccess() {
@@ -2348,6 +2586,7 @@ function normalizeRestoredState(nextState) {
       activityLogs: nextState.activityLogs || [],
     leaveRequests: nextState.leaveRequests || [],
     fixedHolidays: nextState.fixedHolidays || defaults.fixedHolidays,
+    salaryAdjustments: nextState.salaryAdjustments || [],
     payrollLocks: nextState.payrollLocks || [],
   };
 }
@@ -2651,6 +2890,7 @@ async function saveAttendancePunch(kind) {
   if (!employee) return;
 
   const date = today();
+  if (!ensureMonthEditable(date)) return;
   const existing = attendanceFor(date, employee.id);
   const payload = {
     employeeId: employee.id,
@@ -2714,6 +2954,7 @@ async function saveAttendance(event) {
   event.preventDefault();
   const employee = employees().find((item) => item.id === els.attendanceEmployee.value);
   if (!employee) return;
+  if (!ensureMonthEditable(els.attendanceDate.value)) return;
 
   const payload = {
     employeeId: employee.id,
@@ -2772,6 +3013,7 @@ function isoForDateTime(date, time) {
 
 function startBreak(event) {
   event.preventDefault();
+  if (!ensureMonthEditable(today())) return;
   const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.breakEmployee.value);
   if (!employee) return;
   const breakType = els.breakType.value;
@@ -2823,6 +3065,7 @@ function endBreak() {
   const employee = isEmployee() ? employeeById(currentEmployeeId()) : employees().find((item) => item.id === els.breakEmployee.value);
   if (!employee) return;
   const running = activeBreakFor(employee.id);
+  if (running && !ensureMonthEditable(running.date)) return;
   if (!running) {
     alert("Running break নেই।");
     return;
@@ -2846,6 +3089,7 @@ function editBreak(id) {
   if (!isAdmin()) return;
   const item = state.breaks.find((breakItem) => breakItem.id === id);
   if (!item) return;
+  if (!ensureMonthEditable(item.date)) return;
   const type = prompt("Break type লিখুন: prayer, washroom, lunch, personal, official", item.type);
   if (!type || !breakLabels[type]) {
     alert("Valid break type দিন।");
@@ -2877,8 +3121,9 @@ function editBreak(id) {
 
 function deleteBreak(id) {
   if (!isAdmin()) return;
-  if (!confirm("এই break record delete করবেন?")) return;
   const item = state.breaks.find((breakItem) => breakItem.id === id);
+  if (item && !ensureMonthEditable(item.date)) return;
+  if (!confirm("এই break record delete করবেন?")) return;
   state.breaks = state.breaks.filter((item) => item.id !== id);
   logActivity("Delete Break", item ? `${item.employeeName} ${breakLabel(item.type)} deleted` : id, item?.employeeId || "");
   saveState();
@@ -2889,6 +3134,7 @@ function forceEndBreak(id) {
   if (!isAdmin() && !isManager()) return;
   const item = state.breaks.find((breakItem) => breakItem.id === id);
   if (!item || item.endAt) return;
+  if (!ensureMonthEditable(item.date)) return;
   if (!confirm("এই running break close করবেন?")) return;
   const now = new Date();
   item.endAt = now.toISOString();
@@ -2918,6 +3164,7 @@ function saveCorrectionRequest(event) {
   event.preventDefault();
   const employee = isEmployee() ? employeeById(currentEmployeeId()) : employeeById(els.correctionEmployee.value);
   if (!employee) return;
+  if (!ensureMonthEditable(els.correctionDate.value)) return;
   const type = els.correctionType.value;
   const payload = {
     id: crypto.randomUUID(),
@@ -3006,6 +3253,7 @@ function saveAdvance(event) {
   event.preventDefault();
   const employee = employeeById(els.advanceEmployee.value);
   if (!employee) return;
+  if (!ensureMonthEditable(els.advanceMonth.value)) return;
   state.advances.unshift({
     id: crypto.randomUUID(),
     employeeId: employee.id,
@@ -3026,6 +3274,7 @@ function saveAdvance(event) {
 function reviewAdvance(id, approved) {
   const item = state.advances.find((advance) => advance.id === id);
   if (!item) return;
+  if (approved && !ensureMonthEditable(item.month)) return;
   item.status = approved ? "approved" : "rejected";
   item.reviewedAt = new Date().toISOString();
   item.reviewedBy = "Admin";
@@ -3121,6 +3370,8 @@ function printPayslip(employeeId) {
           <tr><th>Attendance Summary</th><td>Present: ${row.present}, Leave: ${row.leave}, Paid Leave: ${row.paidLeave || 0}, Absent: ${row.absent}</td></tr>
           <tr><th>Gross Salary</th><td>${money(row.salary)}</td></tr>
           <tr><th>Friday Work Bonus / Weekend Work Pay</th><td>${money(row.weekendPay || 0)}</td></tr>
+          <tr><th>Manual Addition</th><td>${money(row.additions || 0)}</td></tr>
+          <tr><th>Manual Deduction</th><td>${money(row.manualDeductions || 0)}</td></tr>
           <tr><th>Deduction</th><td>${money(row.totalDeduction)}</td></tr>
           <tr><th>Net Salary</th><td class="total">${money(row.payable)}</td></tr>
         </table>
@@ -3164,6 +3415,7 @@ function saveLeaveRequest(event) {
   if (!employee) return;
   const start = els.leaveStart.value;
   const end = els.leaveEnd.value;
+  if (!ensureMonthEditable(start)) return;
   if (end < start) {
     alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
     return;
@@ -3237,7 +3489,7 @@ function togglePayrollLock() {
   const month = els.payrollMonth.value;
   const existing = state.payrollLocks.find((item) => item.month === month);
   if (existing?.locked) {
-    if (!confirm(`${month} payroll unlock করবেন? এরপর attendance edit করলে payroll বদলাবে।`)) return;
+    if (!confirm(`${month} Monthly Closing unlock করবেন? এরপর attendance/leave/payroll edit করা যাবে।`)) return;
     existing.locked = false;
     existing.unlockedAt = new Date().toISOString();
     existing.unlockedBy = "Admin";
@@ -3246,7 +3498,7 @@ function togglePayrollLock() {
     return;
   }
 
-  if (!confirm(`${month} payroll final করে lock করবেন? Lock হলে unlock না করা পর্যন্ত payroll বদলাবে না।`)) return;
+  if (!confirm(`${month} Close Month করবেন? Lock হলে unlock না করা পর্যন্ত attendance/leave/payroll বদলাবে না।`)) return;
   const snapshot = calculatePayrollForMonth(month);
   if (existing) {
     Object.assign(existing, { locked: true, snapshot, lockedAt: new Date().toISOString(), lockedBy: "Admin" });
@@ -3328,20 +3580,27 @@ function addApproval(action, payload) {
 function applyApproval(id, approved) {
   const request = state.approvals.find((item) => item.id === id);
   if (!request) return;
+  if (approved && ["attendance_punch", "correction_request", "leave_request"].includes(request.action)) {
+    const lockedDate = request.payload.start || request.payload.date;
+    if (lockedDate && !ensureMonthEditable(lockedDate)) return;
+  }
   request.status = approved ? "approved" : "rejected";
   request.reviewedAt = new Date().toISOString();
   request.reviewedBy = "Admin";
 
   if (approved) {
     if (request.action === "attendance_punch") {
+      if (!ensureMonthEditable(request.payload.date)) return;
       const employee = employeeById(request.payload.employeeId) || { id: request.payload.employeeId, name: request.payload.employeeName };
       persistAttendance(request.payload, employee, false);
     }
     if (request.action === "correction_request") {
+      if (!ensureMonthEditable(request.payload.date)) return;
       applyCorrection(request.payload);
       logActivity("Approve Correction", correctionDescription(request.payload), request.payload.employeeId);
     }
     if (request.action === "leave_request") {
+      if (!ensureMonthEditable(request.payload.start || request.payload.date)) return;
       reviewLeave(request.payload.id, true);
     }
     if (request.action === "add_entry") {
@@ -3616,6 +3875,7 @@ function initDates() {
   if (els.breakFilterStart) els.breakFilterStart.value = now;
   if (els.breakFilterEnd) els.breakFilterEnd.value = now;
   els.payrollMonth.value = now.slice(0, 7);
+  if (els.salaryAdjustmentMonth) els.salaryAdjustmentMonth.value = now.slice(0, 7);
   if (els.breakReportMonth) els.breakReportMonth.value = now.slice(0, 7);
   els.advanceMonth.value = now.slice(0, 7);
   if (els.correctionDate) els.correctionDate.value = now;
@@ -3738,7 +3998,14 @@ els.mobileEndBreakBtn?.addEventListener("click", endBreak);
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.leaveForm?.addEventListener("submit", saveLeaveRequest);
 els.leaveEmployee?.addEventListener("change", renderLeave);
+els.leaveEmployee?.addEventListener("change", renderLeaveDecisionPreview);
+els.leaveType?.addEventListener("change", renderLeaveDecisionPreview);
+els.leaveStart?.addEventListener("change", renderLeaveDecisionPreview);
+els.leaveEnd?.addEventListener("change", renderLeaveDecisionPreview);
+els.leaveReason?.addEventListener("input", renderLeaveDecisionPreview);
 els.holidayForm?.addEventListener("submit", saveHoliday);
+els.salaryAdjustmentForm?.addEventListener("submit", saveSalaryAdjustment);
+els.runWarningReportBtn?.addEventListener("click", renderWarningReport);
 els.fixedForm.addEventListener("submit", saveFixed);
 els.categoryForm.addEventListener("submit", addCategory);
 els.editEntryForm.addEventListener("submit", saveEditEntry);
@@ -3761,6 +4028,8 @@ els.attendanceEmployee?.addEventListener("change", renderAttendanceActionState);
 els.payrollMonth.addEventListener("change", () => {
   renderPayroll();
   renderEmployeeHome();
+  renderSalaryAdjustments();
+  renderWarningReport();
 });
 document.querySelector("#csvExportBtn").addEventListener("click", exportCsv);
 document.querySelector("#pdfExportBtn").addEventListener("click", printPdf);
@@ -3799,6 +4068,7 @@ document.body.addEventListener("click", (event) => {
   const approveLeave = event.target.closest("[data-approve-leave]");
   const rejectLeave = event.target.closest("[data-reject-leave]");
   const deleteHolidayButton = event.target.closest("[data-delete-holiday]");
+  const deleteSalaryAdjustmentButton = event.target.closest("[data-delete-salary-adjustment]");
   const editBreakButton = event.target.closest("[data-edit-break]");
   const deleteBreakButton = event.target.closest("[data-delete-break]");
   const forceEndBreakButton = event.target.closest("[data-force-end-break]");
@@ -3882,8 +4152,12 @@ document.body.addEventListener("click", (event) => {
   if (approveRequest) applyApproval(approveRequest.dataset.approveRequest, true);
   if (rejectRequest) applyApproval(rejectRequest.dataset.rejectRequest, false);
   if (deleteHolidayButton) deleteHoliday(deleteHolidayButton.dataset.deleteHoliday);
+  if (deleteSalaryAdjustmentButton) deleteSalaryAdjustment(deleteSalaryAdjustmentButton.dataset.deleteSalaryAdjustment);
 
-  if (attendanceDelete && !isEmployee() && confirm("এই হাজিরা record ডিলিট করবেন?")) {
+  if (attendanceDelete && !isEmployee()) {
+    const attendanceItem = state.attendance.find((item) => item.id === attendanceDelete.dataset.deleteAttendance);
+    if (attendanceItem && !ensureMonthEditable(attendanceItem.date)) return;
+    if (!confirm("এই হাজিরা record ডিলিট করবেন?")) return;
     state.attendance = state.attendance.filter((item) => item.id !== attendanceDelete.dataset.deleteAttendance);
     saveState();
     render();

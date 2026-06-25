@@ -79,6 +79,7 @@
           <div>
             <p class="eyebrow">বাংলা এফিলিয়েট লাভ-লস ম্যানেজার</p>
             <h1>আজকের আয়, খরচ ও নেট লাভ</h1>
+            <p class="cloud-sync-bar" id="cloudSyncBar">Cloud sync ready</p>
           </div>
           <div class="date-control">
             <span class="notification-badge" id="pendingApprovalBadge"><i data-lucide="bell"></i> 0</span>
@@ -617,6 +618,8 @@
                     <th>Deduction</th>
                     <th>Advance</th>
                     <th>Weekend Pay</th>
+                    <th>Adjust +</th>
+                    <th>Adjust -</th>
                     <th>Payable</th>
                     <th>Payslip</th>
                   </tr>
@@ -624,6 +627,41 @@
                 <tbody id="payrollTable"></tbody>
               </table>
             </div>
+          </section>
+
+          <section class="panel payroll-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Manual Salary Adjustment</h2>
+                <p>Bonus, penalty, allowance, overtime এবং special deduction payroll-এ line item হিসেবে যুক্ত হবে।</p>
+              </div>
+            </div>
+            <form class="inline-form salary-adjust-form" id="salaryAdjustmentForm">
+              <select id="salaryAdjustmentEmployee" required></select>
+              <input id="salaryAdjustmentMonth" type="month" required />
+              <select id="salaryAdjustmentType" required>
+                <option value="bonus">Bonus</option>
+                <option value="allowance">Allowance</option>
+                <option value="overtime">Overtime</option>
+                <option value="penalty">Penalty</option>
+                <option value="special_deduction">Special Deduction</option>
+              </select>
+              <input id="salaryAdjustmentAmount" type="number" min="1" step="1" placeholder="Amount" required />
+              <input id="salaryAdjustmentNote" type="text" placeholder="Note" />
+              <button class="secondary-button" type="submit"><i data-lucide="plus"></i> Add</button>
+            </form>
+            <div class="fixed-list" id="salaryAdjustmentList"></div>
+          </section>
+
+          <section class="panel payroll-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Employee Warning System</h2>
+                <p>Late, early checkout, long break, missing checkout count করে employee-wise warning report।</p>
+              </div>
+              <button class="secondary-button" id="runWarningReportBtn" type="button"><i data-lucide="shield-alert"></i> Refresh</button>
+            </div>
+            <div class="fixed-list" id="warningReportList"></div>
           </section>
         </section>
 
@@ -683,6 +721,7 @@
                 <label>শেষ <input id="leaveEnd" type="date" required /></label>
               </div>
               <label>কারণ <textarea id="leaveReason" rows="3" placeholder="যেমন: অসুস্থতা, personal leave"></textarea></label>
+              <div class="decision-preview" id="leaveDecisionPreview">Leave date/type দিলে এখানে auto decision দেখাবে।</div>
               <button class="primary-button" type="submit"><i data-lucide="calendar-plus"></i> Leave Request পাঠান</button>
             </form>
 

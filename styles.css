@@ -544,6 +544,48 @@ canvas {
   background: #fff8e8;
 }
 
+.cloud-sync-bar {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--primary-dark);
+  background: #edf5ef;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cloud-sync-bar[data-status="dirty"] {
+  color: #785000;
+  background: #fff6d8;
+}
+
+.cloud-sync-bar[data-status="failed"] {
+  color: #9f2929;
+  background: #fdeaea;
+}
+
+.cloud-sync-bar[data-status="synced"] {
+  color: #126b45;
+  background: #e8f7ee;
+}
+
+.decision-preview {
+  padding: 12px 14px;
+  border: 1px solid rgba(19, 111, 99, 0.18);
+  border-radius: 8px;
+  color: var(--primary-dark);
+  background: #f4fbf7;
+  font-weight: 700;
+}
+
+.decision-preview[data-status="warning"] {
+  color: #9f2929;
+  background: #fff3ef;
+  border-color: rgba(182, 66, 66, 0.25);
+}
+
 .danger-row {
   background: #fff1f1;
 }
@@ -764,6 +806,10 @@ td:last-child {
 
 #holidayForm {
   grid-template-columns: 160px minmax(180px, 1fr) minmax(180px, 1fr) auto;
+}
+
+.salary-adjust-form {
+  grid-template-columns: minmax(160px, 1.2fr) 150px 170px 130px minmax(180px, 1fr) auto;
 }
 
 .manager-inline {
