@@ -60,6 +60,10 @@
             <i data-lucide="wallet-cards"></i>
             ফিক্সড খরচ
           </button>
+          <button class="nav-button" data-view="approvals" type="button">
+            <i data-lucide="bell-check"></i>
+            Approval Requests
+          </button>
           <button class="nav-button" data-view="settings" type="button">
             <i data-lucide="settings"></i>
             এডমিন সেটিংস
@@ -115,6 +119,16 @@
               <p id="todayNetHint">আজকের ফলাফল</p>
             </article>
           </div>
+
+          <section class="panel dashboard-tools">
+            <div class="panel-head">
+              <div>
+                <h2>Quick Tools</h2>
+                <p>Browser cache/local data refresh করতে চাইলে এখান থেকে Cache Clear করুন।</p>
+              </div>
+              <button class="secondary-button" id="homeClearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
+            </div>
+          </section>
 
           <div class="content-grid">
             <section class="panel wide">
@@ -817,6 +831,18 @@
           </div>
         </section>
 
+        <section class="view" id="approvalsView">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Approval Requests</h2>
+                <p>Attendance, leave, fixed cost, edit/delete এবং salary-related সব pending request এখানে থাকবে।</p>
+              </div>
+            </div>
+            <div class="fixed-list" id="approvalList"></div>
+          </section>
+        </section>
+
         <section class="view" id="settingsView">
           <div class="content-grid">
             <section class="panel">
@@ -877,14 +903,14 @@
               <div class="fixed-list" id="managerList"></div>
             </section>
 
-            <section class="panel">
+            <section class="panel" hidden>
               <div class="panel-head">
                 <div>
                   <h2>Approval Requests</h2>
                   <p>Manager edit/update/delete request approve করলে auto apply হবে</p>
                 </div>
               </div>
-              <div class="fixed-list" id="approvalList"></div>
+              <div class="fixed-list" id="approvalListSettingsMirror"></div>
             </section>
 
             <section class="panel">

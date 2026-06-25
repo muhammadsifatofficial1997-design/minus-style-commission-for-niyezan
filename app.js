@@ -90,6 +90,7 @@ const els = {
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
   cloudSyncBar: document.querySelector("#cloudSyncBar"),
+  homeClearCacheBtn: document.querySelector("#homeClearCacheBtn"),
   pendingApprovalBadge: document.querySelector("#pendingApprovalBadge"),
   selectedDate: document.querySelector("#selectedDate"),
   dailyStart: document.querySelector("#dailyStart"),
@@ -615,7 +616,7 @@ function activeFixedTotal() {
   return sum(state.fixedExpenses.filter((item) => item.active), "amount");
 }
 
-function employees() {
+function salaryEmployees() {
   return state.fixedExpenses
     .filter((item) => item.active && item.category === "salary")
     .map((item) => ({
@@ -623,6 +624,15 @@ function employees() {
       name: item.name.replace(/\s*বেতন\s*$/u, "").trim(),
       salary: Number(item.amount || 0),
     }));
+}
+
+function isPayrollOnlyAdminSalary(employeeOrName) {
+  const name = typeof employeeOrName === "string" ? employeeOrName : employeeOrName?.name;
+  return normalizeName(name).includes("সিফাত");
+}
+
+function employees() {
+  return salaryEmployees().filter((employee) => !isPayrollOnlyAdminSalary(employee));
 }
 
 function employeeProfileFor(employeeId) {
@@ -667,6 +677,54 @@ function ensureEmployeeAccess() {
       active: index === 0,
     });
   });
+}
+
+function cleanupPayrollOnlyAdminData() {
+  const payrollOnlyIds = salaryEmployees().filter(isPayrollOnlyAdminSalary).map((employee) => employee.id);
+  if (!payrollOnlyIds.length) return false;
+  let changed = false;
+  const before = JSON.stringify({
+    fixedExpenses: state.fixedExpenses,
+    employeeAccess: state.employeeAccess,
+    employeeProfiles: state.employeeProfiles,
+    attendance: state.attendance,
+    breaks: state.breaks,
+    advances: state.advances,
+    leaveRequests: state.leaveRequests,
+    fridayWorkRequests: state.fridayWorkRequests,
+    approvals: state.approvals,
+  });
+
+  state.fixedExpenses.forEach((item) => {
+    if (item.category === "salary" && isPayrollOnlyAdminSalary(item.name)) {
+      item.amount = 20000;
+      item.active = true;
+      item.note = "Admin salary only - no employee attendance/login data";
+    }
+  });
+  state.employeeAccess = state.employeeAccess.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.employeeProfiles = state.employeeProfiles.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.attendance = state.attendance.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.breaks = state.breaks.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.advances = state.advances.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.leaveRequests = state.leaveRequests.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.fridayWorkRequests = state.fridayWorkRequests.filter((item) => !payrollOnlyIds.includes(item.employeeId));
+  state.approvals = state.approvals.filter((item) => !payrollOnlyIds.includes(item.payload?.employeeId));
+
+  changed =
+    before !==
+    JSON.stringify({
+      fixedExpenses: state.fixedExpenses,
+      employeeAccess: state.employeeAccess,
+      employeeProfiles: state.employeeProfiles,
+      attendance: state.attendance,
+      breaks: state.breaks,
+      advances: state.advances,
+      leaveRequests: state.leaveRequests,
+      fridayWorkRequests: state.fridayWorkRequests,
+      approvals: state.approvals,
+    });
+  return changed;
 }
 
 function currentEmployeeId() {
@@ -1105,7 +1163,7 @@ function calculatePayrollForMonth(month) {
   const start = `${month}-01`;
   const end = monthEnd(start);
   const days = getDaysInMonth(start);
-  const payrollRows = employees().map((employee) => {
+  const payrollRows = salaryEmployees().map((employee) => {
     const records = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
     const present = records.filter((item) => item.status === "present").length;
     const leave = records.filter((item) => item.status === "leave").length;
@@ -1436,7 +1494,7 @@ function renderApprovals() {
           <article class="fixed-item">
             <div class="item-line">
               <strong>${escapeHtml(requestTitle(request))}</strong>
-              <span class="status-pill">${escapeHtml(request.requestedBy)}</span>
+              <span class="status-pill">${escapeHtml(requestCategory(request))}</span>
             </div>
             <small class="muted">${new Date(request.createdAt).toLocaleString("bn-BD")} · ${escapeHtml(requestDescription(request))}</small>
             <div class="action-row">
@@ -1447,6 +1505,20 @@ function renderApprovals() {
         `,
       )
       .join("") || `<div class="empty">কোনো pending request নেই।</div>`;
+}
+
+function requestCategory(request) {
+  return {
+    attendance_punch: "হাজিরা ও বেতন",
+    correction_request: "হাজিরা ও বেতন",
+    leave_request: "হাজিরা ও বেতন",
+    edit_entry: "দৈনিক হিসাব",
+    delete_entry: "দৈনিক হিসাব",
+    add_fixed: "ফিক্সড খরচ",
+    edit_fixed: "ফিক্সড খরচ",
+    delete_fixed: "ফিক্সড খরচ",
+    toggle_fixed: "ফিক্সড খরচ",
+  }[request.action] || "অন্যান্য";
 }
 
 function renderPendingApprovalBadge(count = state.approvals.filter((request) => request.status === "pending").length) {
@@ -4203,6 +4275,7 @@ els.deleteBackupVersionBtn?.addEventListener("click", deleteBackupVersion);
 els.clearAllBackupsBtn?.addEventListener("click", clearAllBackups);
 els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
+els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
   localStorage.setItem(CLOUD_URL_KEY, els.cloudApiUrl.value.trim());
@@ -4385,6 +4458,7 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
 window.addEventListener("resize", () => renderChart(els.selectedDate.value));
 
 initDates();
+if (cleanupPayrollOnlyAdminData()) saveState();
 ensureEmployeeAccess();
 breakTicker = setInterval(() => {
   renderBreaks();
@@ -4393,6 +4467,8 @@ breakTicker = setInterval(() => {
 
 async function boot() {
   if (cloudUrl()) await syncFromCloud(false);
+  if (cleanupPayrollOnlyAdminData()) saveState();
+  ensureEmployeeAccess();
   try {
     const savedSession = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
     if (savedSession?.role) {
