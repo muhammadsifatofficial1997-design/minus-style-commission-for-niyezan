@@ -70,6 +70,15 @@ const els = {
   attendanceLocationStatus: document.querySelector("#attendanceLocationStatus"),
   attendanceNote: document.querySelector("#attendanceNote"),
   attendanceTable: document.querySelector("#attendanceTable"),
+  fridayWorkForm: document.querySelector("#fridayWorkForm"),
+  fridayWorkEmployees: document.querySelector("#fridayWorkEmployees"),
+  fridayWorkEmployeesLabel: document.querySelector("#fridayWorkEmployeesLabel"),
+  fridayWorkDate: document.querySelector("#fridayWorkDate"),
+  fridayWorkType: document.querySelector("#fridayWorkType"),
+  fridayWorkReason: document.querySelector("#fridayWorkReason"),
+  fridayWorkNote: document.querySelector("#fridayWorkNote"),
+  fridayWorkHint: document.querySelector("#fridayWorkHint"),
+  fridayWorkList: document.querySelector("#fridayWorkList"),
   breakForm: document.querySelector("#breakForm"),
   breakEmployee: document.querySelector("#breakEmployee"),
   breakType: document.querySelector("#breakType"),
@@ -216,6 +225,7 @@ function defaultState() {
     approvals: [],
     activityLogs: [],
     attendance: [],
+    fridayWorkRequests: [],
     breaks: [],
     advances: [],
     leaveRequests: [],
@@ -261,6 +271,7 @@ function loadState() {
       approvals: parsed.approvals || defaults.approvals,
       activityLogs: parsed.activityLogs || defaults.activityLogs,
       attendance: parsed.attendance || defaults.attendance,
+      fridayWorkRequests: parsed.fridayWorkRequests || defaults.fridayWorkRequests,
       breaks: parsed.breaks || defaults.breaks,
       advances: parsed.advances || defaults.advances,
       leaveRequests: parsed.leaveRequests || defaults.leaveRequests,
@@ -620,6 +631,8 @@ function isCheckoutAllowed(value) {
 }
 
 function attendanceApprovalReason(payload) {
+  const fridayBlock = fridayAttendanceBlockReason(payload.date, payload.employeeId);
+  if (fridayBlock) return fridayBlock;
   if (payload.checkIn && !isCheckInWindow(payload.checkIn)) {
     return `Check-in ${payload.checkIn} allowed window 09:45-10:10-এর বাইরে`;
   }
@@ -741,6 +754,63 @@ function employeeOptionsForRole(currentValue = "", includeAll = false) {
   return { visible, html: allOption + options, value: visible.some((employee) => employee.id === currentValue) ? currentValue : isEmployee() ? currentEmployeeId() : currentValue };
 }
 
+function isFriday(dateString) {
+  return new Date(`${dateString}T00:00:00`).getDay() === 5;
+}
+
+function fridayWorkTypeLabel(type) {
+  return {
+    extra_salary: "Extra Salary",
+    compensatory_leave: "Compensatory Leave",
+  }[type] || type;
+}
+
+function approvedFridayWorkFor(date, employeeId) {
+  return (state.fridayWorkRequests || []).find((item) => {
+    return item.employeeId === employeeId && item.work_date === date && ["approved", "completed"].includes(item.status);
+  });
+}
+
+function fridayWorkCompleted(request) {
+  if (!request) return false;
+  if (request.status === "completed") return true;
+  const attendance = request.attendance_id
+    ? state.attendance.find((item) => item.id === request.attendance_id)
+    : attendanceFor(request.work_date, request.employeeId);
+  return Boolean(attendance?.checkIn && attendance?.checkOut);
+}
+
+function fridayWorkPayForMonth(employee, month) {
+  const days = getDaysInMonth(`${month}-01`);
+  const dailySalary = employee.salary / days;
+  const requests = (state.fridayWorkRequests || []).filter((item) => {
+    return item.employeeId === employee.id && item.request_type === "extra_salary" && item.work_date?.startsWith(month) && fridayWorkCompleted(item);
+  });
+  return { count: requests.length, amount: dailySalary * requests.length };
+}
+
+function compensatoryLeaveEarned(employeeId) {
+  return (state.fridayWorkRequests || []).filter((item) => {
+    return item.employeeId === employeeId && item.request_type === "compensatory_leave" && item.compensatory_leave_added && ["approved", "completed"].includes(item.status);
+  }).length;
+}
+
+function compensatoryLeaveUsed(employeeId) {
+  return state.leaveRequests
+    .filter((item) => item.employeeId === employeeId && item.type === "compensatory" && item.status === "approved")
+    .reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+}
+
+function compensatoryLeavePending(employeeId) {
+  return state.leaveRequests
+    .filter((item) => item.employeeId === employeeId && item.type === "compensatory" && item.status === "pending")
+    .reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+}
+
+function compensatoryLeaveBalance(employeeId) {
+  return Math.max(compensatoryLeaveEarned(employeeId) - compensatoryLeaveUsed(employeeId) - compensatoryLeavePending(employeeId), 0);
+}
+
 function payrollLockFor(month) {
   return state.payrollLocks.find((item) => item.month === month && item.locked);
 }
@@ -753,10 +823,12 @@ function calculatePayrollForMonth(month) {
     const records = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
     const present = records.filter((item) => item.status === "present").length;
     const leave = records.filter((item) => item.status === "leave").length;
+    const paidLeave = records.filter((item) => item.status === "paid_leave").length;
     const absent = records.filter((item) => item.status === "absent").length;
     const cutDays = leave + absent;
     const dailySalary = employee.salary / days;
     const deduction = dailySalary * cutDays;
+    const fridayPay = fridayWorkPayForMonth(employee, month);
     const advance = sum(
       state.advances.filter((item) => item.status === "approved" && item.employeeId === employee.id && item.month === month),
       "amount",
@@ -766,12 +838,15 @@ function calculatePayrollForMonth(month) {
       ...employee,
       present,
       leave,
+      paidLeave,
       absent,
+      fridayWorkDays: fridayPay.count,
+      weekendPay: fridayPay.amount,
       cutDays,
       deduction,
       advance,
       totalDeduction: deduction + advance,
-      payable: employee.salary - deduction - advance,
+      payable: employee.salary - deduction - advance + fridayPay.amount,
     };
   });
 
@@ -878,6 +953,7 @@ function render() {
   renderApprovals();
   renderRoleUi();
   renderAttendance();
+  renderFridayWork();
   renderBreaks();
   renderTimeline();
   renderCorrectionForm();
@@ -1075,8 +1151,10 @@ function renderApprovals() {
 
 function renderPendingApprovalBadge(count = state.approvals.filter((request) => request.status === "pending").length) {
   if (!els.pendingApprovalBadge) return;
-  els.pendingApprovalBadge.innerHTML = `<i data-lucide="bell"></i> ${bn.format(count)}`;
-  els.pendingApprovalBadge.title = `${bn.format(count)} pending approval request`;
+  const fridayPending = (state.fridayWorkRequests || []).filter((request) => request.status === "pending").length;
+  const total = count + fridayPending;
+  els.pendingApprovalBadge.innerHTML = `<i data-lucide="bell"></i> ${bn.format(total)}`;
+  els.pendingApprovalBadge.title = `${bn.format(total)} pending approval request`;
 }
 
 function renderAttendance() {
@@ -1115,6 +1193,169 @@ function renderAttendance() {
     .join("");
   els.attendanceTable.innerHTML = rows || `<tr><td colspan="5" class="empty">কোনো employee নেই।</td></tr>`;
   renderAttendanceActionState();
+}
+
+function renderFridayWork() {
+  if (!els.fridayWorkForm) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  const selected = Array.from(els.fridayWorkEmployees?.selectedOptions || []).map((option) => option.value);
+  els.fridayWorkEmployees.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+  selected.forEach((id) => {
+    Array.from(els.fridayWorkEmployees.options).forEach((option) => {
+      if (option.value === id) option.selected = true;
+    });
+  });
+  if (isEmployee()) {
+    els.fridayWorkEmployees.value = currentEmployeeId();
+    els.fridayWorkEmployeesLabel.style.display = "none";
+  } else {
+    els.fridayWorkEmployeesLabel.style.display = "";
+  }
+  if (!els.fridayWorkDate.value) els.fridayWorkDate.value = nextFriday(today());
+  if (els.fridayWorkHint) {
+    els.fridayWorkHint.textContent = isEmployee()
+      ? "Friday work approval ছাড়া শুক্রবার check-in চালু হবে না।"
+      : "Admin assignment করলে request approved হবে, employee Friday check-in করতে পারবে।";
+  }
+
+  const rows = (state.fridayWorkRequests || [])
+    .filter((item) => !isEmployee() || item.employeeId === currentEmployeeId())
+    .sort((a, b) => String(b.work_date).localeCompare(String(a.work_date)) || String(b.created_at).localeCompare(String(a.created_at)));
+
+  els.fridayWorkList.innerHTML =
+    rows
+      .map((item) => {
+        const attendance = item.attendance_id ? state.attendance.find((record) => record.id === item.attendance_id) : attendanceFor(item.work_date, item.employeeId);
+        const completed = fridayWorkCompleted(item);
+        return `
+          <article class="fixed-item friday-work-item">
+            <div class="item-line">
+              <strong>${escapeHtml(item.employeeName)} · ${escapeHtml(item.work_date)}</strong>
+              <span class="status-pill">${escapeHtml(item.status)}</span>
+            </div>
+            <small class="muted">${escapeHtml(fridayWorkTypeLabel(item.request_type))} · ${escapeHtml(item.reason || "No reason")}</small>
+            <small class="muted">Check In: ${escapeHtml(attendance?.checkIn || "-")} · Check Out: ${escapeHtml(attendance?.checkOut || "-")} ${completed ? "· Completed" : ""}</small>
+            ${item.note ? `<small class="muted">Note: ${escapeHtml(item.note)}</small>` : ""}
+            ${
+              isAdmin()
+                ? `<div class="action-row">
+                    ${item.status === "pending" ? `<button class="small-action" data-approve-friday="${item.id}" type="button">Approve</button>` : ""}
+                    ${["pending", "approved"].includes(item.status) ? `<button class="small-action danger" data-reject-friday="${item.id}" type="button">Reject</button>` : ""}
+                    ${completed && item.status !== "completed" ? `<button class="small-action" data-complete-friday="${item.id}" type="button">Complete</button>` : ""}
+                    <button class="small-action danger" data-delete-friday="${item.id}" type="button">Delete</button>
+                  </div>`
+                : ""
+            }
+          </article>
+        `;
+      })
+      .join("") || `<div class="empty">Friday work request নেই।</div>`;
+}
+
+function nextFriday(dateString) {
+  const date = new Date(`${dateString}T00:00:00`);
+  const add = (5 - date.getDay() + 7) % 7;
+  date.setDate(date.getDate() + add);
+  return date.toISOString().slice(0, 10);
+}
+
+function saveFridayWorkRequest(event) {
+  event.preventDefault();
+  const workDate = els.fridayWorkDate.value;
+  if (!isFriday(workDate)) {
+    alert("Friday Work Request-এর তারিখ অবশ্যই শুক্রবার হতে হবে।");
+    return;
+  }
+
+  const selectedIds = isEmployee()
+    ? [currentEmployeeId()]
+    : Array.from(els.fridayWorkEmployees.selectedOptions || []).map((option) => option.value);
+  if (!selectedIds.length) {
+    alert("কমপক্ষে ১ জন employee select করুন।");
+    return;
+  }
+
+  const now = new Date().toISOString();
+  selectedIds.forEach((employeeId) => {
+    const employee = employeeById(employeeId);
+    if (!employee) return;
+    const existing = (state.fridayWorkRequests || []).find((item) => {
+      return item.employeeId === employee.id && item.work_date === workDate && !["rejected"].includes(item.status);
+    });
+    if (existing) {
+      existing.request_type = els.fridayWorkType.value;
+      existing.reason = els.fridayWorkReason.value.trim();
+      existing.note = els.fridayWorkNote.value.trim();
+      existing.updated_at = now;
+      if (isAdmin()) {
+        existing.status = "approved";
+        existing.approved_by = "Admin";
+      }
+      return;
+    }
+    state.fridayWorkRequests.unshift({
+      id: crypto.randomUUID(),
+      employee_id: employee.id,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      work_date: workDate,
+      request_type: els.fridayWorkType.value,
+      reason: els.fridayWorkReason.value.trim(),
+      note: els.fridayWorkNote.value.trim(),
+      status: isAdmin() ? "approved" : "pending",
+      approved_by: isAdmin() ? "Admin" : "",
+      attendance_id: "",
+      salary_added: false,
+      compensatory_leave_added: isAdmin() && els.fridayWorkType.value === "compensatory_leave",
+      created_at: now,
+      updated_at: now,
+      requested_by: currentUser.name || employee.name,
+    });
+    addNotification(
+      "Friday Work Alert",
+      isAdmin()
+        ? `${employee.name}-এর Friday work approved: ${workDate} (${fridayWorkTypeLabel(els.fridayWorkType.value)})`
+        : `${employee.name}-এর Friday work approval দরকার: ${workDate} (${fridayWorkTypeLabel(els.fridayWorkType.value)})`,
+    );
+  });
+
+  logActivity("Friday Work Request", `${workDate} · ${fridayWorkTypeLabel(els.fridayWorkType.value)} · ${bn.format(selectedIds.length)} employee`, selectedIds.join(","));
+  els.fridayWorkForm.reset();
+  els.fridayWorkDate.value = nextFriday(today());
+  saveState();
+  render();
+}
+
+function reviewFridayWork(id, status) {
+  if (!isAdmin()) return;
+  const item = (state.fridayWorkRequests || []).find((request) => request.id === id);
+  if (!item) return;
+  item.status = status;
+  item.updated_at = new Date().toISOString();
+  item.approved_by = status === "approved" ? "Admin" : item.approved_by || "";
+  if (status === "approved" && item.request_type === "compensatory_leave") item.compensatory_leave_added = true;
+  if (status === "rejected") {
+    item.salary_added = false;
+    item.compensatory_leave_added = false;
+  }
+  if (status === "completed") {
+    const attendance = attendanceFor(item.work_date, item.employeeId);
+    if (attendance) item.attendance_id = attendance.id;
+    if (item.request_type === "extra_salary") item.salary_added = true;
+    if (item.request_type === "compensatory_leave") item.compensatory_leave_added = true;
+  }
+  addNotification("Friday Work Alert", `${item.employeeName}-এর Friday work ${status}: ${item.work_date}`);
+  logActivity("Friday Work Review", `${item.employeeName} · ${item.work_date} · ${status}`, item.employeeId);
+  saveState();
+  render();
+}
+
+function deleteFridayWork(id) {
+  if (!isAdmin()) return;
+  if (!confirm("এই Friday work request delete করবেন?")) return;
+  state.fridayWorkRequests = (state.fridayWorkRequests || []).filter((item) => item.id !== id);
+  saveState();
+  render();
 }
 
 function renderBreaks() {
@@ -1206,18 +1447,21 @@ function renderAttendanceActionState() {
   const record = employee ? attendanceFor(today(), employee.id) : null;
   const hasCheckIn = Boolean(record?.checkIn);
   const hasCheckOut = Boolean(record?.checkOut);
+  const fridayBlocked = Boolean(employee && fridayAttendanceBlockReason(today(), employee.id));
 
-  els.attendanceCheckInNowBtn.disabled = hasCheckIn;
-  els.attendanceCheckOutNowBtn.disabled = !hasCheckIn || hasCheckOut;
-  els.attendanceCheckInNowBtn.title = hasCheckIn ? "আজ check-in already save আছে।" : "বর্তমান সময় দিয়ে check-in করুন।";
-  els.attendanceCheckOutNowBtn.title = !hasCheckIn
+  els.attendanceCheckInNowBtn.disabled = hasCheckIn || fridayBlocked;
+  els.attendanceCheckOutNowBtn.disabled = !hasCheckIn || hasCheckOut || fridayBlocked;
+  els.attendanceCheckInNowBtn.title = fridayBlocked ? "Friday Work approval ছাড়া শুক্রবার check-in বন্ধ।" : hasCheckIn ? "আজ check-in already save আছে।" : "বর্তমান সময় দিয়ে check-in করুন।";
+  els.attendanceCheckOutNowBtn.title = fridayBlocked
+    ? "Friday Work approval ছাড়া শুক্রবার check-out বন্ধ।"
+    : !hasCheckIn
     ? "আগে check-in করতে হবে।"
     : hasCheckOut
       ? "আজ check-out already save আছে।"
       : "বর্তমান সময় দিয়ে check-out করুন।";
 
-  if (els.mobileCheckInBtn) els.mobileCheckInBtn.disabled = hasCheckIn;
-  if (els.mobileCheckOutBtn) els.mobileCheckOutBtn.disabled = !hasCheckIn || hasCheckOut;
+  if (els.mobileCheckInBtn) els.mobileCheckInBtn.disabled = hasCheckIn || fridayBlocked;
+  if (els.mobileCheckOutBtn) els.mobileCheckOutBtn.disabled = !hasCheckIn || hasCheckOut || fridayBlocked;
   if (els.mobileStartBreakBtn) els.mobileStartBreakBtn.disabled = !hasCheckIn || hasCheckOut || Boolean(employee && activeBreakFor(employee.id));
   if (els.mobileEndBreakBtn) els.mobileEndBreakBtn.disabled = !employee || !activeBreakFor(employee.id);
 }
@@ -1578,15 +1822,17 @@ function renderPayroll() {
             <td>${money(row.salary)}</td>
             <td>${bn.format(row.present)}</td>
             <td>${bn.format(row.leave)}</td>
+            <td>${bn.format(row.paidLeave || 0)}</td>
             <td>${bn.format(row.absent)}</td>
             <td class="amount bad">${money(row.deduction)}</td>
             <td class="amount bad">${money(row.advance)}</td>
+            <td class="amount good">${money(row.weekendPay || 0)}</td>
             <td class="amount good">${money(row.payable)}</td>
             <td><button class="small-action" data-payslip="${row.id}" type="button">PDF</button></td>
           </tr>
         `,
       )
-      .join("") || `<tr><td colspan="9" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
+      .join("") || `<tr><td colspan="11" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
 }
 
 function renderAdvance() {
@@ -1625,6 +1871,7 @@ function leaveTypeLabel(type) {
     personal: "Personal Leave",
     sick: "Sick Leave",
     study: "Study Leave",
+    compensatory: "Compensatory Leave",
     other: "Other Leave",
   }[type] || type;
 }
@@ -1638,13 +1885,16 @@ function renderLeave() {
   const visibleLeaves = isEmployee() ? state.leaveRequests.filter((item) => item.employeeId === currentEmployeeId()) : state.leaveRequests;
   const employeeId = isEmployee() ? currentEmployeeId() : els.leaveEmployee.value || visibleEmployees[0]?.id;
   const employeeLeaves = state.leaveRequests.filter((item) => item.employeeId === employeeId);
-  const used = employeeLeaves.filter((item) => item.status === "approved").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
-  const pending = employeeLeaves.filter((item) => item.status === "pending").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const regularLeaves = employeeLeaves.filter((item) => item.type !== "compensatory");
+  const used = regularLeaves.filter((item) => item.status === "approved").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const pending = regularLeaves.filter((item) => item.status === "pending").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const compBalance = employeeId ? compensatoryLeaveBalance(employeeId) : 0;
   const total = 20;
 
   setText("leaveTotal", bn.format(total));
   setText("leaveUsed", bn.format(used));
   setText("leavePending", bn.format(pending));
+  setText("leaveCompBalance", bn.format(compBalance));
   setText("leaveRemaining", bn.format(Math.max(total - used - pending, 0)));
   setText("leaveHint", isEmployee() ? "আপনার leave balance ও request history" : "নির্বাচিত কর্মীর leave balance এবং সব request");
 
@@ -1751,6 +2001,7 @@ function renderOfficeLocationSettings() {
 function statusLabel(status) {
   return {
     present: "Present",
+    paid_leave: "Paid Leave",
     leave: "Leave - Cut",
     absent: "Absent - Cut",
   }[status] || status;
@@ -1898,8 +2149,9 @@ function normalizeRestoredState(nextState) {
     ...nextState,
     settings: { ...defaults.settings, ...(nextState.settings || {}) },
     categories: { ...defaults.categories, ...(nextState.categories || {}) },
-    breaks: nextState.breaks || [],
-    activityLogs: nextState.activityLogs || [],
+      breaks: nextState.breaks || [],
+      fridayWorkRequests: nextState.fridayWorkRequests || [],
+      activityLogs: nextState.activityLogs || [],
     leaveRequests: nextState.leaveRequests || [],
     payrollLocks: nextState.payrollLocks || [],
   };
@@ -2141,12 +2393,17 @@ async function attachLocationIfNeeded(payload) {
 
 function persistAttendance(payload, employee, resetForm = true) {
   const existing = attendanceFor(payload.date, payload.employeeId);
+  let record;
 
   if (existing) {
     Object.assign(existing, payload);
+    record = existing;
   } else {
-    state.attendance.push({ id: crypto.randomUUID(), ...payload, createdAt: new Date().toISOString() });
+    record = { id: crypto.randomUUID(), ...payload, createdAt: new Date().toISOString() };
+    state.attendance.push(record);
   }
+
+  linkFridayWorkAttendance(record);
 
   if (payload.status === "present" && isLate(payload.shift, payload.checkIn)) {
     addNotification("Late Arrival Alert", `${employee.name} ${payload.date} তারিখে ${shiftLabel(payload.shift)}-এ late check-in করেছে: ${payload.checkIn}`);
@@ -2161,6 +2418,25 @@ function persistAttendance(payload, employee, resetForm = true) {
   }
   saveState();
   render();
+  return record;
+}
+
+function fridayAttendanceBlockReason(date, employeeId) {
+  if (!isFriday(date)) return "";
+  return approvedFridayWorkFor(date, employeeId) ? "" : "শুক্রবার off day। Friday Work approval ছাড়া check-in/check-out করা যাবে না।";
+}
+
+function linkFridayWorkAttendance(record) {
+  if (!record || !isFriday(record.date)) return;
+  const request = approvedFridayWorkFor(record.date, record.employeeId);
+  if (!request) return;
+  request.attendance_id = record.id;
+  request.updated_at = new Date().toISOString();
+  if (record.checkIn && record.checkOut) {
+    request.status = "completed";
+    if (request.request_type === "extra_salary") request.salary_added = true;
+    if (request.request_type === "compensatory_leave") request.compensatory_leave_added = true;
+  }
 }
 
 function requestAttendanceApproval(payload, employee, reason) {
@@ -2218,6 +2494,13 @@ async function saveAttendancePunch(kind) {
     payload.checkOut = currentTimeValue();
   }
 
+  const fridayBlock = isEmployee() ? fridayAttendanceBlockReason(payload.date, payload.employeeId) : "";
+  if (fridayBlock) {
+    alert(`${fridayBlock} আগে Friday Work Request পাঠান।`);
+    renderAttendanceActionState();
+    return;
+  }
+
   const verified = await attachLocationIfNeeded(payload);
   if (!verified) return;
 
@@ -2250,6 +2533,12 @@ async function saveAttendance(event) {
     markedBy: currentUser.name || "Admin",
     updatedAt: new Date().toISOString(),
   };
+
+  const fridayBlock = isEmployee() ? fridayAttendanceBlockReason(payload.date, payload.employeeId) : "";
+  if (fridayBlock) {
+    alert(`${fridayBlock} আগে Friday Work Request পাঠান।`);
+    return;
+  }
 
   const verified = await attachLocationIfNeeded(payload);
   if (!verified) return;
@@ -2634,8 +2923,9 @@ function printPayslip(employeeId) {
           <tr><th>Employee Name</th><td>${row.name}</td></tr>
           <tr><th>Employee ID</th><td>${row.id}</td></tr>
           <tr><th>Salary Month</th><td>${month}</td></tr>
-          <tr><th>Attendance Summary</th><td>Present: ${row.present}, Leave: ${row.leave}, Absent: ${row.absent}</td></tr>
+          <tr><th>Attendance Summary</th><td>Present: ${row.present}, Leave: ${row.leave}, Paid Leave: ${row.paidLeave || 0}, Absent: ${row.absent}</td></tr>
           <tr><th>Gross Salary</th><td>${money(row.salary)}</td></tr>
+          <tr><th>Friday Work Bonus / Weekend Work Pay</th><td>${money(row.weekendPay || 0)}</td></tr>
           <tr><th>Deduction</th><td>${money(row.totalDeduction)}</td></tr>
           <tr><th>Net Salary</th><td class="total">${money(row.payable)}</td></tr>
         </table>
@@ -2657,7 +2947,7 @@ function applyLeaveToAttendance(leave) {
         employeeId: employee.id,
         employeeName: employee.name,
         date,
-        status: "leave",
+        status: leave.type === "compensatory" ? "paid_leave" : "leave",
         shift: "morning",
         checkIn: "",
         checkOut: "",
@@ -2682,6 +2972,11 @@ function saveLeaveRequest(event) {
     alert("শেষ তারিখ শুরু তারিখের আগে হতে পারবে না।");
     return;
   }
+  const requestedDays = dateRange(start, end).length;
+  if (els.leaveType.value === "compensatory" && requestedDays > compensatoryLeaveBalance(employee.id)) {
+    alert(`Compensatory leave balance ${bn.format(compensatoryLeaveBalance(employee.id))} দিন। এর বেশি request করা যাবে না।`);
+    return;
+  }
 
   const leave = {
     id: crypto.randomUUID(),
@@ -2690,7 +2985,7 @@ function saveLeaveRequest(event) {
     type: els.leaveType.value,
     start,
     end,
-    days: dateRange(start, end).length,
+    days: requestedDays,
     reason: els.leaveReason.value.trim(),
     requestedBy: currentUser.name || employee.name,
     requestedAt: new Date().toISOString(),
@@ -3081,6 +3376,7 @@ function initDates() {
   if (els.correctionDate) els.correctionDate.value = now;
   if (els.leaveStart) els.leaveStart.value = now;
   if (els.leaveEnd) els.leaveEnd.value = now;
+  if (els.fridayWorkDate) els.fridayWorkDate.value = nextFriday(now);
 }
 
 document.querySelectorAll(".nav-button").forEach((button) => {
@@ -3172,6 +3468,7 @@ els.bulkEntryForm.addEventListener("submit", addBulkEntries);
 els.attendanceForm.addEventListener("submit", saveAttendance);
 els.attendanceCheckInNowBtn?.addEventListener("click", () => saveAttendancePunch("in"));
 els.attendanceCheckOutNowBtn?.addEventListener("click", () => saveAttendancePunch("out"));
+els.fridayWorkForm?.addEventListener("submit", saveFridayWorkRequest);
 els.breakForm?.addEventListener("submit", startBreak);
 els.endBreakBtn?.addEventListener("click", endBreak);
 els.breakEmployee?.addEventListener("change", renderBreaks);
@@ -3261,6 +3558,10 @@ document.body.addEventListener("click", (event) => {
   const employeeAccessToggle = event.target.closest("[data-toggle-employee-access]");
   const employeeAccessDelete = event.target.closest("[data-delete-employee-access]");
   const notificationMark = event.target.closest("[data-mark-notification]");
+  const approveFriday = event.target.closest("[data-approve-friday]");
+  const rejectFriday = event.target.closest("[data-reject-friday]");
+  const completeFriday = event.target.closest("[data-complete-friday]");
+  const deleteFriday = event.target.closest("[data-delete-friday]");
 
   if (entryEdit) openEditEntry(entryEdit.dataset.editEntry);
 
@@ -3367,6 +3668,11 @@ document.body.addEventListener("click", (event) => {
     saveState();
     render();
   }
+
+  if (approveFriday) reviewFridayWork(approveFriday.dataset.approveFriday, "approved");
+  if (rejectFriday) reviewFridayWork(rejectFriday.dataset.rejectFriday, "rejected");
+  if (completeFriday) reviewFridayWork(completeFriday.dataset.completeFriday, "completed");
+  if (deleteFriday) deleteFridayWork(deleteFriday.dataset.deleteFriday);
 });
 
 document.querySelector("#resetBtn").addEventListener("click", () => {

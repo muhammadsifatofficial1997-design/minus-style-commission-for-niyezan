@@ -920,6 +920,27 @@ td:last-child {
   margin: 0;
 }
 
+.friday-work-panel {
+  margin-bottom: 22px;
+}
+
+.friday-work-form {
+  display: grid;
+  gap: 14px;
+}
+
+#fridayWorkEmployees {
+  min-height: 112px;
+}
+
+.friday-work-list {
+  margin-top: 16px;
+}
+
+.friday-work-item {
+  border-left: 4px solid var(--accent);
+}
+
 .modal {
   position: fixed;
   inset: 0;

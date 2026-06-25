@@ -375,6 +375,34 @@
             </div>
           </section>
 
+          <section class="panel friday-work-panel" id="fridayWorkPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Friday Work / Weekend Work</h2>
+                <p id="fridayWorkHint">শুক্রবার কাজের request, approval, extra salary অথবা compensatory leave</p>
+              </div>
+            </div>
+            <form id="fridayWorkForm" class="friday-work-form">
+              <div class="field-row">
+                <label id="fridayWorkEmployeesLabel">কর্মী <select id="fridayWorkEmployees" multiple></select></label>
+                <label>শুক্রবারের তারিখ <input id="fridayWorkDate" type="date" required /></label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Request Type
+                  <select id="fridayWorkType" required>
+                    <option value="extra_salary">Extra Salary</option>
+                    <option value="compensatory_leave">Compensatory Leave</option>
+                  </select>
+                </label>
+                <label>Reason <input id="fridayWorkReason" type="text" placeholder="যেমন: campaign pressure, urgent delivery" required /></label>
+              </div>
+              <label>Note <textarea id="fridayWorkNote" rows="2" placeholder="Admin note / employee note"></textarea></label>
+              <button class="primary-button" type="submit"><i data-lucide="calendar-plus"></i> Friday Work Request Save</button>
+            </form>
+            <div class="fixed-list friday-work-list" id="fridayWorkList"></div>
+          </section>
+
           <div class="form-grid">
             <form class="panel form-panel" id="attendanceForm">
               <div class="panel-head">
@@ -389,6 +417,7 @@
                   স্ট্যাটাস
                   <select id="attendanceStatus" required>
                     <option value="present">Present</option>
+                    <option value="paid_leave">Paid Leave</option>
                     <option value="leave">Leave - Salary Cut</option>
                     <option value="absent">Absent - Salary Cut</option>
                   </select>
@@ -582,9 +611,11 @@
                     <th>Base Salary</th>
                     <th>Present</th>
                     <th>Leave</th>
+                    <th>Paid Leave</th>
                     <th>Absent</th>
                     <th>Deduction</th>
                     <th>Advance</th>
+                    <th>Weekend Pay</th>
                     <th>Payable</th>
                     <th>Payslip</th>
                   </tr>
@@ -641,6 +672,7 @@
                     <option value="personal">Personal Leave</option>
                     <option value="sick">Sick Leave</option>
                     <option value="study">Study Leave</option>
+                    <option value="compensatory">Compensatory Leave</option>
                     <option value="other">Other Leave</option>
                   </select>
                 </label>
@@ -664,6 +696,7 @@
                 <div><small>Total Leave</small><strong id="leaveTotal">20</strong></div>
                 <div><small>Used</small><strong id="leaveUsed">0</strong></div>
                 <div><small>Pending</small><strong id="leavePending">0</strong></div>
+                <div><small>Comp Balance</small><strong id="leaveCompBalance">0</strong></div>
                 <div><small>Remaining</small><strong id="leaveRemaining">20</strong></div>
               </div>
               <div class="fixed-list" id="leaveList"></div>
