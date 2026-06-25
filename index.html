@@ -830,7 +830,11 @@
               <p class="backup-status" id="backupStatus">Auto backup প্রস্তুত</p>
               <div class="backup-version-box">
                 <label>Backup version select করুন <select id="backupVersionSelect"></select></label>
-                <button class="secondary-button" id="restoreBackupVersionBtn" type="button"><i data-lucide="rotate-ccw"></i> Selected Backup Restore</button>
+                <div class="button-row">
+                  <button class="secondary-button" id="restoreBackupVersionBtn" type="button"><i data-lucide="rotate-ccw"></i> Selected Backup Restore</button>
+                  <button class="danger-button" id="deleteBackupVersionBtn" type="button"><i data-lucide="trash"></i> Selected Backup Delete</button>
+                  <button class="danger-button ghost-danger" id="clearAllBackupsBtn" type="button"><i data-lucide="archive-x"></i> সব Backup Clear</button>
+                </div>
                 <small id="backupVersionHint">Restore করার আগে তারিখ দেখে select করুন।</small>
               </div>
               <textarea id="exportOutput" rows="8" placeholder="Export JSON এখানে দেখাবে। Restore করতে backup JSON paste করে JSON Restore চাপুন।"></textarea>

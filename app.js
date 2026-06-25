@@ -185,6 +185,8 @@ const els = {
   backupStatus: document.querySelector("#backupStatus"),
   backupVersionSelect: document.querySelector("#backupVersionSelect"),
   restoreBackupVersionBtn: document.querySelector("#restoreBackupVersionBtn"),
+  deleteBackupVersionBtn: document.querySelector("#deleteBackupVersionBtn"),
+  clearAllBackupsBtn: document.querySelector("#clearAllBackupsBtn"),
   backupVersionHint: document.querySelector("#backupVersionHint"),
   healthCheckList: document.querySelector("#healthCheckList"),
   runHealthCheckBtn: document.querySelector("#runHealthCheckBtn"),
@@ -421,6 +423,10 @@ function getBackups() {
   } catch {
     return [];
   }
+}
+
+function setBackups(backups) {
+  localStorage.setItem(BACKUP_KEY, JSON.stringify((backups || []).slice(0, 15)));
 }
 
 function money(value) {
@@ -1876,6 +1882,8 @@ function renderBackupVersions(backups = getBackups()) {
       })
       .join("") || `<option value="">Backup নেই</option>`;
   if (els.restoreBackupVersionBtn) els.restoreBackupVersionBtn.disabled = !backups.length;
+  if (els.deleteBackupVersionBtn) els.deleteBackupVersionBtn.disabled = !backups.length;
+  if (els.clearAllBackupsBtn) els.clearAllBackupsBtn.disabled = !backups.length;
   if (els.backupVersionHint) {
     els.backupVersionHint.textContent = backups.length
       ? "Restore করার আগে তারিখ দেখে version select করুন।"
@@ -1925,6 +1933,33 @@ function restoreBackupVersion() {
   } catch (error) {
     alert(`Restore failed: ${error.message}`);
   }
+}
+
+function deleteBackupVersion() {
+  if (!isAdmin()) return;
+  const backups = getBackups();
+  const index = Number(els.backupVersionSelect?.value);
+  const selected = backups[index];
+  if (!selected) {
+    alert("Delete করার মতো backup version পাওয়া যায়নি।");
+    return;
+  }
+  const created = new Date(selected.createdAt).toLocaleString("bn-BD");
+  if (!confirm(`${created} backup snapshot delete করবেন? Current dashboard data থাকবে।`)) return;
+  backups.splice(index, 1);
+  setBackups(backups);
+  renderBackupStatus();
+  if (window.lucide) lucide.createIcons();
+}
+
+function clearAllBackups() {
+  if (!isAdmin()) return;
+  const backups = getBackups();
+  if (!backups.length) return;
+  if (!confirm(`মোট ${bn.format(backups.length)}টি auto backup snapshot delete করবেন? Current dashboard data থাকবে।`)) return;
+  localStorage.removeItem(BACKUP_KEY);
+  renderBackupStatus();
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderChart(dateString) {
@@ -3189,6 +3224,8 @@ document.querySelector("#exportBtn").addEventListener("click", exportJson);
 document.querySelector("#downloadBackupBtn").addEventListener("click", downloadBackup);
 document.querySelector("#restoreJsonBtn")?.addEventListener("click", restoreJson);
 els.restoreBackupVersionBtn?.addEventListener("click", restoreBackupVersion);
+els.deleteBackupVersionBtn?.addEventListener("click", deleteBackupVersion);
+els.clearAllBackupsBtn?.addEventListener("click", clearAllBackups);
 els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);

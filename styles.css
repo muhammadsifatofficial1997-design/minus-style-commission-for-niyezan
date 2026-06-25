@@ -903,6 +903,11 @@ td:last-child {
   margin-top: 6px;
 }
 
+.ghost-danger {
+  background: #fff;
+  color: #b64242;
+}
+
 .health-item {
   border-left: 4px solid #d89c22;
 }
