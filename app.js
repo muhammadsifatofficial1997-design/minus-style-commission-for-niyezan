@@ -13,6 +13,12 @@ const BREAK_LIMIT_MINUTES = {
   personal: 30,
   official: 90,
 };
+const LEAVE_POLICY = {
+  casual: 10,
+  sick: 10,
+  advance: 5,
+  fixedHoliday: 18,
+};
 
 const bn = new Intl.NumberFormat("bn-BD", { maximumFractionDigits: 0 });
 const state = loadState();
@@ -42,6 +48,36 @@ const breakLabels = {
   personal: "Personal Break",
   official: "Official Break",
 };
+
+function defaultFixedHolidays(year = new Date().getFullYear()) {
+  return [
+    ["02-21", "Language Day"],
+    ["03-26", "Independence Day"],
+    ["04-14", "Bengali New Year"],
+    ["05-01", "May Day"],
+    ["05-31", "Buddha Purnima"],
+    ["03-21", "Eid ul-Fitr Holiday 1"],
+    ["03-22", "Eid ul-Fitr Holiday 2"],
+    ["03-23", "Eid ul-Fitr Holiday 3"],
+    ["05-27", "Eid ul-Adha Holiday 1"],
+    ["05-28", "Eid ul-Adha Holiday 2"],
+    ["05-29", "Eid ul-Adha Holiday 3"],
+    ["06-26", "Muharram / Ashura"],
+    ["08-15", "National Holiday"],
+    ["09-04", "Eid-e-Miladunnabi"],
+    ["10-20", "Durga Puja"],
+    ["12-16", "Victory Day"],
+    ["12-25", "Christmas Day"],
+    ["12-31", "Year End Office Holiday"],
+  ].map(([day, name]) => ({
+    id: crypto.randomUUID(),
+    date: `${year}-${day}`,
+    name,
+    note: "Fixed paid holiday",
+    fixed: true,
+    createdAt: new Date().toISOString(),
+  }));
+}
 
 const els = {
   appShell: document.querySelector("#appShell"),
@@ -142,6 +178,13 @@ const els = {
   leaveEnd: document.querySelector("#leaveEnd"),
   leaveReason: document.querySelector("#leaveReason"),
   leaveList: document.querySelector("#leaveList"),
+  leaveFixedHolidayTotal: document.querySelector("#leaveFixedHolidayTotal"),
+  leaveAdvanceBalance: document.querySelector("#leaveAdvanceBalance"),
+  holidayForm: document.querySelector("#holidayForm"),
+  holidayDate: document.querySelector("#holidayDate"),
+  holidayName: document.querySelector("#holidayName"),
+  holidayNote: document.querySelector("#holidayNote"),
+  holidayList: document.querySelector("#holidayList"),
   payrollLockBtn: document.querySelector("#payrollLockBtn"),
   entryForm: document.querySelector("#entryForm"),
   entryType: document.querySelector("#entryType"),
@@ -229,6 +272,7 @@ function defaultState() {
     breaks: [],
     advances: [],
     leaveRequests: [],
+    fixedHolidays: defaultFixedHolidays(),
     payrollLocks: [],
     notifications: [],
     fixedExpenses: [
@@ -275,6 +319,7 @@ function loadState() {
       breaks: parsed.breaks || defaults.breaks,
       advances: parsed.advances || defaults.advances,
       leaveRequests: parsed.leaveRequests || defaults.leaveRequests,
+      fixedHolidays: parsed.fixedHolidays || defaults.fixedHolidays,
       payrollLocks: parsed.payrollLocks || defaults.payrollLocks,
       notifications: parsed.notifications || defaults.notifications,
       categories: { ...defaults.categories, ...parsed.categories },
@@ -797,18 +842,130 @@ function compensatoryLeaveEarned(employeeId) {
 
 function compensatoryLeaveUsed(employeeId) {
   return state.leaveRequests
-    .filter((item) => item.employeeId === employeeId && item.type === "compensatory" && item.status === "approved")
-    .reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+    .filter((item) => item.employeeId === employeeId && item.status === "approved")
+    .reduce((total, item) => total + leaveDates(item).filter((day) => day.type === "compensatory").length, 0);
 }
 
 function compensatoryLeavePending(employeeId) {
   return state.leaveRequests
-    .filter((item) => item.employeeId === employeeId && item.type === "compensatory" && item.status === "pending")
-    .reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+    .filter((item) => item.employeeId === employeeId && item.status === "pending")
+    .reduce((total, item) => total + leaveDates(item).filter((day) => day.type === "compensatory").length, 0);
 }
 
 function compensatoryLeaveBalance(employeeId) {
   return Math.max(compensatoryLeaveEarned(employeeId) - compensatoryLeaveUsed(employeeId) - compensatoryLeavePending(employeeId), 0);
+}
+
+function holidayForDate(date) {
+  return (state.fixedHolidays || []).find((item) => item.date === date);
+}
+
+function leaveDates(leave) {
+  if (Array.isArray(leave.breakdown) && leave.breakdown.length) return leave.breakdown;
+  return dateRange(leave.start, leave.end).map((date) => ({
+    date,
+    type: leave.type === "personal" || leave.type === "study" || leave.type === "other" ? "casual" : leave.type,
+  }));
+}
+
+function leaveDaysByType(employeeId, type, status) {
+  return state.leaveRequests
+    .filter((item) => item.employeeId === employeeId && item.status === status)
+    .reduce((total, item) => total + leaveDates(item).filter((day) => day.type === type).length, 0);
+}
+
+function casualLeaveRemaining(employeeId) {
+  return Math.max(LEAVE_POLICY.casual - leaveDaysByType(employeeId, "casual", "approved") - leaveDaysByType(employeeId, "casual", "pending"), 0);
+}
+
+function sickLeaveRemaining(employeeId) {
+  return Math.max(LEAVE_POLICY.sick - leaveDaysByType(employeeId, "sick", "approved") - leaveDaysByType(employeeId, "sick", "pending"), 0);
+}
+
+function advanceLeaveRemaining(employeeId) {
+  return Math.max(LEAVE_POLICY.advance - leaveDaysByType(employeeId, "advance_leave", "approved") - leaveDaysByType(employeeId, "advance_leave", "pending"), 0);
+}
+
+function isExamLeaveReason(reason) {
+  return /exam|পরীক্ষা|test|পরিক্ষা/i.test(String(reason || ""));
+}
+
+function buildLeaveBreakdown(employeeId, requestedType, start, end, reason) {
+  let casualLeft = casualLeaveRemaining(employeeId);
+  let sickLeft = sickLeaveRemaining(employeeId);
+  let advanceLeft = advanceLeaveRemaining(employeeId);
+  const useCasualChain = requestedType === "casual" || isExamLeaveReason(reason);
+
+  return dateRange(start, end).map((date) => {
+    const holiday = holidayForDate(date);
+    if (holiday) return { date, type: "fixed_holiday", label: holiday.name };
+    if (requestedType === "compensatory") return { date, type: "compensatory" };
+    if (requestedType === "lwp") return { date, type: "lwp" };
+    if (requestedType === "sick") {
+      if (sickLeft > 0) {
+        sickLeft -= 1;
+        return { date, type: "sick" };
+      }
+      return { date, type: "lwp" };
+    }
+    if (requestedType === "advance_leave") {
+      if (advanceLeft > 0) {
+        advanceLeft -= 1;
+        return { date, type: "advance_leave" };
+      }
+      return { date, type: "lwp" };
+    }
+    if (useCasualChain) {
+      if (casualLeft > 0) {
+        casualLeft -= 1;
+        return { date, type: "casual" };
+      }
+      if (advanceLeft > 0) {
+        advanceLeft -= 1;
+        return { date, type: "advance_leave" };
+      }
+      return { date, type: "lwp" };
+    }
+    return { date, type: "casual" };
+  });
+}
+
+function leaveBreakdownSummary(leave) {
+  const counts = leaveDates(leave).reduce((result, day) => {
+    result[day.type] = (result[day.type] || 0) + 1;
+    return result;
+  }, {});
+  return Object.entries(counts)
+    .map(([type, count]) => `${leaveTypeLabel(type)}: ${bn.format(count)}d`)
+    .join(", ");
+}
+
+function ensureHolidayAttendance() {
+  const holidays = state.fixedHolidays || [];
+  let changed = false;
+  holidays.forEach((holiday) => {
+    employees().forEach((employee) => {
+      if (attendanceFor(holiday.date, employee.id)) return;
+      state.attendance.push({
+        id: crypto.randomUUID(),
+        employeeId: employee.id,
+        employeeName: employee.name,
+        date: holiday.date,
+        status: "paid_holiday",
+        shift: "morning",
+        checkIn: "",
+        checkOut: "",
+        breakMinutes: 0,
+        note: `Fixed Holiday: ${holiday.name}${holiday.note ? ` - ${holiday.note}` : ""}`,
+        markedBy: "Admin",
+        holidayId: holiday.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      changed = true;
+    });
+  });
+  if (changed) saveState();
 }
 
 function payrollLockFor(month) {
@@ -823,7 +980,7 @@ function calculatePayrollForMonth(month) {
     const records = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
     const present = records.filter((item) => item.status === "present").length;
     const leave = records.filter((item) => item.status === "leave").length;
-    const paidLeave = records.filter((item) => item.status === "paid_leave").length;
+    const paidLeave = records.filter((item) => item.status === "paid_leave" || item.status === "paid_holiday").length;
     const absent = records.filter((item) => item.status === "absent").length;
     const cutDays = leave + absent;
     const dailySalary = employee.salary / days;
@@ -922,6 +1079,7 @@ function setText(id, value) {
 }
 
 function render() {
+  ensureHolidayAttendance();
   const date = els.selectedDate.value;
   const day = totalsForDate(date);
   const month = totalsForMonth(date);
@@ -961,6 +1119,7 @@ function render() {
   renderEmployeeHome();
   renderAdvance();
   renderLeave();
+  renderHolidayCalendar();
   renderEmployeeAccess();
   renderNotifications();
   renderActivityLog();
@@ -1868,12 +2027,45 @@ function renderAdvance() {
 
 function leaveTypeLabel(type) {
   return {
-    personal: "Personal Leave",
+    casual: "Casual Leave",
+    personal: "Casual Leave",
     sick: "Sick Leave",
-    study: "Study Leave",
+    study: "Casual Leave",
     compensatory: "Compensatory Leave",
-    other: "Other Leave",
+    advance_leave: "Leave in Advance",
+    lwp: "Leave Without Pay",
+    fixed_holiday: "Fixed Holiday",
+    paid_holiday: "Fixed Holiday",
+    mixed: "Mixed Leave",
+    other: "Casual Leave",
   }[type] || type;
+}
+
+function renderHolidayCalendar() {
+  if (!els.holidayList) return;
+  if (els.holidayForm) els.holidayForm.hidden = !isAdmin();
+  const holidays = [...(state.fixedHolidays || [])].sort((a, b) => a.date.localeCompare(b.date));
+  els.holidayList.innerHTML =
+    holidays
+      .map(
+        (item) => `
+          <article class="fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(item.date)} · ${escapeHtml(item.name)}</strong>
+              <span class="status-pill">${item.fixed ? "Fixed" : "Admin Paid"}</span>
+            </div>
+            <small class="muted">${escapeHtml(item.note || "No salary cut, no leave balance cut")}</small>
+            ${
+              isAdmin()
+                ? `<div class="action-row">
+                    <button class="small-action danger" data-delete-holiday="${item.id}" type="button">Delete</button>
+                  </div>`
+                : ""
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">Holiday calendar empty.</div>`;
 }
 
 function renderLeave() {
@@ -1884,18 +2076,19 @@ function renderLeave() {
 
   const visibleLeaves = isEmployee() ? state.leaveRequests.filter((item) => item.employeeId === currentEmployeeId()) : state.leaveRequests;
   const employeeId = isEmployee() ? currentEmployeeId() : els.leaveEmployee.value || visibleEmployees[0]?.id;
-  const employeeLeaves = state.leaveRequests.filter((item) => item.employeeId === employeeId);
-  const regularLeaves = employeeLeaves.filter((item) => item.type !== "compensatory");
-  const used = regularLeaves.filter((item) => item.status === "approved").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
-  const pending = regularLeaves.filter((item) => item.status === "pending").reduce((total, item) => total + (item.days || dateRange(item.start, item.end).length), 0);
+  const used = leaveDaysByType(employeeId, "casual", "approved") + leaveDaysByType(employeeId, "sick", "approved");
+  const pending = leaveDaysByType(employeeId, "casual", "pending") + leaveDaysByType(employeeId, "sick", "pending");
   const compBalance = employeeId ? compensatoryLeaveBalance(employeeId) : 0;
-  const total = 20;
+  const total = LEAVE_POLICY.casual + LEAVE_POLICY.sick;
+  const remaining = casualLeaveRemaining(employeeId) + sickLeaveRemaining(employeeId);
 
   setText("leaveTotal", bn.format(total));
   setText("leaveUsed", bn.format(used));
   setText("leavePending", bn.format(pending));
   setText("leaveCompBalance", bn.format(compBalance));
-  setText("leaveRemaining", bn.format(Math.max(total - used - pending, 0)));
+  setText("leaveRemaining", bn.format(remaining));
+  setText("leaveFixedHolidayTotal", bn.format((state.fixedHolidays || []).length || LEAVE_POLICY.fixedHoliday));
+  setText("leaveAdvanceBalance", bn.format(advanceLeaveRemaining(employeeId)));
   setText("leaveHint", isEmployee() ? "আপনার leave balance ও request history" : "নির্বাচিত কর্মীর leave balance এবং সব request");
 
   els.leaveList.innerHTML =
@@ -1907,7 +2100,7 @@ function renderLeave() {
               <strong>${escapeHtml(item.employeeName)} · ${escapeHtml(leaveTypeLabel(item.type))}</strong>
               <span class="status-pill">${escapeHtml(item.status)}</span>
             </div>
-            <small class="muted">${escapeHtml(item.start)} to ${escapeHtml(item.end)} · ${bn.format(item.days || 0)} days · ${escapeHtml(item.reason || "No reason")}</small>
+            <small class="muted">${escapeHtml(item.start)} to ${escapeHtml(item.end)} · ${bn.format(item.days || 0)} days · ${escapeHtml(leaveBreakdownSummary(item) || leaveTypeLabel(item.type))} · ${escapeHtml(item.reason || "No reason")}</small>
             ${
               isAdmin() && item.status === "pending"
                 ? `<div class="action-row">
@@ -2002,6 +2195,7 @@ function statusLabel(status) {
   return {
     present: "Present",
     paid_leave: "Paid Leave",
+    paid_holiday: "Fixed Holiday",
     leave: "Leave - Cut",
     absent: "Absent - Cut",
   }[status] || status;
@@ -2153,6 +2347,7 @@ function normalizeRestoredState(nextState) {
       fridayWorkRequests: nextState.fridayWorkRequests || [],
       activityLogs: nextState.activityLogs || [],
     leaveRequests: nextState.leaveRequests || [],
+    fixedHolidays: nextState.fixedHolidays || defaults.fixedHolidays,
     payrollLocks: nextState.payrollLocks || [],
   };
 }
@@ -2941,18 +3136,19 @@ function printPayslip(employeeId) {
 
 function applyLeaveToAttendance(leave) {
   const employee = employeeById(leave.employeeId) || { id: leave.employeeId, name: leave.employeeName };
-  dateRange(leave.start, leave.end).forEach((date) => {
+  leaveDates(leave).forEach((leaveDay) => {
+    const status = leaveDay.type === "lwp" ? "leave" : leaveDay.type === "fixed_holiday" ? "paid_holiday" : "paid_leave";
     persistAttendance(
       {
         employeeId: employee.id,
         employeeName: employee.name,
-        date,
-        status: leave.type === "compensatory" ? "paid_leave" : "leave",
+        date: leaveDay.date,
+        status,
         shift: "morning",
         checkIn: "",
         checkOut: "",
         breakMinutes: 0,
-        note: `${leaveTypeLabel(leave.type)}: ${leave.reason || "Approved leave"}`,
+        note: `${leaveTypeLabel(leaveDay.type)}: ${leave.reason || "Approved leave"}`,
         markedBy: "Admin",
         updatedAt: new Date().toISOString(),
       },
@@ -2973,20 +3169,27 @@ function saveLeaveRequest(event) {
     return;
   }
   const requestedDays = dateRange(start, end).length;
-  if (els.leaveType.value === "compensatory" && requestedDays > compensatoryLeaveBalance(employee.id)) {
+  const requestedType = els.leaveType.value;
+  if (requestedType === "compensatory" && requestedDays > compensatoryLeaveBalance(employee.id)) {
     alert(`Compensatory leave balance ${bn.format(compensatoryLeaveBalance(employee.id))} দিন। এর বেশি request করা যাবে না।`);
     return;
   }
+
+  const reason = els.leaveReason.value.trim();
+  const breakdown = buildLeaveBreakdown(employee.id, requestedType, start, end, reason);
+  const realTypes = [...new Set(breakdown.filter((day) => day.type !== "fixed_holiday").map((day) => day.type))];
 
   const leave = {
     id: crypto.randomUUID(),
     employeeId: employee.id,
     employeeName: employee.name,
-    type: els.leaveType.value,
+    type: realTypes.length === 1 ? realTypes[0] : realTypes.length ? "mixed" : "fixed_holiday",
+    requestedType,
+    breakdown,
     start,
     end,
     days: requestedDays,
-    reason: els.leaveReason.value.trim(),
+    reason,
     requestedBy: currentUser.name || employee.name,
     requestedAt: new Date().toISOString(),
     status: isAdmin() ? "approved" : "pending",
@@ -3333,6 +3536,48 @@ function copyCurrentLink() {
     .catch(() => alert("লিংক কপি করা যায়নি। address bar থেকে link কপি করুন।"));
 }
 
+function saveHoliday(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const date = els.holidayDate.value;
+  const name = els.holidayName.value.trim();
+  if (!date || !name) return;
+  const existing = holidayForDate(date);
+  if (existing) {
+    existing.name = name;
+    existing.note = els.holidayNote.value.trim();
+    existing.fixed = Boolean(existing.fixed);
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    state.fixedHolidays.push({
+      id: crypto.randomUUID(),
+      date,
+      name,
+      note: els.holidayNote.value.trim(),
+      fixed: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  ensureHolidayAttendance();
+  els.holidayForm.reset();
+  if (els.holidayDate) els.holidayDate.value = today();
+  logActivity("Holiday Save", `${date} ${name}`, "holiday");
+  saveState();
+  render();
+}
+
+function deleteHoliday(id) {
+  if (!isAdmin()) return;
+  const holiday = state.fixedHolidays.find((item) => item.id === id);
+  if (!holiday) return;
+  if (!confirm(`${holiday.date} ${holiday.name} delete করবেন?`)) return;
+  state.fixedHolidays = state.fixedHolidays.filter((item) => item.id !== id);
+  state.attendance = state.attendance.filter((item) => item.holidayId !== id);
+  logActivity("Holiday Delete", `${holiday.date} ${holiday.name}`, "holiday");
+  saveState();
+  render();
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -3376,6 +3621,7 @@ function initDates() {
   if (els.correctionDate) els.correctionDate.value = now;
   if (els.leaveStart) els.leaveStart.value = now;
   if (els.leaveEnd) els.leaveEnd.value = now;
+  if (els.holidayDate) els.holidayDate.value = now;
   if (els.fridayWorkDate) els.fridayWorkDate.value = nextFriday(now);
 }
 
@@ -3492,6 +3738,7 @@ els.mobileEndBreakBtn?.addEventListener("click", endBreak);
 els.advanceForm.addEventListener("submit", saveAdvance);
 els.leaveForm?.addEventListener("submit", saveLeaveRequest);
 els.leaveEmployee?.addEventListener("change", renderLeave);
+els.holidayForm?.addEventListener("submit", saveHoliday);
 els.fixedForm.addEventListener("submit", saveFixed);
 els.categoryForm.addEventListener("submit", addCategory);
 els.editEntryForm.addEventListener("submit", saveEditEntry);
@@ -3551,6 +3798,7 @@ document.body.addEventListener("click", (event) => {
   const rejectAdvance = event.target.closest("[data-reject-advance]");
   const approveLeave = event.target.closest("[data-approve-leave]");
   const rejectLeave = event.target.closest("[data-reject-leave]");
+  const deleteHolidayButton = event.target.closest("[data-delete-holiday]");
   const editBreakButton = event.target.closest("[data-edit-break]");
   const deleteBreakButton = event.target.closest("[data-delete-break]");
   const forceEndBreakButton = event.target.closest("[data-force-end-break]");
@@ -3633,6 +3881,7 @@ document.body.addEventListener("click", (event) => {
 
   if (approveRequest) applyApproval(approveRequest.dataset.approveRequest, true);
   if (rejectRequest) applyApproval(rejectRequest.dataset.rejectRequest, false);
+  if (deleteHolidayButton) deleteHoliday(deleteHolidayButton.dataset.deleteHoliday);
 
   if (attendanceDelete && !isEmployee() && confirm("এই হাজিরা record ডিলিট করবেন?")) {
     state.attendance = state.attendance.filter((item) => item.id !== attendanceDelete.dataset.deleteAttendance);

@@ -418,6 +418,7 @@
                   <select id="attendanceStatus" required>
                     <option value="present">Present</option>
                     <option value="paid_leave">Paid Leave</option>
+                    <option value="paid_holiday">Fixed Holiday</option>
                     <option value="leave">Leave - Salary Cut</option>
                     <option value="absent">Absent - Salary Cut</option>
                   </select>
@@ -669,11 +670,11 @@
                 <label>কর্মী <select id="leaveEmployee" required></select></label>
                 <label>Leave Type
                   <select id="leaveType" required>
-                    <option value="personal">Personal Leave</option>
+                    <option value="casual">Casual Leave</option>
                     <option value="sick">Sick Leave</option>
-                    <option value="study">Study Leave</option>
                     <option value="compensatory">Compensatory Leave</option>
-                    <option value="other">Other Leave</option>
+                    <option value="advance_leave">Leave in Advance</option>
+                    <option value="lwp">Leave Without Pay</option>
                   </select>
                 </label>
               </div>
@@ -698,10 +699,28 @@
                 <div><small>Pending</small><strong id="leavePending">0</strong></div>
                 <div><small>Comp Balance</small><strong id="leaveCompBalance">0</strong></div>
                 <div><small>Remaining</small><strong id="leaveRemaining">20</strong></div>
+                <div><small>Fixed Holiday</small><strong id="leaveFixedHolidayTotal">18</strong></div>
+                <div><small>Advance Left</small><strong id="leaveAdvanceBalance">5</strong></div>
               </div>
               <div class="fixed-list" id="leaveList"></div>
             </section>
           </div>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Fixed Holiday Calendar</h2>
+                <p>18 days fixed holiday leave balance থেকে কাটবে না। Admin চাইলে paid holiday add করতে পারবে।</p>
+              </div>
+            </div>
+            <form class="inline-form" id="holidayForm">
+              <input id="holidayDate" type="date" required />
+              <input id="holidayName" type="text" placeholder="Holiday name" required />
+              <input id="holidayNote" type="text" placeholder="Note" />
+              <button class="secondary-button" type="submit"><i data-lucide="calendar-plus"></i> Holiday Save</button>
+            </form>
+            <div class="fixed-list" id="holidayList"></div>
+          </section>
         </section>
 
         <section class="view" id="fixedView">
