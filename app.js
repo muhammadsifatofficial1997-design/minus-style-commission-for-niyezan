@@ -330,7 +330,6 @@ function defaultState() {
     fixedExpenses: [
       fixed("ফাইজুর বেতন", "salary", 15000, true, "এমপ্লয়ী"),
       fixed("অমিত বেতন", "salary", 13000, true, "এমপ্লয়ী"),
-      fixed("শুভ ভাই বেতন", "salary", 12000, true, "এমপ্লয়ী"),
       fixed("সাকিব বেতন", "salary", 12000, true, "এমপ্লয়ী"),
       fixed("সিফাত বেতন", "salary", 20000, true, "এমপ্লয়ী"),
       fixed("স্টারলিংক", "internet", 4200, true, "ইন্টারনেট বিল"),
@@ -654,8 +653,14 @@ function isPayrollOnlyAdminSalary(employeeOrName) {
   return normalizeName(name).includes("সিফাত");
 }
 
+function isFormerEmployeeSalary(employeeOrName) {
+  const name = typeof employeeOrName === "string" ? employeeOrName : employeeOrName?.name;
+  const normalized = normalizeName(name);
+  return normalized.includes("শুভ") || normalized.includes("shuvo") || normalized.includes("shuv");
+}
+
 function employees() {
-  return salaryEmployees().filter((employee) => !isPayrollOnlyAdminSalary(employee));
+  return salaryEmployees().filter((employee) => !isPayrollOnlyAdminSalary(employee) && !isFormerEmployeeSalary(employee));
 }
 
 function employeeProfileFor(employeeId) {
@@ -748,6 +753,50 @@ function cleanupPayrollOnlyAdminData() {
       approvals: state.approvals,
     });
   return changed;
+}
+
+function cleanupFormerEmployeeData() {
+  const formerIds = salaryEmployees().filter(isFormerEmployeeSalary).map((employee) => employee.id);
+  const before = JSON.stringify({
+    fixedExpenses: state.fixedExpenses,
+    employeeAccess: state.employeeAccess,
+    employeeProfiles: state.employeeProfiles,
+    attendance: state.attendance,
+    breaks: state.breaks,
+    advances: state.advances,
+    leaveRequests: state.leaveRequests,
+    fridayWorkRequests: state.fridayWorkRequests,
+    approvals: state.approvals,
+  });
+
+  state.fixedExpenses = state.fixedExpenses.filter((item) => !(item.category === "salary" && isFormerEmployeeSalary(item.name)));
+  state.employeeAccess = state.employeeAccess.filter(
+    (item) => !formerIds.includes(item.employeeId) && !isFormerEmployeeSalary(item.employeeName),
+  );
+  state.employeeProfiles = state.employeeProfiles.filter((item) => !formerIds.includes(item.employeeId));
+  state.attendance = state.attendance.filter((item) => !formerIds.includes(item.employeeId));
+  state.breaks = state.breaks.filter((item) => !formerIds.includes(item.employeeId));
+  state.advances = state.advances.filter((item) => !formerIds.includes(item.employeeId));
+  state.leaveRequests = state.leaveRequests.filter((item) => !formerIds.includes(item.employeeId));
+  state.fridayWorkRequests = state.fridayWorkRequests.filter((item) => !formerIds.includes(item.employeeId));
+  state.approvals = state.approvals.filter(
+    (item) => !formerIds.includes(item.payload?.employeeId) && !isFormerEmployeeSalary(item.payload?.employeeName),
+  );
+
+  return (
+    before !==
+    JSON.stringify({
+      fixedExpenses: state.fixedExpenses,
+      employeeAccess: state.employeeAccess,
+      employeeProfiles: state.employeeProfiles,
+      attendance: state.attendance,
+      breaks: state.breaks,
+      advances: state.advances,
+      leaveRequests: state.leaveRequests,
+      fridayWorkRequests: state.fridayWorkRequests,
+      approvals: state.approvals,
+    })
+  );
 }
 
 function currentEmployeeId() {
@@ -4486,7 +4535,7 @@ window.addEventListener("resize", () => renderChart(els.selectedDate.value));
 
 applyThemeMode();
 initDates();
-if (cleanupPayrollOnlyAdminData()) saveState();
+if (cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData()) saveState();
 ensureEmployeeAccess();
 breakTicker = setInterval(() => {
   renderBreaks();
@@ -4495,7 +4544,7 @@ breakTicker = setInterval(() => {
 
 async function boot() {
   if (cloudUrl()) await syncFromCloud(false);
-  if (cleanupPayrollOnlyAdminData()) saveState();
+  if (cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData()) saveState();
   ensureEmployeeAccess();
   try {
     const savedSession = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");

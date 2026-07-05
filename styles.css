@@ -2226,3 +2226,422 @@ body[data-theme="night"] .topbar .date-control {
     width: 100%;
   }
 }
+
+/* Bold black/yellow mobile-app inspired theme */
+:root {
+  --bg: #fff1aa;
+  --surface: #242424;
+  --surface-2: #303030;
+  --ink: #ffffff;
+  --muted: #c5c5c5;
+  --line: rgba(255, 215, 47, 0.18);
+  --primary: #ffd72f;
+  --primary-dark: #111111;
+  --accent: #ff3131;
+  --danger: #ff4b4b;
+  --good: #ffd72f;
+  --bad: #ff4b4b;
+  --glass: rgba(36, 36, 36, 0.92);
+  --shadow: 0 24px 62px rgba(0, 0, 0, 0.34);
+  --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+body {
+  padding: 24px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.45), transparent 25%),
+    radial-gradient(circle at 88% 8%, rgba(255, 215, 47, 0.45), transparent 24%),
+    linear-gradient(135deg, #fff0a4 0%, #fff7cf 52%, #ffe36d 100%);
+}
+
+.app-shell {
+  overflow: hidden;
+  min-height: calc(100vh - 48px);
+  border: 10px solid #0b0b0b;
+  border-radius: 8px;
+  background: #050505;
+  box-shadow: 0 30px 76px rgba(0, 0, 0, 0.38);
+}
+
+.main {
+  color: var(--ink);
+  background: #050505;
+}
+
+.login-screen {
+  background:
+    radial-gradient(circle at 80% 10%, rgba(255, 215, 47, 0.22), transparent 28%),
+    linear-gradient(145deg, #050505 0%, #161616 100%);
+}
+
+.login-card {
+  color: #111;
+  background: linear-gradient(145deg, #ffe87a, #ffd72f);
+}
+
+.login-card p,
+.login-card small {
+  color: #333;
+}
+
+.topbar {
+  margin: 0 0 24px;
+  padding: 28px;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #ffe87a 0%, #ffd72f 100%);
+  box-shadow: var(--shadow);
+}
+
+.topbar h1,
+.topbar .eyebrow {
+  color: #090909;
+  text-shadow: none;
+}
+
+.topbar h1 {
+  max-width: 820px;
+  font-size: clamp(32px, 4vw, 52px);
+}
+
+.topbar .cloud-sync-bar {
+  color: #111;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.topbar .date-control {
+  color: #111;
+  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow: none;
+}
+
+.topbar .date-control label {
+  color: #111;
+}
+
+.topbar .date-control input {
+  color: #111;
+  border: 0;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.theme-toggle,
+.notification-badge {
+  color: #111;
+  background: #fff;
+}
+
+.sidebar {
+  margin: 0;
+  min-height: calc(100vh - 48px);
+  border: 0;
+  border-right: 1px solid rgba(255, 215, 47, 0.18);
+  border-radius: 0;
+  background: #050505;
+  box-shadow: none;
+}
+
+.brand-mark {
+  color: #111;
+  border: 0;
+  background: linear-gradient(145deg, #ffe87a, #ffd72f);
+}
+
+.brand strong,
+.brand small,
+.sidebar-footer span {
+  color: #fff;
+}
+
+.nav-button {
+  min-height: 54px;
+  color: rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+}
+
+.nav-button svg {
+  color: var(--primary);
+}
+
+.nav-button:hover,
+.nav-button.active {
+  color: #111;
+  background: linear-gradient(145deg, #ffe87a, #ffd72f);
+  transform: translateY(-1px);
+}
+
+.nav-button:hover svg,
+.nav-button.active svg {
+  color: #111;
+}
+
+.sidebar-footer {
+  color: #fff;
+  border: 0;
+  background: #242424;
+}
+
+.sidebar-footer strong {
+  color: var(--primary);
+}
+
+.logout-btn {
+  color: #111;
+  background: var(--primary);
+}
+
+.metric,
+.panel,
+.filter-bar,
+.modal-card,
+.entry-item,
+.fixed-item,
+.employee-status-grid div,
+.summary-row div,
+.break-current-box,
+.decision-preview,
+.calendar-day {
+  color: #fff;
+  border: 0;
+  background: #242424;
+  box-shadow: var(--shadow-soft);
+}
+
+.metric,
+.panel {
+  border-radius: 8px;
+}
+
+.metric {
+  min-height: 156px;
+  padding: 22px;
+}
+
+.metric strong,
+.panel h2,
+.panel h3,
+.panel-head,
+.summary-row strong,
+.entry-item strong,
+.fixed-item strong {
+  color: #fff;
+}
+
+.metric small,
+.metric p,
+.panel p,
+.panel-head p,
+.summary-row small,
+.muted {
+  color: var(--muted);
+}
+
+.metric-icon {
+  color: #111;
+  background: var(--primary);
+}
+
+.metric-icon.expense,
+.metric-icon.profit {
+  color: #111;
+  background: var(--primary);
+}
+
+.metric-icon.fixed,
+.metric-icon.income {
+  color: #111;
+  background: var(--primary);
+}
+
+.metric.highlight,
+.employee-home-panel,
+.metrics-grid .metric:nth-child(1),
+.metrics-grid .metric:nth-child(2),
+.metrics-grid .metric:nth-child(3),
+.metrics-grid .metric:nth-child(4),
+.summary-row div:nth-child(1),
+.summary-row div:nth-child(2),
+.summary-row div:nth-child(3),
+.summary-row div:nth-child(4) {
+  background: #242424;
+}
+
+.metric.highlight {
+  outline: 2px solid rgba(255, 215, 47, 0.36);
+}
+
+.primary-button {
+  color: #111;
+  border: 0;
+  background: linear-gradient(145deg, #ffe87a, #ffd72f);
+  box-shadow: 0 14px 28px rgba(255, 215, 47, 0.18);
+}
+
+.primary-button:hover {
+  background: linear-gradient(145deg, #fff09b, #ffd72f);
+}
+
+.secondary-button,
+.small-action,
+.icon-button {
+  color: #fff;
+  border: 0;
+  background: #303030;
+}
+
+.danger-button,
+.small-action.danger {
+  color: #fff;
+  background: #ff3131;
+}
+
+input,
+select,
+textarea {
+  color: #fff;
+  border: 0;
+  background: #303030;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.44);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 4px rgba(255, 215, 47, 0.2);
+}
+
+.table-wrap {
+  border: 0;
+  background: #242424;
+}
+
+th {
+  color: var(--primary);
+  background: #1c1c1c;
+}
+
+td {
+  color: #fff;
+  background: #242424;
+}
+
+.status-pill,
+.type-pill,
+.cloud-sync-bar,
+.calendar-tag {
+  color: #111;
+  background: var(--primary);
+}
+
+.good,
+.amount.good {
+  color: var(--primary);
+}
+
+.bad,
+.amount.bad,
+.danger,
+.negative {
+  color: var(--danger);
+}
+
+.employee-quick-actions .primary-button,
+.employee-quick-actions .secondary-button {
+  min-height: 66px;
+}
+
+body[data-theme="night"] {
+  --bg: #050505;
+  --surface: #242424;
+  --surface-2: #303030;
+  --ink: #ffffff;
+  --muted: #c5c5c5;
+  --line: rgba(255, 215, 47, 0.18);
+  --primary: #ffd72f;
+  --primary-dark: #111111;
+  --accent: #ff3131;
+  --glass: rgba(36, 36, 36, 0.92);
+  background: #050505;
+}
+
+body[data-theme="night"] .app-shell,
+body[data-theme="night"] .main,
+body[data-theme="night"] .sidebar {
+  background: #050505;
+}
+
+body[data-theme="night"] .topbar,
+body[data-theme="night"] .login-card {
+  background: linear-gradient(145deg, #ffe87a 0%, #ffd72f 100%);
+}
+
+body[data-theme="night"] .panel,
+body[data-theme="night"] .metric,
+body[data-theme="night"] .filter-bar,
+body[data-theme="night"] .entry-item,
+body[data-theme="night"] .fixed-item,
+body[data-theme="night"] .employee-status-grid div,
+body[data-theme="night"] .summary-row div,
+body[data-theme="night"] .break-current-box,
+body[data-theme="night"] .decision-preview,
+body[data-theme="night"] .calendar-day,
+body[data-theme="night"] .employee-home-panel {
+  color: #fff;
+  border: 0;
+  background: #242424;
+}
+
+body[data-theme="night"] .metric.highlight,
+body[data-theme="night"] .metrics-grid .metric:nth-child(1),
+body[data-theme="night"] .metrics-grid .metric:nth-child(2),
+body[data-theme="night"] .metrics-grid .metric:nth-child(3),
+body[data-theme="night"] .metrics-grid .metric:nth-child(4),
+body[data-theme="night"] .summary-row div:nth-child(1),
+body[data-theme="night"] .summary-row div:nth-child(2),
+body[data-theme="night"] .summary-row div:nth-child(3),
+body[data-theme="night"] .summary-row div:nth-child(4) {
+  background: #242424;
+}
+
+body[data-theme="night"] input,
+body[data-theme="night"] select,
+body[data-theme="night"] textarea,
+body[data-theme="night"] .secondary-button,
+body[data-theme="night"] .small-action,
+body[data-theme="night"] .icon-button {
+  color: #fff;
+  background: #303030;
+}
+
+body[data-theme="night"] .primary-button,
+body[data-theme="night"] .status-pill,
+body[data-theme="night"] .type-pill,
+body[data-theme="night"] .calendar-tag,
+body[data-theme="night"] .cloud-sync-bar,
+body[data-theme="night"] .theme-toggle,
+body[data-theme="night"] .notification-badge {
+  color: #111;
+  background: var(--primary);
+}
+
+@media (max-width: 1120px) {
+  body {
+    padding: 0;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+}
