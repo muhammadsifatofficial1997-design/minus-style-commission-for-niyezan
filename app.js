@@ -53,6 +53,12 @@ const breakLabels = {
   official: "Official Break",
 };
 
+const employeeAccessPins = [
+  { matches: ["ফাইজুর", "faizur"], pin: "faizur1001" },
+  { matches: ["অমিত", "amit"], pin: "amit1002" },
+  { matches: ["সাকিব", "sakib"], pin: "sakib1003" },
+];
+
 function defaultFixedHolidays(year = new Date().getFullYear()) {
   return [
     ["02-21", "Language Day"],
@@ -686,25 +692,41 @@ function employeePinFor(employeeId) {
   return access?.pin ? "*".repeat(String(access.pin).length) : "Not set";
 }
 
+function employeeAccessRule(employeeOrName) {
+  const name = typeof employeeOrName === "string" ? employeeOrName : employeeOrName?.name || employeeOrName?.employeeName;
+  const normalized = normalizeName(name);
+  return employeeAccessPins.find((rule) => rule.matches.some((match) => normalized.includes(match)));
+}
+
 function ensureEmployeeAccess() {
-  employees().forEach((employee, index) => {
+  const before = JSON.stringify(state.employeeAccess);
+  const allowedEmployees = employees().filter(employeeAccessRule);
+  const nextAccess = [];
+
+  allowedEmployees.forEach((employee) => {
+    const rule = employeeAccessRule(employee);
     const existing = state.employeeAccess.find(
       (access) => access.employeeId === employee.id || normalizeName(access.employeeName) === normalizeName(employee.name),
     );
     if (existing) {
       existing.employeeId = employee.id;
       existing.employeeName = employee.name;
-      if (existing.active === undefined) existing.active = true;
+      existing.pin = rule.pin;
+      existing.active = true;
+      nextAccess.push(existing);
       return;
     }
-    state.employeeAccess.push({
+    nextAccess.push({
       id: crypto.randomUUID(),
       employeeId: employee.id,
       employeeName: employee.name,
-      pin: index === 0 ? "3333" : "",
-      active: index === 0,
+      pin: rule.pin,
+      active: true,
     });
   });
+
+  state.employeeAccess = nextAccess;
+  return before !== JSON.stringify(state.employeeAccess);
 }
 
 function cleanupPayrollOnlyAdminData() {
@@ -4535,8 +4557,11 @@ window.addEventListener("resize", () => renderChart(els.selectedDate.value));
 
 applyThemeMode();
 initDates();
-if (cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData()) saveState();
-ensureEmployeeAccess();
+{
+  const cleanupChanged = cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData();
+  const accessChanged = ensureEmployeeAccess();
+  if (cleanupChanged || accessChanged) saveState();
+}
 breakTicker = setInterval(() => {
   renderBreaks();
   renderEmployeeHome();
@@ -4544,8 +4569,9 @@ breakTicker = setInterval(() => {
 
 async function boot() {
   if (cloudUrl()) await syncFromCloud(false);
-  if (cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData()) saveState();
-  ensureEmployeeAccess();
+  const cleanupChanged = cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData();
+  const accessChanged = ensureEmployeeAccess();
+  if (cleanupChanged || accessChanged) saveState();
   try {
     const savedSession = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
     if (savedSession?.role) {
