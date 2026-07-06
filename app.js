@@ -237,17 +237,6 @@ const els = {
   fixedActive: document.querySelector("#fixedActive"),
   fixedNote: document.querySelector("#fixedNote"),
   fixedList: document.querySelector("#fixedList"),
-  umrahPlanForm: document.querySelector("#umrahPlanForm"),
-  umrahTarget: document.querySelector("#umrahTarget"),
-  umrahWeeklyTarget: document.querySelector("#umrahWeeklyTarget"),
-  umrahTravelDate: document.querySelector("#umrahTravelDate"),
-  umrahPersonalBudget: document.querySelector("#umrahPersonalBudget"),
-  umrahTransactionForm: document.querySelector("#umrahTransactionForm"),
-  umrahTransactionType: document.querySelector("#umrahTransactionType"),
-  umrahTransactionAmount: document.querySelector("#umrahTransactionAmount"),
-  umrahTransactionDate: document.querySelector("#umrahTransactionDate"),
-  umrahTransactionNote: document.querySelector("#umrahTransactionNote"),
-  umrahLedgerList: document.querySelector("#umrahLedgerList"),
   currentUserLabel: document.querySelector("#currentUserLabel"),
   managerForm: document.querySelector("#managerForm"),
   managerName: document.querySelector("#managerName"),
@@ -346,13 +335,6 @@ function defaultState() {
     salaryAdjustments: [],
     payrollLocks: [],
     notifications: [],
-    umrah: {
-      target: 450000,
-      weeklyTarget: 10000,
-      personalBudget: 50000,
-      travelDate: "",
-      transactions: [],
-    },
     fixedExpenses: [
       fixed("ফাইজুর বেতন", "salary", 15000, true, "এমপ্লয়ী"),
       fixed("অমিত বেতন", "salary", 13000, true, "এমপ্লয়ী"),
@@ -401,11 +383,6 @@ function loadState() {
       salaryAdjustments: parsed.salaryAdjustments || defaults.salaryAdjustments,
       payrollLocks: parsed.payrollLocks || defaults.payrollLocks,
       notifications: parsed.notifications || defaults.notifications,
-      umrah: {
-        ...defaults.umrah,
-        ...(parsed.umrah || {}),
-        transactions: parsed.umrah?.transactions || defaults.umrah.transactions,
-      },
       categories: { ...defaults.categories, ...parsed.categories },
     };
   } catch {
@@ -1419,7 +1396,6 @@ function render() {
   renderTodayEntries(day.entries);
   renderEntriesTable();
   renderFixedList();
-  renderUmrahTracker();
   renderCategories();
   renderManagers();
   renderApprovals();
@@ -1581,103 +1557,6 @@ function renderFixedList() {
       `,
     )
     .join("");
-}
-
-function umrahTotals() {
-  const plan = state.umrah || {};
-  const transactions = plan.transactions || [];
-  const saved = sum(transactions.filter((item) => item.type === "saving"), "amount");
-  const packageSpent = sum(transactions.filter((item) => item.type === "package"), "amount");
-  const personalSpent = sum(transactions.filter((item) => item.type === "personal"), "amount");
-  const target = Number(plan.target || 0);
-  const weeklyTarget = Number(plan.weeklyTarget || 0);
-  const personalBudget = Number(plan.personalBudget || 0);
-  const weekStart = startOfWeek(today());
-  const weeklySaved = sum(
-    transactions.filter((item) => item.type === "saving" && item.date >= weekStart && item.date <= today()),
-    "amount",
-  );
-
-  return {
-    target,
-    weeklyTarget,
-    personalBudget,
-    saved,
-    packageSpent,
-    personalSpent,
-    weeklySaved,
-    remaining: Math.max(target - saved, 0),
-    weeklyRemaining: Math.max(weeklyTarget - weeklySaved, 0),
-    netFund: saved - packageSpent - personalSpent,
-    progress: target > 0 ? Math.min((saved / target) * 100, 100) : 0,
-  };
-}
-
-function startOfWeek(dateString) {
-  const date = new Date(`${dateString}T00:00:00`);
-  const day = date.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  date.setDate(date.getDate() - diff);
-  return formatYmd(date);
-}
-
-function renderUmrahTracker() {
-  if (!els.umrahPlanForm) return;
-  const totals = umrahTotals();
-  const plan = state.umrah;
-  const progressLabel = `${bn.format(Math.round(totals.progress))}%`;
-  const personalLeft = totals.personalBudget - totals.personalSpent;
-  const daysLeft = plan.travelDate ? Math.ceil((new Date(`${plan.travelDate}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000) : null;
-
-  els.umrahTarget.value = totals.target || "";
-  els.umrahWeeklyTarget.value = totals.weeklyTarget || "";
-  els.umrahTravelDate.value = plan.travelDate || "";
-  els.umrahPersonalBudget.value = totals.personalBudget || "";
-
-  setText("umrahHeroSaved", money(totals.saved));
-  setText("umrahHeroRemaining", money(totals.remaining));
-  setText("umrahHeroWeek", totals.weeklyRemaining === 0 ? "Done" : money(totals.weeklyRemaining));
-  setText("umrahSavedTotal", money(totals.saved));
-  setText("umrahProgressHint", `টার্গেটের ${progressLabel}`);
-  setText("umrahWeeklySaved", money(totals.weeklySaved));
-  setText("umrahWeeklyHint", totals.weeklyRemaining === 0 ? "এই সপ্তাহের টার্গেট পূর্ণ" : `${money(totals.weeklyRemaining)} বাকি`);
-  setText("umrahPackageSpent", money(totals.packageSpent));
-  setText("umrahPersonalSpent", money(totals.personalSpent));
-  setText("umrahPersonalHint", totals.personalBudget ? (personalLeft >= 0 ? `${money(personalLeft)} বাজেট বাকি` : `${money(Math.abs(personalLeft))} বাজেটের বেশি`) : "বাজেট সেট করুন");
-  setText("umrahProgressPercent", progressLabel);
-  setText("umrahProgressMoney", `${money(totals.saved)} / ${money(totals.target)}`);
-  setText("umrahTargetSummary", money(totals.target));
-  setText("umrahRemainingSummary", money(totals.remaining));
-  setText("umrahWeeklyRemaining", money(totals.weeklyRemaining));
-  setText("umrahNetFund", money(totals.netFund));
-  setText("umrahStatusPill", totals.remaining === 0 ? "টার্গেট পূর্ণ" : "প্ল্যান চলছে");
-  setText("umrahDaysHint", daysLeft === null ? "সফরের তারিখ সেট করুন" : daysLeft >= 0 ? `${bn.format(daysLeft)} দিন বাকি` : `${bn.format(Math.abs(daysLeft))} দিন আগে সফর ছিল`);
-
-  const bar = document.querySelector("#umrahProgressBar");
-  if (bar) bar.style.width = `${totals.progress}%`;
-
-  const typeLabels = { saving: "জমা", package: "উমরাহ খরচ", personal: "ব্যক্তিগত খরচ" };
-  const ledger = (plan.transactions || [])
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 8)
-    .map(
-      (item) => `
-        <article class="fixed-item umrah-ledger-item">
-          <div class="item-line">
-            <strong>${escapeHtml(typeLabels[item.type] || item.type)}</strong>
-            <span class="amount ${item.type === "saving" ? "good" : "bad"}">${item.type === "saving" ? "+" : "-"}${money(item.amount)}</span>
-          </div>
-          <div class="item-line">
-            <small class="muted">${escapeHtml(item.date)} · ${escapeHtml(item.note || "নোট নেই")}</small>
-            <button class="small-action danger" data-delete-umrah="${item.id}" type="button">ডিলিট</button>
-          </div>
-        </article>
-      `,
-    )
-    .join("");
-
-  els.umrahLedgerList.innerHTML = ledger || `<div class="empty">এখনও কোনো উমরাহ জমা বা খরচ যোগ করা হয়নি।</div>`;
 }
 
 function renderManagers() {
@@ -3228,32 +3107,6 @@ function drawLine(ctx, points, key, color, padding, plotW, plotH, maxValue) {
   ctx.stroke();
 }
 
-function saveUmrahPlan(event) {
-  event.preventDefault();
-  state.umrah.target = Number(els.umrahTarget.value || 0);
-  state.umrah.weeklyTarget = Number(els.umrahWeeklyTarget.value || 0);
-  state.umrah.travelDate = els.umrahTravelDate.value;
-  state.umrah.personalBudget = Number(els.umrahPersonalBudget.value || 0);
-  saveState();
-  render();
-}
-
-function addUmrahTransaction(event) {
-  event.preventDefault();
-  state.umrah.transactions.push({
-    id: crypto.randomUUID(),
-    type: els.umrahTransactionType.value,
-    amount: Number(els.umrahTransactionAmount.value || 0),
-    date: els.umrahTransactionDate.value,
-    note: els.umrahTransactionNote.value.trim(),
-    createdAt: new Date().toISOString(),
-  });
-  els.umrahTransactionForm.reset();
-  els.umrahTransactionDate.value = today();
-  render();
-  saveState();
-}
-
 function addEntry(event) {
   event.preventDefault();
   const entry = {
@@ -4416,7 +4269,6 @@ function initDates() {
   const now = today();
   els.selectedDate.value = now;
   els.entryDate.value = now;
-  if (els.umrahTransactionDate) els.umrahTransactionDate.value = now;
   els.attendanceDate.value = now;
   els.dailyStart.value = monthStart(now);
   els.dailyEnd.value = monthEnd(now);
@@ -4567,8 +4419,6 @@ els.profileEmployee?.addEventListener("change", fillEmployeeProfileForm);
 els.salaryAdjustmentForm?.addEventListener("submit", saveSalaryAdjustment);
 els.runWarningReportBtn?.addEventListener("click", renderWarningReport);
 els.fixedForm.addEventListener("submit", saveFixed);
-els.umrahPlanForm?.addEventListener("submit", saveUmrahPlan);
-els.umrahTransactionForm?.addEventListener("submit", addUmrahTransaction);
 els.categoryForm.addEventListener("submit", addCategory);
 els.editEntryForm.addEventListener("submit", saveEditEntry);
 document.querySelector("#closeModal").addEventListener("click", closeModal);
@@ -4646,7 +4496,6 @@ document.body.addEventListener("click", (event) => {
   const rejectFriday = event.target.closest("[data-reject-friday]");
   const completeFriday = event.target.closest("[data-complete-friday]");
   const deleteFriday = event.target.closest("[data-delete-friday]");
-  const deleteUmrah = event.target.closest("[data-delete-umrah]");
 
   if (entryEdit) openEditEntry(entryEdit.dataset.editEntry);
 
@@ -4775,11 +4624,6 @@ document.body.addEventListener("click", (event) => {
   if (rejectFriday) reviewFridayWork(rejectFriday.dataset.rejectFriday, "rejected");
   if (completeFriday) reviewFridayWork(completeFriday.dataset.completeFriday, "completed");
   if (deleteFriday) deleteFridayWork(deleteFriday.dataset.deleteFriday);
-  if (deleteUmrah && confirm("এই উমরাহ এন্ট্রি ডিলিট করবেন?")) {
-    state.umrah.transactions = state.umrah.transactions.filter((item) => item.id !== deleteUmrah.dataset.deleteUmrah);
-    saveState();
-    render();
-  }
 });
 
 document.querySelector("#resetBtn").addEventListener("click", () => {
