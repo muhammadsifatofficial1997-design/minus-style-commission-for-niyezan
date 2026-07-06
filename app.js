@@ -4,6 +4,7 @@ const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
 const THEME_KEY = "minus-style-theme-mode";
+const COMPACT_MODE_KEY = "minus-style-compact-mode";
 const DEFAULT_CLOUD_URL = "https://script.google.com/macros/s/AKfycbzbdWRDAn5c7tVyX53oVbQgQUYG5LnN3KwguGODW27JpLj7tpJXSbDWuA_79IyMEf84/exec";
 const CLOUD_PUSH_DELAY = 900;
 const MISSED_BREAK_SECONDS = 2 * 60 * 60;
@@ -100,6 +101,14 @@ const els = {
   themeToggleText: document.querySelector("#themeToggleText"),
   cloudSyncBar: document.querySelector("#cloudSyncBar"),
   homeClearCacheBtn: document.querySelector("#homeClearCacheBtn"),
+  compactModeBtn: document.querySelector("#compactModeBtn"),
+  dailySummaryWhatsappBtn: document.querySelector("#dailySummaryWhatsappBtn"),
+  globalSearchInput: document.querySelector("#globalSearchInput"),
+  globalSearchResults: document.querySelector("#globalSearchResults"),
+  compactIncome: document.querySelector("#compactIncome"),
+  compactExpense: document.querySelector("#compactExpense"),
+  compactPending: document.querySelector("#compactPending"),
+  compactWarnings: document.querySelector("#compactWarnings"),
   pendingApprovalBadge: document.querySelector("#pendingApprovalBadge"),
   selectedDate: document.querySelector("#selectedDate"),
   dailyStart: document.querySelector("#dailyStart"),
@@ -308,6 +317,32 @@ function applyThemeMode(mode = savedThemeMode()) {
 function toggleThemeMode() {
   applyThemeMode(savedThemeMode() === "night" ? "day" : "night");
   if (window.lucide) lucide.createIcons();
+}
+
+function savedCompactMode() {
+  return localStorage.getItem(COMPACT_MODE_KEY) === "1";
+}
+
+function applyCompactMode(mode = savedCompactMode()) {
+  document.body.classList.toggle("compact-mode", mode);
+  if (els.compactModeBtn) {
+    els.compactModeBtn.classList.toggle("active", mode);
+    els.compactModeBtn.setAttribute("aria-pressed", String(mode));
+    els.compactModeBtn.innerHTML = `<i data-lucide="${mode ? "maximize-2" : "minimize-2"}"></i> ${mode ? "Full Mode" : "Compact Mode"}`;
+  }
+}
+
+function toggleCompactMode() {
+  const nextMode = !savedCompactMode();
+  localStorage.setItem(COMPACT_MODE_KEY, nextMode ? "1" : "0");
+  applyCompactMode(nextMode);
+  if (window.lucide) lucide.createIcons();
+}
+
+function canOpenView(view) {
+  if (isManager()) return !["reports", "fixed", "settings"].includes(view);
+  if (isEmployee()) return ["attendance", "advance"].includes(view);
+  return true;
 }
 
 function defaultState() {
@@ -829,6 +864,10 @@ function currentEmployeeId() {
 
 function employeeById(id) {
   return employees().find((employee) => employee.id === id);
+}
+
+function employeeName(id) {
+  return employeeById(id)?.name || state.employeeAccess.find((item) => item.employeeId === id)?.employeeName || "Unknown employee";
 }
 
 function normalizeName(value) {
@@ -1386,6 +1425,7 @@ function render() {
   setText("monthNet", money(month.net));
   setText("monthStatus", month.net >= 0 ? "মাসিক লাভ" : "মাসিক লস");
   setText("monthLabel", `${formatMonth(date)} সারাংশ`);
+  renderCompactSummary(day);
 
   document.querySelector("#todayNet").className = day.net >= 0 ? "amount good" : "amount bad";
   document.querySelector("#monthNet").className = month.net >= 0 ? "amount good" : "amount bad";
@@ -1425,6 +1465,8 @@ function render() {
   renderChart(date);
   renderBackupStatus();
   renderHealthCheck();
+  renderGlobalSearchResults();
+  applyCompactMode();
   updateCloudSyncBar();
 
   if (window.lucide) lucide.createIcons();
@@ -1441,11 +1483,17 @@ function renderRoleUi() {
 
   document.querySelectorAll(".nav-button").forEach((button) => {
     const view = button.dataset.view;
-    let visible = true;
-    if (isManager()) visible = !["reports", "fixed", "settings"].includes(view);
-    if (isEmployee()) visible = ["attendance", "advance"].includes(view);
+    const visible = canOpenView(view);
     button.hidden = !visible;
     button.style.display = visible ? "" : "none";
+  });
+
+  document.querySelectorAll(".mobile-nav-button").forEach((button) => {
+    const view = button.dataset.mobileView;
+    const visible = canOpenView(view);
+    button.hidden = !visible;
+    button.style.display = visible ? "flex" : "none";
+    button.classList.toggle("active", document.querySelector(`#${view}View`)?.classList.contains("active"));
   });
 
   if (!isAdmin() && ["reportsView", "fixedView", "settingsView"].some((id) => document.querySelector(`#${id}`).classList.contains("active"))) {
@@ -1595,6 +1643,7 @@ function renderApprovals() {
               <span class="status-pill">${escapeHtml(requestCategory(request))}</span>
             </div>
             <small class="muted">${new Date(request.createdAt).toLocaleString("bn-BD")} · ${escapeHtml(requestDescription(request))}</small>
+            ${approvalTimelineHtml(request)}
             <div class="action-row">
               <button class="small-action" data-approve-request="${request.id}" type="button">Approve</button>
               <button class="small-action danger" data-reject-request="${request.id}" type="button">Reject</button>
@@ -1625,6 +1674,135 @@ function renderPendingApprovalBadge(count = state.approvals.filter((request) => 
   const total = count + fridayPending;
   els.pendingApprovalBadge.innerHTML = `<i data-lucide="bell"></i> ${bn.format(total)}`;
   els.pendingApprovalBadge.title = `${bn.format(total)} pending approval request`;
+}
+
+function pendingApprovalTotal() {
+  return state.approvals.filter((request) => request.status === "pending").length + (state.fridayWorkRequests || []).filter((request) => request.status === "pending").length;
+}
+
+function attendanceWarningTotal(date = today()) {
+  const missingCheckout = employees().filter((employee) => {
+    const record = attendanceFor(date, employee.id);
+    return record?.checkIn && !record?.checkOut;
+  }).length;
+  const runningBreaks = breaksForDate(date).filter((item) => !item.endAt).length;
+  return missingCheckout + runningBreaks;
+}
+
+function renderCompactSummary(day = totalsForDate(els.selectedDate?.value || today())) {
+  if (!els.compactIncome) return;
+  els.compactIncome.textContent = money(day.income);
+  els.compactExpense.textContent = money(day.expense);
+  els.compactPending.textContent = bn.format(pendingApprovalTotal());
+  els.compactWarnings.textContent = bn.format(attendanceWarningTotal(els.selectedDate?.value || today()));
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString("bn-BD");
+}
+
+function approvalTimelineHtml(request) {
+  const steps = [
+    { label: "Requested", value: formatDateTime(request.createdAt), done: true },
+    { label: "Waiting", value: request.status === "pending" ? "Pending approval" : "Completed", done: request.status !== "pending" },
+    { label: "Reviewed", value: request.reviewedAt ? formatDateTime(request.reviewedAt) : "Not reviewed yet", done: Boolean(request.reviewedAt) },
+  ];
+  return `
+    <div class="approval-timeline">
+      ${steps
+        .map(
+          (step) => `
+            <span class="${step.done ? "done" : ""}">
+              <i></i>
+              <strong>${escapeHtml(step.label)}</strong>
+              <small>${escapeHtml(step.value)}</small>
+            </span>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function dailySummaryMessage(date = els.selectedDate?.value || today()) {
+  const day = totalsForDate(date);
+  const warnings = attendanceWarningTotal(date);
+  const pending = pendingApprovalTotal();
+  const activeBreaks = breaksForDate(date)
+    .filter((item) => !item.endAt)
+    .map((item) => `${employeeName(item.employeeId)}: ${breakLabel(item.type)}`)
+    .slice(0, 5);
+  return [
+    `Minus Style Daily Summary`,
+    `Date: ${date}`,
+    `Income: ${money(day.income)}`,
+    `Expense: ${money(day.expense)}`,
+    `Net: ${money(day.net)}`,
+    `Pending approval: ${bn.format(pending)}`,
+    `Attendance warning: ${bn.format(warnings)}`,
+    activeBreaks.length ? `Running break: ${activeBreaks.join(", ")}` : `Running break: none`,
+  ].join("\n");
+}
+
+function openDailyWhatsappSummary() {
+  const phone = "8801676182447";
+  const message = dailySummaryMessage();
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+}
+
+function searchItems() {
+  const items = [];
+  employees().forEach((employee) => {
+    items.push({ title: employee.name, detail: `Salary ${money(employee.salary)}`, view: "attendance", type: "Employee" });
+  });
+  state.entries.forEach((entry) => {
+    items.push({ title: labelFor(entry.category), detail: `${entry.date} · ${entry.type} · ${money(entry.amount)} · ${entry.note || ""}`, view: "daily", type: "Entry" });
+  });
+  state.fixedExpenses.forEach((item) => {
+    items.push({ title: item.name, detail: `${labelFor(item.category)} · ${money(item.amount)} · ${item.active ? "active" : "inactive"}`, view: "fixed", type: "Fixed" });
+  });
+  state.approvals.forEach((item) => {
+    items.push({ title: requestTitle(item), detail: `${requestCategory(item)} · ${item.status} · ${requestDescription(item)}`, view: "settings", type: "Approval" });
+  });
+  (state.fridayWorkRequests || []).forEach((item) => {
+    items.push({ title: `Friday Work · ${employeeName(item.employeeId)}`, detail: `${item.work_date || item.workDate} · ${item.request_type || item.requestType} · ${item.status}`, view: "attendance", type: "Friday" });
+  });
+  state.leaveRequests.forEach((item) => {
+    items.push({ title: `Leave · ${employeeName(item.employeeId)}`, detail: `${item.startDate} to ${item.endDate} · ${item.type} · ${item.status}`, view: "advance", type: "Leave" });
+  });
+  state.advances.forEach((item) => {
+    items.push({ title: `Advance · ${employeeName(item.employeeId)}`, detail: `${item.month} · ${money(item.amount)} · ${item.status}`, view: "advance", type: "Advance" });
+  });
+  return items;
+}
+
+function renderGlobalSearchResults() {
+  if (!els.globalSearchInput || !els.globalSearchResults) return;
+  const query = els.globalSearchInput.value.trim().toLowerCase();
+  if (!query) {
+    els.globalSearchResults.hidden = true;
+    els.globalSearchResults.innerHTML = "";
+    return;
+  }
+  const results = searchItems()
+    .filter((item) => `${item.title} ${item.detail} ${item.type}`.toLowerCase().includes(query) && canOpenView(item.view))
+    .slice(0, 8);
+  els.globalSearchResults.hidden = false;
+  els.globalSearchResults.innerHTML =
+    results
+      .map(
+        (item) => `
+          <button type="button" data-search-view="${escapeHtml(item.view)}">
+            <span>${escapeHtml(item.type)}</span>
+            <strong>${escapeHtml(item.title)}</strong>
+            <small>${escapeHtml(item.detail)}</small>
+          </button>
+        `,
+      )
+      .join("") || `<div class="empty">No result found</div>`;
 }
 
 function renderAttendance() {
@@ -4296,6 +4474,7 @@ document.querySelectorAll(".nav-button").forEach((button) => {
     document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
     button.classList.add("active");
     document.querySelector(`#${button.dataset.view}View`).classList.add("active");
+    document.querySelectorAll(".mobile-nav-button").forEach((item) => item.classList.toggle("active", item.dataset.mobileView === button.dataset.view));
   });
 });
 
@@ -4456,6 +4635,10 @@ els.runSystemCheckBtn?.addEventListener("click", renderSystemCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
 els.themeToggleBtn?.addEventListener("click", toggleThemeMode);
+els.compactModeBtn?.addEventListener("click", toggleCompactMode);
+els.dailySummaryWhatsappBtn?.addEventListener("click", openDailyWhatsappSummary);
+els.globalSearchInput?.addEventListener("input", renderGlobalSearchResults);
+els.globalSearchInput?.addEventListener("focus", renderGlobalSearchResults);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
 document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
   localStorage.setItem(CLOUD_URL_KEY, els.cloudApiUrl.value.trim());
@@ -4496,6 +4679,20 @@ document.body.addEventListener("click", (event) => {
   const rejectFriday = event.target.closest("[data-reject-friday]");
   const completeFriday = event.target.closest("[data-complete-friday]");
   const deleteFriday = event.target.closest("[data-delete-friday]");
+  const mobileView = event.target.closest("[data-mobile-view]");
+  const searchView = event.target.closest("[data-search-view]");
+
+  if (mobileView) {
+    const target = document.querySelector(`.nav-button[data-view="${mobileView.dataset.mobileView}"]`);
+    if (target && !target.hidden) target.click();
+  }
+
+  if (searchView) {
+    const target = document.querySelector(`.nav-button[data-view="${searchView.dataset.searchView}"]`);
+    if (target && !target.hidden) target.click();
+    if (els.globalSearchResults) els.globalSearchResults.hidden = true;
+    if (els.globalSearchInput) els.globalSearchInput.value = "";
+  }
 
   if (entryEdit) openEditEntry(entryEdit.dataset.editEntry);
 

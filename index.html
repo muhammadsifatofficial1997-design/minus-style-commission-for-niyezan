@@ -98,6 +98,11 @@
               <span id="themeToggleText">Day</span>
             </button>
             <span class="notification-badge" id="pendingApprovalBadge"><i data-lucide="bell"></i> 0</span>
+            <div class="global-search">
+              <i data-lucide="search"></i>
+              <input id="globalSearchInput" type="search" placeholder="Search everything..." autocomplete="off" />
+              <div class="global-search-results" id="globalSearchResults" hidden></div>
+            </div>
             <label for="selectedDate">তারিখ</label>
             <input id="selectedDate" type="date" />
           </div>
@@ -137,7 +142,27 @@
                 <h2>Quick Tools</h2>
                 <p>Browser cache/local data refresh করতে চাইলে এখান থেকে Cache Clear করুন।</p>
               </div>
-              <button class="secondary-button" id="homeClearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
+              <div class="button-row">
+                <button class="secondary-button" id="homeClearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
+                <button class="secondary-button" id="compactModeBtn" type="button"><i data-lucide="minimize-2"></i> Compact Mode</button>
+                <button class="secondary-button" id="dailySummaryWhatsappBtn" type="button"><i data-lucide="message-circle"></i> Daily WhatsApp Summary</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel compact-summary-panel" id="compactSummaryPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Compact Dashboard</h2>
+                <p>Today focus: income, expense, approval and attendance warning.</p>
+              </div>
+              <span class="status-pill">Focus View</span>
+            </div>
+            <div class="summary-row compact-summary-grid">
+              <div><small>Today Income</small><strong id="compactIncome">৳0</strong></div>
+              <div><small>Today Expense</small><strong id="compactExpense">৳0</strong></div>
+              <div><small>Pending Approval</small><strong id="compactPending">0</strong></div>
+              <div><small>Attendance Warning</small><strong id="compactWarnings">0</strong></div>
             </div>
           </section>
 
@@ -1052,6 +1077,13 @@
           </div>
         </section>
       </main>
+      <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile quick navigation">
+        <button class="mobile-nav-button active" data-mobile-view="dashboard" type="button"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+        <button class="mobile-nav-button" data-mobile-view="daily" type="button"><i data-lucide="calendar-days"></i><span>Daily</span></button>
+        <button class="mobile-nav-button" data-mobile-view="attendance" type="button"><i data-lucide="clipboard-check"></i><span>Attend</span></button>
+        <button class="mobile-nav-button" data-mobile-view="advance" type="button"><i data-lucide="hand-coins"></i><span>Salary</span></button>
+        <button class="mobile-nav-button" data-mobile-view="settings" type="button"><i data-lucide="settings"></i><span>More</span></button>
+      </nav>
     </div>
 
     <div class="modal hidden" id="editModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
