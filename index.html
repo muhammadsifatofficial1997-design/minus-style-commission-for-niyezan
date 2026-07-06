@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08283a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Minus Style" />
     <title>Minus Style Affiliate Dashboard</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon-192.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-192.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -47,6 +54,10 @@
           <button class="nav-button" data-view="reports" type="button">
             <i data-lucide="file-chart-column"></i>
             রিপোর্ট
+          </button>
+          <button class="nav-button" data-view="umrah" type="button">
+            <i data-lucide="landmark"></i>
+            Umrah Tracker
           </button>
           <button class="nav-button" data-view="attendance" type="button">
             <i data-lucide="clipboard-check"></i>
@@ -132,6 +143,17 @@
               </div>
               <button class="secondary-button" id="homeClearCacheBtn" type="button"><i data-lucide="refresh-ccw"></i> Cache Clear</button>
             </div>
+          </section>
+
+          <section class="panel dashboard-tools system-check-panel">
+            <div class="panel-head">
+              <div>
+                <h2>System Check</h2>
+                <p>App, cloud sync, approvals, attendance, break এবং PWA status দ্রুত দেখুন।</p>
+              </div>
+              <button class="secondary-button" id="runSystemCheckBtn" type="button"><i data-lucide="shield-check"></i> Check Now</button>
+            </div>
+            <div class="system-check-grid" id="systemCheckList"></div>
           </section>
 
           <div class="content-grid">
@@ -831,6 +853,130 @@
                 </div>
               </div>
               <div class="fixed-list" id="fixedList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="umrahView">
+          <section class="umrah-hero">
+            <div class="umrah-hero-copy">
+              <span class="umrah-kicker">Umrah Savings</span>
+              <h2>উমরাহ ফান্ড ট্র্যাকার</h2>
+              <p>জমা, সাপ্তাহিক টার্গেট, প্যাকেজ খরচ এবং সফরের ব্যক্তিগত খরচ এক জায়গায় দেখুন।</p>
+              <div class="umrah-hero-stats">
+                <div><small>জমা হয়েছে</small><strong id="umrahHeroSaved">৳0</strong></div>
+                <div><small>টার্গেট বাকি</small><strong id="umrahHeroRemaining">৳0</strong></div>
+                <div><small>সপ্তাহের অবস্থা</small><strong id="umrahHeroWeek">৳0</strong></div>
+              </div>
+            </div>
+            <div class="umrah-poster">
+              <img src="assets/umrah-package-reference.png" alt="Umrah package design reference" />
+            </div>
+          </section>
+
+          <div class="umrah-grid">
+            <form class="panel form-panel umrah-plan-panel" id="umrahPlanForm">
+              <div class="panel-head">
+                <div>
+                  <h2>প্ল্যান সেট করুন</h2>
+                  <p>মোট টার্গেট, সাপ্তাহিক জমা লক্ষ্য ও সফরের তারিখ আপডেট করুন।</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>মোট উমরাহ টার্গেট <input id="umrahTarget" type="number" min="0" step="1" required /></label>
+                <label>সাপ্তাহিক টার্গেট <input id="umrahWeeklyTarget" type="number" min="0" step="1" required /></label>
+              </div>
+              <div class="field-row">
+                <label>যাত্রার তারিখ <input id="umrahTravelDate" type="date" /></label>
+                <label>ব্যক্তিগত খরচ বাজেট <input id="umrahPersonalBudget" type="number" min="0" step="1" /></label>
+              </div>
+              <button class="primary-button" type="submit"><i data-lucide="save"></i> প্ল্যান সেভ</button>
+            </form>
+
+            <form class="panel form-panel" id="umrahTransactionForm">
+              <div class="panel-head">
+                <div>
+                  <h2>লেনদেন যোগ করুন</h2>
+                  <p>জমানো টাকা অথবা উমরাহ/সফরের খরচ লিখুন।</p>
+                </div>
+              </div>
+              <div class="field-row">
+                <label>ধরন
+                  <select id="umrahTransactionType" required>
+                    <option value="saving">জমা</option>
+                    <option value="package">উমরাহ খরচ</option>
+                    <option value="personal">ব্যক্তিগত খরচ</option>
+                  </select>
+                </label>
+                <label>পরিমাণ <input id="umrahTransactionAmount" type="number" min="0" step="1" required /></label>
+              </div>
+              <div class="field-row">
+                <label>তারিখ <input id="umrahTransactionDate" type="date" required /></label>
+                <label>নোট <input id="umrahTransactionNote" type="text" placeholder="যেমন: এজেন্সি অগ্রিম, হোটেল, খাবার" /></label>
+              </div>
+              <button class="primary-button" type="submit"><i data-lucide="plus"></i> এন্ট্রি যোগ</button>
+            </form>
+          </div>
+
+          <div class="metrics-grid umrah-metrics">
+            <article class="metric">
+              <span class="metric-icon profit"><i data-lucide="piggy-bank"></i></span>
+              <small>মোট জমা</small>
+              <strong id="umrahSavedTotal">৳0</strong>
+              <p id="umrahProgressHint">টার্গেটের 0%</p>
+            </article>
+            <article class="metric">
+              <span class="metric-icon fixed"><i data-lucide="calendar-check"></i></span>
+              <small>এই সপ্তাহে জমা</small>
+              <strong id="umrahWeeklySaved">৳0</strong>
+              <p id="umrahWeeklyHint">সাপ্তাহিক টার্গেট সেট করুন</p>
+            </article>
+            <article class="metric">
+              <span class="metric-icon expense"><i data-lucide="plane"></i></span>
+              <small>উমরাহ খরচ</small>
+              <strong id="umrahPackageSpent">৳0</strong>
+              <p>প্যাকেজ, ভিসা, টিকেট, হোটেল</p>
+            </article>
+            <article class="metric highlight">
+              <span class="metric-icon income"><i data-lucide="wallet"></i></span>
+              <small>ব্যক্তিগত খরচ</small>
+              <strong id="umrahPersonalSpent">৳0</strong>
+              <p id="umrahPersonalHint">বাজেটের মধ্যে আছেন</p>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel wide">
+              <div class="panel-head">
+                <div>
+                  <h2>অগ্রগতি</h2>
+                  <p id="umrahDaysHint">সফরের তারিখ সেট করুন</p>
+                </div>
+                <span class="status-pill" id="umrahStatusPill">প্ল্যান চলছে</span>
+              </div>
+              <div class="umrah-progress">
+                <div class="umrah-progress-top">
+                  <strong id="umrahProgressPercent">0%</strong>
+                  <span id="umrahProgressMoney">৳0 / ৳0</span>
+                </div>
+                <div class="umrah-progress-track"><span id="umrahProgressBar"></span></div>
+              </div>
+              <div class="summary-row umrah-summary-row">
+                <div><small>টার্গেট</small><strong id="umrahTargetSummary">৳0</strong></div>
+                <div><small>বাকি</small><strong id="umrahRemainingSummary">৳0</strong></div>
+                <div><small>সাপ্তাহিক বাকি</small><strong id="umrahWeeklyRemaining">৳0</strong></div>
+                <div><small>নেট ফান্ড</small><strong id="umrahNetFund">৳0</strong></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <h2>সাম্প্রতিক লেজার</h2>
+                  <p>শেষ ৮টি জমা ও খরচ</p>
+                </div>
+              </div>
+              <div class="fixed-list umrah-ledger" id="umrahLedgerList"></div>
             </section>
           </div>
         </section>

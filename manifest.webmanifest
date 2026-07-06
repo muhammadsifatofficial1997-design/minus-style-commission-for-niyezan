@@ -1,0 +1,25 @@
+{
+  "name": "Minus Style Finance & Attendance",
+  "short_name": "Minus Style",
+  "description": "Affiliate finance, attendance, payroll and approval dashboard for Minus Style.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#031622",
+  "theme_color": "#08283a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

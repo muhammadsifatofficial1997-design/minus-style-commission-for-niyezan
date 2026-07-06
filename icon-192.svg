@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#031622"/>
+  <path d="M96 28c25 25 50 44 50 79 0 33-24 57-50 57s-50-24-50-57c0-35 25-54 50-79Z" fill="#d8b56f"/>
+  <path d="M96 55c14 16 28 29 28 51 0 20-12 35-28 35s-28-15-28-35c0-22 14-35 28-51Z" fill="#031622"/>
+  <path d="M96 82c7 8 15 15 15 27 0 11-6 19-15 19s-15-8-15-19c0-12 8-19 15-27Z" fill="#fff7e7"/>
+  <text x="96" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#fff7e7">MS</text>
+</svg>

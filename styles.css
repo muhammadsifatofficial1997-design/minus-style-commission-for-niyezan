@@ -3865,3 +3865,49 @@ body[data-theme="night"] th {
 body[data-theme="night"] td {
   background: rgba(6, 29, 42, 0.72);
 }
+
+.system-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.system-check-item {
+  display: grid;
+  gap: 8px;
+  min-height: 128px;
+  padding: 16px;
+  border: 1px solid rgba(8, 40, 58, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 249, 237, 0.74);
+}
+
+.system-check-item strong {
+  font-size: 26px;
+  color: var(--ink);
+}
+
+.system-check-item small {
+  color: var(--muted);
+}
+
+.system-check-item.good {
+  border-color: rgba(28, 110, 88, 0.24);
+}
+
+.system-check-item.warning {
+  border-color: rgba(216, 181, 111, 0.5);
+}
+
+.system-check-item.danger {
+  border-color: rgba(169, 74, 63, 0.38);
+}
+
+body[data-theme="night"] .system-check-item {
+  border-color: rgba(216, 181, 111, 0.2);
+  background: rgba(6, 29, 42, 0.82);
+}
+
+body[data-theme="night"] .system-check-item strong {
+  color: #fff7e7;
+}
