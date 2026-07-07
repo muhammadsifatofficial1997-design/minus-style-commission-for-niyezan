@@ -4374,6 +4374,67 @@ body[data-theme="night"] .calendar-tag {
   color: var(--muted);
 }
 
+.approval-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.approval-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.approval-card {
+  border-left: 5px solid var(--accent);
+}
+
+.approval-card.approved {
+  border-left-color: var(--good);
+}
+
+.approval-card.rejected {
+  border-left-color: var(--danger);
+}
+
+.approval-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.approval-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.pwa-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.pwa-status-grid span {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.48);
+  font-weight: 800;
+}
+
+.secondary-button.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
 .notice-form,
 .work-log-form {
   align-items: stretch;
@@ -4459,7 +4520,8 @@ body[data-theme="night"] .notice-card,
 body[data-theme="night"] .work-log-card,
 body[data-theme="night"] .check-card,
 body[data-theme="night"] .performance-card,
-body[data-theme="night"] .employee-notice-strip span {
+body[data-theme="night"] .employee-notice-strip span,
+body[data-theme="night"] .pwa-status-grid span {
   background: rgba(255, 255, 255, 0.08);
 }
 

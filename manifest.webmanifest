@@ -1,13 +1,32 @@
 {
   "name": "Minus Style Finance & Attendance",
   "short_name": "Minus Style",
+  "id": "/minus-style-commission-for-niyezan/",
   "description": "Affiliate finance, attendance, payroll and approval dashboard for Minus Style.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#031622",
-  "theme_color": "#08283a",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#2b0b08",
+  "theme_color": "#b32724",
   "orientation": "any",
+  "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Attendance",
+      "short_name": "Attend",
+      "description": "Open attendance and payroll panel",
+      "url": "./#attendance",
+      "icons": [{ "src": "icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Daily Entry",
+      "short_name": "Daily",
+      "description": "Open daily income and expense entry",
+      "url": "./#daily",
+      "icons": [{ "src": "icon-192.svg", "sizes": "192x192", "type": "image/svg+xml" }]
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.svg",

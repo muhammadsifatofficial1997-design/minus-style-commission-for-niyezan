@@ -91,6 +91,7 @@
             <p class="eyebrow">বাংলা এফিলিয়েট লাভ-লস ম্যানেজার</p>
             <h1>আজকের আয়, খরচ ও নেট লাভ</h1>
             <p class="cloud-sync-bar" id="cloudSyncBar">Cloud sync ready</p>
+            <p class="cloud-sync-bar" id="offlineStatusBar">Online</p>
           </div>
           <div class="date-control">
             <button class="theme-toggle" id="themeToggleBtn" type="button" aria-label="Switch theme">
@@ -972,6 +973,20 @@
                 <p>Attendance, leave, fixed cost, edit/delete এবং salary-related সব pending request এখানে থাকবে।</p>
               </div>
             </div>
+            <div class="approval-toolbar">
+              <div class="approval-tabs" id="approvalTabs">
+                <button class="secondary-button active" data-approval-filter="pending" type="button">Pending</button>
+                <button class="secondary-button" data-approval-filter="attendance" type="button">Attendance</button>
+                <button class="secondary-button" data-approval-filter="finance" type="button">Finance</button>
+                <button class="secondary-button" data-approval-filter="fixed" type="button">Fixed Cost</button>
+                <button class="secondary-button" data-approval-filter="completed" type="button">Completed</button>
+                <button class="secondary-button" data-approval-filter="all" type="button">All</button>
+              </div>
+              <div class="button-row">
+                <button class="secondary-button" id="bulkApproveBtn" type="button"><i data-lucide="check-check"></i> Bulk Approve</button>
+                <button class="secondary-button danger" id="bulkRejectBtn" type="button"><i data-lucide="x"></i> Bulk Reject</button>
+              </div>
+            </div>
             <div class="fixed-list" id="approvalList"></div>
           </section>
         </section>
@@ -993,6 +1008,18 @@
                 <strong>Mobile responsive publish</strong>
                 <p>Netlify/GitHub Pages-এ upload করলে মোবাইল বা অন্য PC থেকে link দিয়ে দেখা যাবে। Google Sheets backend URL দিলে সবাই একই live data ব্যবহার করবে।</p>
                 <button class="secondary-button" id="copyLinkBtn" type="button"><i data-lucide="link"></i> বর্তমান লিংক কপি</button>
+              </div>
+              <div class="publish-box pwa-box">
+                <strong>Mobile App Install</strong>
+                <p>Phone/PC-te app-er moto install korun. Offline hole cached dashboard open hobe, online hole cloud sync cholbe.</p>
+                <div class="pwa-status-grid">
+                  <span id="pwaInstallStatus">Install status: checking</span>
+                  <span id="pwaOfflineStatus">Network: checking</span>
+                </div>
+                <div class="button-row">
+                  <button class="secondary-button" id="installPwaBtn" type="button"><i data-lucide="download"></i> Install App</button>
+                  <button class="secondary-button" id="refreshPwaBtn" type="button"><i data-lucide="refresh-ccw"></i> Refresh App Cache</button>
+                </div>
               </div>
               <div class="publish-box cloud-box">
                 <strong>Google Sheets Backend</strong>

@@ -37,6 +37,8 @@ let lastCloudSyncAt = "";
 let lastCloudSyncFailed = false;
 let cloudRetryTimer = null;
 let cloudRetryCount = 0;
+let deferredInstallPrompt = null;
+let approvalFilter = "pending";
 
 const categoryLabels = {
   commission: "মাইনাস স্টাইল কমিশন",
@@ -105,6 +107,11 @@ const els = {
   themeToggleBtn: document.querySelector("#themeToggleBtn"),
   themeToggleText: document.querySelector("#themeToggleText"),
   cloudSyncBar: document.querySelector("#cloudSyncBar"),
+  offlineStatusBar: document.querySelector("#offlineStatusBar"),
+  installPwaBtn: document.querySelector("#installPwaBtn"),
+  refreshPwaBtn: document.querySelector("#refreshPwaBtn"),
+  pwaInstallStatus: document.querySelector("#pwaInstallStatus"),
+  pwaOfflineStatus: document.querySelector("#pwaOfflineStatus"),
   homeClearCacheBtn: document.querySelector("#homeClearCacheBtn"),
   compactModeBtn: document.querySelector("#compactModeBtn"),
   dailySummaryWhatsappBtn: document.querySelector("#dailySummaryWhatsappBtn"),
@@ -287,6 +294,9 @@ const els = {
   managerPin: document.querySelector("#managerPin"),
   managerList: document.querySelector("#managerList"),
   approvalList: document.querySelector("#approvalList"),
+  approvalTabs: document.querySelector("#approvalTabs"),
+  bulkApproveBtn: document.querySelector("#bulkApproveBtn"),
+  bulkRejectBtn: document.querySelector("#bulkRejectBtn"),
   employeeAccessForm: document.querySelector("#employeeAccessForm"),
   employeeAccessEmployee: document.querySelector("#employeeAccessEmployee"),
   employeeAccessPin: document.querySelector("#employeeAccessPin"),
@@ -518,6 +528,49 @@ function updateCloudSyncBar(message = "") {
   }
   els.cloudSyncBar.textContent = cloudUrl() ? "Cloud sync ready" : "Cloud sync off";
   els.cloudSyncBar.dataset.status = cloudUrl() ? "ready" : "off";
+}
+
+function renderPwaStatus() {
+  const online = navigator.onLine !== false;
+  if (els.offlineStatusBar) {
+    els.offlineStatusBar.textContent = online ? "Online" : "Offline mode";
+    els.offlineStatusBar.dataset.status = online ? "synced" : "failed";
+  }
+  if (els.pwaOfflineStatus) {
+    els.pwaOfflineStatus.textContent = online ? "Network: online" : "Network: offline, cached app active";
+  }
+  if (els.pwaInstallStatus) {
+    const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
+    els.pwaInstallStatus.textContent = standalone ? "Install status: installed" : deferredInstallPrompt ? "Install status: ready" : "Install status: browser menu theke install korte paren";
+  }
+  if (els.installPwaBtn) {
+    const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone;
+    els.installPwaBtn.disabled = standalone || !deferredInstallPrompt;
+    els.installPwaBtn.title = standalone ? "App already installed" : deferredInstallPrompt ? "Install prompt open korun" : "Browser menu theke Add to Home screen use korun";
+  }
+}
+
+async function installPwa() {
+  if (!deferredInstallPrompt) {
+    alert("Install prompt ready na hole browser menu theke Add to Home screen / Install app use korun.");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice.catch(() => null);
+  deferredInstallPrompt = null;
+  renderPwaStatus();
+}
+
+async function refreshPwaCache() {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) await registration.update();
+  }
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith("minus-style-pwa")).map((key) => caches.delete(key)));
+  }
+  alert("App cache refresh hoyeche. Page reload korun.");
 }
 
 function clearCloudRetry() {
@@ -1515,7 +1568,7 @@ function render() {
   renderFixedList();
   renderCategories();
   renderManagers();
-  renderApprovals();
+  renderApprovalsV2();
   renderRoleUi();
   renderAttendance();
   renderFridayWork();
@@ -1547,6 +1600,7 @@ function render() {
   renderBackupStatus();
   renderHealthCheck();
   renderGlobalSearchResults();
+  renderPwaStatus();
   applyCompactMode();
   updateCloudSyncBar();
 
@@ -1733,6 +1787,75 @@ function renderApprovals() {
         `,
       )
       .join("") || `<div class="empty">কোনো pending request নেই।</div>`;
+}
+
+function approvalGroup(request) {
+  if (["attendance_punch", "correction_request", "leave_request"].includes(request.action)) return "attendance";
+  if (["add_entry", "bulk_entries", "edit_entry", "delete_entry"].includes(request.action)) return "finance";
+  if (["add_fixed", "edit_fixed", "delete_fixed", "toggle_fixed", "save_fixed"].includes(request.action)) return "fixed";
+  return "other";
+}
+
+function approvalFilterMatches(request) {
+  if (approvalFilter === "all") return true;
+  if (approvalFilter === "pending") return request.status === "pending";
+  if (approvalFilter === "completed") return request.status !== "pending";
+  return approvalGroup(request) === approvalFilter;
+}
+
+function selectedApprovalIds() {
+  return Array.from(document.querySelectorAll("[data-approval-select]:checked")).map((input) => input.dataset.approvalSelect);
+}
+
+function renderApprovalsV2() {
+  if (!els.approvalList) return;
+  const pending = state.approvals.filter((request) => request.status === "pending");
+  renderPendingApprovalBadge(pending.length);
+  if (els.approvalTabs) {
+    els.approvalTabs.querySelectorAll("[data-approval-filter]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.approvalFilter === approvalFilter);
+    });
+  }
+  const visible = state.approvals.filter(approvalFilterMatches);
+  const bulkVisible = visible.filter((request) => request.status === "pending");
+  if (els.bulkApproveBtn) els.bulkApproveBtn.disabled = !bulkVisible.length || !isAdmin();
+  if (els.bulkRejectBtn) els.bulkRejectBtn.disabled = !bulkVisible.length || !isAdmin();
+  els.approvalList.innerHTML =
+    visible
+      .map(
+        (request) => `
+          <article class="fixed-item approval-card ${escapeHtml(request.status)}">
+            <div class="item-line">
+              <label class="check-line approval-check">
+                ${request.status === "pending" && isAdmin() ? `<input type="checkbox" data-approval-select="${request.id}" checked />` : ""}
+                <strong>${escapeHtml(requestTitle(request))}</strong>
+              </label>
+              <span class="status-pill">${escapeHtml(request.status)} · ${escapeHtml(requestCategory(request))}</span>
+            </div>
+            <small class="muted">${formatDateTime(request.createdAt)} · ${escapeHtml(requestDescription(request))}</small>
+            ${approvalTimelineHtml(request)}
+            ${
+              request.status === "pending" && isAdmin()
+                ? `<div class="action-row">
+                    <button class="small-action" data-approve-request="${request.id}" type="button">Approve</button>
+                    <button class="small-action danger" data-reject-request="${request.id}" type="button">Reject</button>
+                  </div>`
+                : `<small class="muted">Reviewed by ${escapeHtml(request.reviewedBy || "-")} · ${escapeHtml(formatDateTime(request.reviewedAt))}</small>`
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">No approval request found for this filter.</div>`;
+}
+
+function bulkReviewApprovals(approved) {
+  if (!isAdmin()) return;
+  const ids = selectedApprovalIds();
+  if (!ids.length) return;
+  if (!confirm(`${approved ? "Approve" : "Reject"} ${ids.length} selected request?`)) return;
+  ids.forEach((id) => applyApproval(id, approved, { silent: true }));
+  saveState();
+  render();
 }
 
 function requestCategory(request) {
@@ -4661,7 +4784,7 @@ function addApproval(action, payload) {
   render();
 }
 
-function applyApproval(id, approved) {
+function applyApproval(id, approved, options = {}) {
   const request = state.approvals.find((item) => item.id === id);
   if (!request) return;
   if (approved && ["attendance_punch", "correction_request", "leave_request"].includes(request.action)) {
@@ -4729,8 +4852,10 @@ function applyApproval(id, approved) {
 
   logActivity(approved ? "Approve Request" : "Reject Request", requestTitle(request), request.payload?.employeeId || request.payload?.id || "");
 
-  saveState();
-  render();
+  if (!options.silent) {
+    saveState();
+    render();
+  }
 }
 
 function addCategory(event) {
@@ -5052,6 +5177,14 @@ els.pinForm.addEventListener("submit", (event) => {
 els.managerForm.addEventListener("submit", addManager);
 els.employeeAccessForm.addEventListener("submit", saveEmployeeAccess);
 els.noticeForm?.addEventListener("submit", saveNotice);
+els.approvalTabs?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-approval-filter]");
+  if (!button) return;
+  approvalFilter = button.dataset.approvalFilter;
+  renderApprovalsV2();
+});
+els.bulkApproveBtn?.addEventListener("click", () => bulkReviewApprovals(true));
+els.bulkRejectBtn?.addEventListener("click", () => bulkReviewApprovals(false));
 
 els.selectedDate.addEventListener("change", () => {
   els.entryDate.value = els.selectedDate.value;
@@ -5148,6 +5281,8 @@ els.runSystemCheckBtn?.addEventListener("click", renderSystemCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
 els.themeToggleBtn?.addEventListener("click", toggleThemeMode);
+els.installPwaBtn?.addEventListener("click", installPwa);
+els.refreshPwaBtn?.addEventListener("click", refreshPwaCache);
 els.themePresetSelect?.addEventListener("change", () => {
   applyThemePreset(els.themePresetSelect.value);
   if (window.lucide) lucide.createIcons();
@@ -5413,6 +5548,20 @@ function registerServiceWorker() {
     navigator.serviceWorker.register("./sw.js").then(renderSystemCheck).catch(() => renderSystemCheck());
   });
 }
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  renderPwaStatus();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  renderPwaStatus();
+});
+
+window.addEventListener("online", renderPwaStatus);
+window.addEventListener("offline", renderPwaStatus);
 
 boot();
 
