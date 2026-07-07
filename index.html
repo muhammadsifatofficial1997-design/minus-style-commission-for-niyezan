@@ -158,6 +158,28 @@
             <div class="fixed-list smart-alert-list" id="smartAlertList"></div>
           </section>
 
+          <section class="panel notice-board-panel" id="noticeBoardPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Employee Notice Board</h2>
+                <p>Admin notice publish korle employee login korar por top notice hisebe dekhbe.</p>
+              </div>
+              <span class="status-pill" id="noticeCount">0 notice</span>
+            </div>
+            <form class="inline-form notice-form" id="noticeForm">
+              <input id="noticeTitle" type="text" placeholder="Notice title" required />
+              <input id="noticeBody" type="text" placeholder="Message / instruction" required />
+              <input id="noticeDate" type="date" />
+              <select id="noticeAudience">
+                <option value="all">All Employees</option>
+                <option value="employees">Employees Only</option>
+                <option value="managers">Managers Only</option>
+              </select>
+              <button class="secondary-button" type="submit"><i data-lucide="megaphone"></i> Notice Publish</button>
+            </form>
+            <div class="fixed-list notice-list" id="noticeList"></div>
+          </section>
+
           <section class="panel dashboard-tools">
             <div class="panel-head">
               <div>
@@ -430,6 +452,7 @@
                 <strong id="employeePendingApproval">0</strong>
               </div>
             </div>
+            <div class="employee-notice-strip" id="employeeNoticeStrip"></div>
             <div class="employee-profile-summary" id="employeeProfileSummary"></div>
             <div class="employee-quick-actions">
               <button class="primary-button" id="mobileCheckInBtn" type="button"><i data-lucide="log-in"></i> Check In</button>
@@ -467,6 +490,35 @@
                 </div>
               </div>
             </div>
+          </section>
+
+          <section class="panel performance-panel" id="performanceSnapshotPanel">
+            <div class="panel-head">
+              <div>
+                <h2 id="performanceSnapshotTitle">Employee Performance Snapshot</h2>
+                <p>Late, absent, long break, Friday work and monthly payable ek card-e.</p>
+              </div>
+              <span class="status-pill">Monthly</span>
+            </div>
+            <div class="summary-row performance-grid" id="performanceSnapshotGrid"></div>
+          </section>
+
+          <section class="panel work-log-panel" id="workLogPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Task / Work Log</h2>
+                <p>Employee daily work note save korbe, Manager/Admin review korbe.</p>
+              </div>
+              <span class="status-pill" id="workLogCount">0 log</span>
+            </div>
+            <form class="inline-form work-log-form" id="workLogForm">
+              <select id="workLogEmployee" required></select>
+              <input id="workLogDate" type="date" required />
+              <input id="workLogTitle" type="text" placeholder="Task title" required />
+              <textarea id="workLogNote" rows="2" placeholder="Work details"></textarea>
+              <button class="primary-button" type="submit"><i data-lucide="clipboard-pen"></i> Work Log Save</button>
+            </form>
+            <div class="fixed-list work-log-list" id="workLogList"></div>
           </section>
 
           <section class="panel friday-work-panel" id="fridayWorkPanel">
@@ -701,6 +753,7 @@
               <div><small>Payable Salary</small><strong id="payrollPayable">৳0</strong></div>
               <div><small>Cut Days</small><strong id="payrollCutDays">0</strong></div>
             </div>
+            <div class="review-checklist" id="payrollReviewChecklist"></div>
             <div class="table-wrap">
               <table>
                 <thead>

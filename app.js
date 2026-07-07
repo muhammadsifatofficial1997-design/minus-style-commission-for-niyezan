@@ -8,6 +8,8 @@ const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
 const DEFAULT_CLOUD_URL = "https://script.google.com/macros/s/AKfycbzbdWRDAn5c7tVyX53oVbQgQUYG5LnN3KwguGODW27JpLj7tpJXSbDWuA_79IyMEf84/exec";
 const CLOUD_PUSH_DELAY = 900;
+const CLOUD_RETRY_DELAY = 30000;
+const CLOUD_RETRY_LIMIT = 3;
 const MISSED_BREAK_SECONDS = 2 * 60 * 60;
 const BREAK_LIMIT_MINUTES = {
   prayer: 20,
@@ -33,6 +35,8 @@ let breakTicker = null;
 let cloudDirty = false;
 let lastCloudSyncAt = "";
 let lastCloudSyncFailed = false;
+let cloudRetryTimer = null;
+let cloudRetryCount = 0;
 
 const categoryLabels = {
   commission: "মাইনাস স্টাইল কমিশন",
@@ -116,6 +120,14 @@ const els = {
   roleHomeGrid: document.querySelector("#roleHomeGrid"),
   smartAlertCount: document.querySelector("#smartAlertCount"),
   smartAlertList: document.querySelector("#smartAlertList"),
+  noticeBoardPanel: document.querySelector("#noticeBoardPanel"),
+  noticeForm: document.querySelector("#noticeForm"),
+  noticeTitle: document.querySelector("#noticeTitle"),
+  noticeBody: document.querySelector("#noticeBody"),
+  noticeDate: document.querySelector("#noticeDate"),
+  noticeAudience: document.querySelector("#noticeAudience"),
+  noticeCount: document.querySelector("#noticeCount"),
+  noticeList: document.querySelector("#noticeList"),
   themePresetSelect: document.querySelector("#themePresetSelect"),
   payrollSheetExportBtn: document.querySelector("#payrollSheetExportBtn"),
   whatsappTemplateList: document.querySelector("#whatsappTemplateList"),
@@ -197,9 +209,21 @@ const els = {
   employeeMonthBreak: document.querySelector("#employeeMonthBreak"),
   employeeMonthAdvance: document.querySelector("#employeeMonthAdvance"),
   employeeMonthLeave: document.querySelector("#employeeMonthLeave"),
+  employeeNoticeStrip: document.querySelector("#employeeNoticeStrip"),
   employeeSelfAttendanceList: document.querySelector("#employeeSelfAttendanceList"),
   employeeSelfBreakList: document.querySelector("#employeeSelfBreakList"),
   employeeSelfLeaveAdvanceList: document.querySelector("#employeeSelfLeaveAdvanceList"),
+  performanceSnapshotPanel: document.querySelector("#performanceSnapshotPanel"),
+  performanceSnapshotTitle: document.querySelector("#performanceSnapshotTitle"),
+  performanceSnapshotGrid: document.querySelector("#performanceSnapshotGrid"),
+  workLogPanel: document.querySelector("#workLogPanel"),
+  workLogForm: document.querySelector("#workLogForm"),
+  workLogEmployee: document.querySelector("#workLogEmployee"),
+  workLogDate: document.querySelector("#workLogDate"),
+  workLogTitle: document.querySelector("#workLogTitle"),
+  workLogNote: document.querySelector("#workLogNote"),
+  workLogList: document.querySelector("#workLogList"),
+  workLogCount: document.querySelector("#workLogCount"),
   advanceForm: document.querySelector("#advanceForm"),
   advanceEmployee: document.querySelector("#advanceEmployee"),
   advanceMonth: document.querySelector("#advanceMonth"),
@@ -224,6 +248,7 @@ const els = {
   holidayNote: document.querySelector("#holidayNote"),
   holidayList: document.querySelector("#holidayList"),
   payrollLockBtn: document.querySelector("#payrollLockBtn"),
+  payrollReviewChecklist: document.querySelector("#payrollReviewChecklist"),
   salaryAdjustmentForm: document.querySelector("#salaryAdjustmentForm"),
   salaryAdjustmentEmployee: document.querySelector("#salaryAdjustmentEmployee"),
   salaryAdjustmentMonth: document.querySelector("#salaryAdjustmentMonth"),
@@ -383,6 +408,8 @@ function defaultState() {
     employeeProfiles: [],
     approvals: [],
     activityLogs: [],
+    notices: [],
+    workLogs: [],
     attendance: [],
     fridayWorkRequests: [],
     breaks: [],
@@ -431,6 +458,8 @@ function loadState() {
       employeeProfiles: parsed.employeeProfiles || defaults.employeeProfiles,
       approvals: parsed.approvals || defaults.approvals,
       activityLogs: parsed.activityLogs || defaults.activityLogs,
+      notices: parsed.notices || defaults.notices,
+      workLogs: parsed.workLogs || defaults.workLogs,
       attendance: parsed.attendance || defaults.attendance,
       fridayWorkRequests: parsed.fridayWorkRequests || defaults.fridayWorkRequests,
       breaks: parsed.breaks || defaults.breaks,
@@ -452,6 +481,7 @@ function saveState() {
   createAutoBackup();
   cloudDirty = true;
   lastCloudSyncFailed = false;
+  clearCloudRetry();
   updateCloudSyncBar();
   queueCloudPush();
 }
@@ -471,7 +501,8 @@ function setCloudStatus(message) {
 function updateCloudSyncBar(message = "") {
   if (!els.cloudSyncBar) return;
   if (lastCloudSyncFailed) {
-    els.cloudSyncBar.textContent = message || "Sync failed";
+    const retryText = cloudRetryTimer ? ` · retry ${bn.format(cloudRetryCount)}/${bn.format(CLOUD_RETRY_LIMIT)} in 30s` : "";
+    els.cloudSyncBar.textContent = message || `Sync failed${retryText}`;
     els.cloudSyncBar.dataset.status = "failed";
     return;
   }
@@ -487,6 +518,26 @@ function updateCloudSyncBar(message = "") {
   }
   els.cloudSyncBar.textContent = cloudUrl() ? "Cloud sync ready" : "Cloud sync off";
   els.cloudSyncBar.dataset.status = cloudUrl() ? "ready" : "off";
+}
+
+function clearCloudRetry() {
+  clearTimeout(cloudRetryTimer);
+  cloudRetryTimer = null;
+  cloudRetryCount = 0;
+}
+
+function scheduleCloudRetry(errorMessage = "Sync failed") {
+  if (!cloudUrl() || !cloudDirty || cloudRetryCount >= CLOUD_RETRY_LIMIT) {
+    updateCloudSyncBar(errorMessage);
+    return;
+  }
+  clearTimeout(cloudRetryTimer);
+  cloudRetryCount += 1;
+  cloudRetryTimer = setTimeout(() => {
+    cloudRetryTimer = null;
+    syncToCloud(false);
+  }, CLOUD_RETRY_DELAY);
+  updateCloudSyncBar(`${errorMessage} · auto retry ${bn.format(cloudRetryCount)}/${bn.format(CLOUD_RETRY_LIMIT)} in 30s`);
 }
 
 function cloudLoginSummary() {
@@ -520,11 +571,12 @@ async function syncToCloud(showAlert = true) {
     cloudDirty = false;
     lastCloudSyncFailed = false;
     lastCloudSyncAt = new Date().toISOString();
+    clearCloudRetry();
     setCloudStatus(`শেষ cloud save: ${new Date().toLocaleString("bn-BD")}`);
     if (showAlert) alert("Cloud-এ data save হয়েছে।");
   } catch (error) {
     lastCloudSyncFailed = true;
-    setCloudStatus(`Cloud save failed: ${error.message}`);
+    scheduleCloudRetry(`Cloud save failed: ${error.message}`);
     if (showAlert) alert(`Cloud save failed: ${error.message}`);
   }
 }
@@ -1458,6 +1510,7 @@ function render() {
   renderTodayEntries(day.entries);
   renderRoleHome(day, month);
   renderSmartAlerts();
+  renderNoticeBoard();
   renderEntriesTable();
   renderFixedList();
   renderCategories();
@@ -1471,6 +1524,9 @@ function render() {
   renderCorrectionForm();
   renderPayroll();
   renderEmployeeHome();
+  renderPerformanceSnapshot();
+  renderWorkLogs();
+  renderPayrollReviewChecklist();
   renderAdvance();
   renderLeave();
   renderLeaveDecisionPreview();
@@ -1890,6 +1946,148 @@ function renderSmartAlerts() {
       `,
     )
     .join("");
+}
+
+function noticeVisibleForRole(notice) {
+  if (isAdmin()) return true;
+  if (notice.audience === "managers") return isManager();
+  if (notice.audience === "employees") return isEmployee();
+  return isManager() || isEmployee();
+}
+
+function renderNoticeBoard() {
+  if (!els.noticeList) return;
+  if (els.noticeForm) els.noticeForm.hidden = !isAdmin();
+  if (els.noticeDate && !els.noticeDate.value) els.noticeDate.value = today();
+
+  const notices = (state.notices || [])
+    .filter(noticeVisibleForRole)
+    .sort((a, b) => String(b.createdAt || b.date || "").localeCompare(String(a.createdAt || a.date || "")));
+  const activeCount = notices.length;
+  if (els.noticeCount) els.noticeCount.textContent = `${bn.format(activeCount)} notice`;
+
+  els.noticeList.innerHTML =
+    notices
+      .slice(0, isEmployee() ? 5 : 12)
+      .map(
+        (notice) => `
+          <article class="fixed-item notice-card">
+            <div class="item-line">
+              <strong>${escapeHtml(notice.title || "Notice")}</strong>
+              <span class="status-pill">${escapeHtml(notice.audience || "all")}</span>
+            </div>
+            <small class="muted">${escapeHtml(notice.date || "-")} · ${escapeHtml(notice.body || "")}</small>
+            ${
+              isAdmin()
+                ? `<div class="action-row"><button class="small-action danger" data-delete-notice="${notice.id}" type="button">Delete</button></div>`
+                : ""
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">No active notice.</div>`;
+}
+
+function saveNotice(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  state.notices = state.notices || [];
+  state.notices.unshift({
+    id: crypto.randomUUID(),
+    title: els.noticeTitle.value.trim(),
+    body: els.noticeBody.value.trim(),
+    date: els.noticeDate.value || today(),
+    audience: els.noticeAudience.value || "all",
+    createdAt: new Date().toISOString(),
+    createdBy: currentUser.name || "Admin",
+  });
+  logActivity("Notice", `Notice published: ${els.noticeTitle.value.trim()}`, "notice");
+  els.noticeForm.reset();
+  if (els.noticeDate) els.noticeDate.value = today();
+  saveState();
+  render();
+}
+
+function deleteNotice(id) {
+  if (!isAdmin()) return;
+  state.notices = (state.notices || []).filter((notice) => notice.id !== id);
+  logActivity("Notice Delete", "Notice deleted", "notice");
+  saveState();
+  render();
+}
+
+function renderWorkLogs() {
+  if (!els.workLogList) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  const selected = els.workLogEmployee?.value || currentEmployeeId() || visibleEmployees[0]?.id || "";
+
+  if (els.workLogEmployee) {
+    els.workLogEmployee.innerHTML = visibleEmployees.map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
+    els.workLogEmployee.disabled = isEmployee();
+    if (visibleEmployees.some((employee) => employee.id === selected)) els.workLogEmployee.value = selected;
+  }
+  if (els.workLogDate && !els.workLogDate.value) els.workLogDate.value = today();
+
+  const filterDate = els.workLogDate?.value || today();
+  const filterEmployee = isEmployee() ? currentEmployeeId() : els.workLogEmployee?.value;
+  const logs = (state.workLogs || [])
+    .filter((log) => !isEmployee() || log.employeeId === currentEmployeeId())
+    .filter((log) => !filterDate || log.date === filterDate || (!isEmployee() && !filterEmployee))
+    .filter((log) => isEmployee() || !filterEmployee || log.employeeId === filterEmployee)
+    .sort((a, b) => String(b.createdAt || b.date || "").localeCompare(String(a.createdAt || a.date || "")));
+
+  if (els.workLogCount) els.workLogCount.textContent = `${bn.format(logs.length)} log`;
+  els.workLogList.innerHTML =
+    logs
+      .slice(0, 20)
+      .map(
+        (log) => `
+          <article class="fixed-item work-log-card">
+            <div class="item-line">
+              <strong>${escapeHtml(log.title || "Work Log")}</strong>
+              <span class="status-pill">${escapeHtml(log.date || "-")}</span>
+            </div>
+            <small class="muted">${escapeHtml(log.employeeName || employeeName(log.employeeId))} · ${escapeHtml(log.note || "No details")}</small>
+            ${
+              isAdmin() || isManager()
+                ? `<div class="action-row"><button class="small-action danger" data-delete-work-log="${log.id}" type="button">Delete</button></div>`
+                : ""
+            }
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">No work log found.</div>`;
+}
+
+function saveWorkLog(event) {
+  event.preventDefault();
+  const employeeId = isEmployee() ? currentEmployeeId() : els.workLogEmployee.value;
+  const employee = employeeById(employeeId);
+  if (!employee) return;
+  state.workLogs = state.workLogs || [];
+  state.workLogs.unshift({
+    id: crypto.randomUUID(),
+    employeeId: employee.id,
+    employeeName: employee.name,
+    date: els.workLogDate.value || today(),
+    title: els.workLogTitle.value.trim(),
+    note: els.workLogNote.value.trim(),
+    createdAt: new Date().toISOString(),
+    createdBy: currentUser.name || employee.name,
+  });
+  logActivity("Work Log", `${employee.name} work log saved`, employee.id);
+  els.workLogTitle.value = "";
+  els.workLogNote.value = "";
+  saveState();
+  render();
+}
+
+function deleteWorkLog(id) {
+  if (!isAdmin() && !isManager()) return;
+  state.workLogs = (state.workLogs || []).filter((log) => log.id !== id);
+  logActivity("Work Log Delete", "Work log deleted", id);
+  saveState();
+  render();
 }
 
 function roleHomeCards(day, month) {
@@ -2357,6 +2555,14 @@ function renderEmployeeHome() {
   els.employeeMonthPayable.textContent = payrollRow ? money(payrollRow.payable) : money(0);
   els.employeePendingApproval.textContent = bn.format(pendingTotal);
 
+  if (els.employeeNoticeStrip) {
+    const notices = (state.notices || []).filter(noticeVisibleForRole).slice(0, 2);
+    els.employeeNoticeStrip.innerHTML = notices
+      .map((notice) => `<span><strong>${escapeHtml(notice.title || "Notice")}</strong> ${escapeHtml(notice.body || "")}</span>`)
+      .join("");
+    els.employeeNoticeStrip.hidden = !notices.length;
+  }
+
   if (els.employeeProfileSummary) {
     const profile = employeeProfileFor(employee.id);
     els.employeeProfileSummary.innerHTML = `
@@ -2735,6 +2941,92 @@ function renderSystemCheck() {
           <strong>${escapeHtml(item.value)}</strong>
           <small>${escapeHtml(item.detail)}</small>
         </article>
+      `,
+    )
+    .join("");
+}
+
+function payrollReviewItems(month) {
+  const start = `${month}-01`;
+  const end = monthEnd(start);
+  const missingCheckout = state.attendance.filter((item) => item.date >= start && item.date <= end && item.checkIn && !item.checkOut && item.status === "present");
+  const runningBreaks = state.breaks.filter((item) => (item.date || item.startAt?.slice(0, 10)) >= start && (item.date || item.startAt?.slice(0, 10)) <= end && !item.endAt);
+  const pendingLeaves = state.leaveRequests.filter((item) => {
+    const leaveStart = item.startDate || item.start;
+    const leaveEnd = item.endDate || item.end;
+    return item.status === "pending" && leaveStart <= end && leaveEnd >= start;
+  });
+  const pendingAdvances = state.advances.filter((item) => item.status === "pending" && item.month === month);
+  const pendingApprovals = state.approvals.filter((item) => item.status === "pending");
+  const locked = payrollLockFor(month);
+  return [
+    { title: "Missing checkout", count: missingCheckout.length, detail: "Check-in ache, checkout nei" },
+    { title: "Running break", count: runningBreaks.length, detail: "Break start hoye back nei" },
+    { title: "Pending leave", count: pendingLeaves.length, detail: "Approve/reject baki" },
+    { title: "Pending advance", count: pendingAdvances.length, detail: "Salary deduction-er age decision dorkar" },
+    { title: "Pending approval", count: pendingApprovals.length, detail: "Request center check korun" },
+    { title: "Month lock", count: locked ? 0 : 1, detail: locked ? "Month closed/locked" : "Close Month baki" },
+  ];
+}
+
+function renderPayrollReviewChecklist() {
+  if (!els.payrollReviewChecklist) return;
+  const month = els.payrollMonth?.value || today().slice(0, 7);
+  const items = payrollReviewItems(month);
+  els.payrollReviewChecklist.innerHTML = items
+    .map(
+      (item) => `
+        <article class="check-card ${item.count ? "warning" : "good"}">
+          <span>${escapeHtml(item.title)}</span>
+          <strong>${item.count ? bn.format(item.count) : "OK"}</strong>
+          <small>${escapeHtml(item.detail)}</small>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function employeePerformanceSnapshot(employeeId, month) {
+  const employee = employeeById(employeeId);
+  const payroll = payrollForMonth(month).rows.find((row) => row.id === employeeId);
+  const warnings = warningReportForMonth(month).find((row) => row.employee.id === employeeId) || {};
+  const fridayCompleted = (state.fridayWorkRequests || []).filter(
+    (item) => (item.employee_id || item.employeeId) === employeeId && item.status === "completed" && (item.work_date || item.workDate || "").startsWith(month),
+  ).length;
+  return {
+    employee,
+    late: warnings.late || 0,
+    absent: payroll?.absent || warnings.absent || 0,
+    longBreak: warnings.longBreak || 0,
+    fridayCompleted,
+    payable: payroll?.payable || 0,
+  };
+}
+
+function renderPerformanceSnapshot() {
+  if (!els.performanceSnapshotGrid) return;
+  const visibleEmployees = isEmployee() ? employees().filter((employee) => employee.id === currentEmployeeId()) : employees();
+  const selectedId = isEmployee() ? currentEmployeeId() : els.attendanceEmployee?.value || visibleEmployees[0]?.id;
+  const model = employeePerformanceSnapshot(selectedId, els.payrollMonth?.value || today().slice(0, 7));
+  if (!model.employee) {
+    els.performanceSnapshotGrid.innerHTML = `<div class="empty">No employee selected.</div>`;
+    return;
+  }
+  if (els.performanceSnapshotTitle) els.performanceSnapshotTitle.textContent = `${model.employee.name} Performance Snapshot`;
+  const cards = [
+    { label: "Late count", value: bn.format(model.late), tone: model.late ? "warning" : "good" },
+    { label: "Absent", value: bn.format(model.absent), tone: model.absent ? "danger" : "good" },
+    { label: "Long break", value: bn.format(model.longBreak), tone: model.longBreak ? "warning" : "good" },
+    { label: "Friday work", value: bn.format(model.fridayCompleted), tone: model.fridayCompleted ? "good" : "neutral" },
+    { label: "Total payable", value: money(model.payable), tone: "good" },
+  ];
+  els.performanceSnapshotGrid.innerHTML = cards
+    .map(
+      (card) => `
+        <div class="performance-card ${card.tone}">
+          <small>${escapeHtml(card.label)}</small>
+          <strong>${escapeHtml(card.value)}</strong>
+        </div>
       `,
     )
     .join("");
@@ -4678,6 +4970,8 @@ function initDates() {
   if (els.leaveEnd) els.leaveEnd.value = now;
   if (els.holidayDate) els.holidayDate.value = now;
   if (els.fridayWorkDate) els.fridayWorkDate.value = nextFriday(now);
+  if (els.noticeDate) els.noticeDate.value = now;
+  if (els.workLogDate) els.workLogDate.value = now;
 }
 
 document.querySelectorAll(".nav-button").forEach((button) => {
@@ -4757,6 +5051,7 @@ els.pinForm.addEventListener("submit", (event) => {
 });
 els.managerForm.addEventListener("submit", addManager);
 els.employeeAccessForm.addEventListener("submit", saveEmployeeAccess);
+els.noticeForm?.addEventListener("submit", saveNotice);
 
 els.selectedDate.addEventListener("change", () => {
   els.entryDate.value = els.selectedDate.value;
@@ -4783,6 +5078,9 @@ els.correctionForm?.addEventListener("submit", saveCorrectionRequest);
 els.correctionEmployee?.addEventListener("change", renderCorrectionForm);
 els.correctionDate?.addEventListener("change", renderCorrectionForm);
 els.correctionType?.addEventListener("change", renderCorrectionForm);
+els.workLogForm?.addEventListener("submit", saveWorkLog);
+els.workLogEmployee?.addEventListener("change", renderWorkLogs);
+els.workLogDate?.addEventListener("change", renderWorkLogs);
 els.breakReportMonth?.addEventListener("change", renderMonthlyBreakReport);
 els.breakReportEmployee?.addEventListener("change", renderMonthlyBreakReport);
 els.breakReportType?.addEventListener("change", renderMonthlyBreakReport);
@@ -4828,9 +5126,12 @@ els.attendanceDate.addEventListener("change", () => {
   renderCorrectionForm();
 });
 els.attendanceEmployee?.addEventListener("change", renderAttendanceActionState);
+els.attendanceEmployee?.addEventListener("change", renderPerformanceSnapshot);
 els.payrollMonth.addEventListener("change", () => {
   renderPayroll();
   renderEmployeeHome();
+  renderPerformanceSnapshot();
+  renderPayrollReviewChecklist();
   renderSalaryAdjustments();
   renderWarningReport();
 });
@@ -4900,6 +5201,8 @@ document.body.addEventListener("click", (event) => {
   const searchView = event.target.closest("[data-search-view]");
   const copyTemplate = event.target.closest("[data-copy-template]");
   const whatsappTemplate = event.target.closest("[data-whatsapp-template]");
+  const deleteNoticeButton = event.target.closest("[data-delete-notice]");
+  const deleteWorkLogButton = event.target.closest("[data-delete-work-log]");
 
   if (mobileView) {
     const target = document.querySelector(`.nav-button[data-view="${mobileView.dataset.mobileView}"]`);
@@ -4922,6 +5225,14 @@ document.body.addEventListener("click", (event) => {
     if (template && whatsappTemplate) {
       window.open(`https://wa.me/8801676182447?text=${encodeURIComponent(template.message)}`, "_blank", "noopener");
     }
+  }
+
+  if (deleteNoticeButton) {
+    deleteNotice(deleteNoticeButton.dataset.deleteNotice);
+  }
+
+  if (deleteWorkLogButton) {
+    deleteWorkLog(deleteWorkLogButton.dataset.deleteWorkLog);
   }
 
   if (entryEdit) openEditEntry(entryEdit.dataset.editEntry);
