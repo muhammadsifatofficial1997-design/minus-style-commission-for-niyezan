@@ -4545,6 +4545,18 @@ function saveOfficeLocation() {
   alert("Office location attendance settings সেভ হয়েছে।");
 }
 
+function saveOfficeLocationSilently() {
+  if (!isAdmin() || !els.officeLocationEnabled) return;
+  state.settings.officeLocation = {
+    enabled: els.officeLocationEnabled.checked,
+    latitude: els.officeLatitude.value.trim(),
+    longitude: els.officeLongitude.value.trim(),
+    radiusMeters: Number(els.officeRadius.value || 100),
+  };
+  saveState();
+  renderOfficeLocationSettings();
+}
+
 function printPayslip(employeeId) {
   if (isEmployee() && employeeId !== currentEmployeeId()) return;
   const month = els.payrollMonth.value;
@@ -5301,6 +5313,10 @@ document.querySelector("#syncFromCloudBtn").addEventListener("click", () => sync
 document.querySelector("#syncToCloudBtn").addEventListener("click", () => syncToCloud(true));
 document.querySelector("#setOfficeLocationBtn")?.addEventListener("click", setOfficeLocationFromCurrentPosition);
 document.querySelector("#saveOfficeLocationBtn")?.addEventListener("click", saveOfficeLocation);
+els.officeLocationEnabled?.addEventListener("change", saveOfficeLocationSilently);
+els.officeLatitude?.addEventListener("change", saveOfficeLocationSilently);
+els.officeLongitude?.addEventListener("change", saveOfficeLocationSilently);
+els.officeRadius?.addEventListener("change", saveOfficeLocationSilently);
 
 document.body.addEventListener("click", (event) => {
   const entryEdit = event.target.closest("[data-edit-entry]");
