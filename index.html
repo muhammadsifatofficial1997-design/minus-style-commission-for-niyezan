@@ -136,6 +136,28 @@
             </article>
           </div>
 
+          <section class="panel role-home-panel" id="roleHomePanel">
+            <div class="panel-head">
+              <div>
+                <h2 id="roleHomeTitle">Role Home</h2>
+                <p id="roleHomeSubtitle">আপনার access অনুযায়ী সবচেয়ে দরকারি কাজগুলো এখানে।</p>
+              </div>
+              <span class="status-pill" id="roleHomeBadge">Ready</span>
+            </div>
+            <div class="role-home-grid" id="roleHomeGrid"></div>
+          </section>
+
+          <section class="panel smart-alert-panel" id="smartAlertPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Smart Alert Center</h2>
+                <p>Pending approval, attendance warning, break issue এবং salary issue priority অনুযায়ী।</p>
+              </div>
+              <span class="status-pill" id="smartAlertCount">0 alert</span>
+            </div>
+            <div class="fixed-list smart-alert-list" id="smartAlertList"></div>
+          </section>
+
           <section class="panel dashboard-tools">
             <div class="panel-head">
               <div>
@@ -148,6 +170,14 @@
                 <button class="secondary-button" id="dailySummaryWhatsappBtn" type="button"><i data-lucide="message-circle"></i> Daily WhatsApp Summary</button>
               </div>
             </div>
+            <label class="theme-preset-label">Theme Preset
+              <select id="themePresetSelect">
+                <option value="premium-red">Premium Red</option>
+                <option value="emerald-gold">Emerald Gold</option>
+                <option value="royal-violet">Royal Violet</option>
+                <option value="graphite-gold">Graphite Gold</option>
+              </select>
+            </label>
           </section>
 
           <section class="panel compact-summary-panel" id="compactSummaryPanel">
@@ -660,7 +690,10 @@
                 <h2>Payroll Management</h2>
                 <p id="payrollHint">মাসভিত্তিক বেতন, কাটতি ও payable salary</p>
               </div>
-              <button class="secondary-button" id="payrollLockBtn" type="button"><i data-lucide="lock"></i> Payroll Lock</button>
+              <div class="button-row">
+                <button class="secondary-button" id="payrollSheetExportBtn" type="button"><i data-lucide="file-spreadsheet"></i> Salary Sheet CSV</button>
+                <button class="secondary-button" id="payrollLockBtn" type="button"><i data-lucide="lock"></i> Payroll Lock</button>
+              </div>
             </div>
             <div class="summary-row">
               <div><small>Gross Salary</small><strong id="payrollGross">৳0</strong></div>
@@ -1072,6 +1105,7 @@
                   <p>WhatsApp alert queue: 01676182447</p>
                 </div>
               </div>
+              <div class="template-list" id="whatsappTemplateList"></div>
               <div class="fixed-list" id="notificationList"></div>
             </section>
           </div>

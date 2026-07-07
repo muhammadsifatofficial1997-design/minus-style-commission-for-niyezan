@@ -4,6 +4,7 @@ const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
 const THEME_KEY = "minus-style-theme-mode";
+const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
 const DEFAULT_CLOUD_URL = "https://script.google.com/macros/s/AKfycbzbdWRDAn5c7tVyX53oVbQgQUYG5LnN3KwguGODW27JpLj7tpJXSbDWuA_79IyMEf84/exec";
 const CLOUD_PUSH_DELAY = 900;
@@ -109,6 +110,15 @@ const els = {
   compactExpense: document.querySelector("#compactExpense"),
   compactPending: document.querySelector("#compactPending"),
   compactWarnings: document.querySelector("#compactWarnings"),
+  roleHomeTitle: document.querySelector("#roleHomeTitle"),
+  roleHomeSubtitle: document.querySelector("#roleHomeSubtitle"),
+  roleHomeBadge: document.querySelector("#roleHomeBadge"),
+  roleHomeGrid: document.querySelector("#roleHomeGrid"),
+  smartAlertCount: document.querySelector("#smartAlertCount"),
+  smartAlertList: document.querySelector("#smartAlertList"),
+  themePresetSelect: document.querySelector("#themePresetSelect"),
+  payrollSheetExportBtn: document.querySelector("#payrollSheetExportBtn"),
+  whatsappTemplateList: document.querySelector("#whatsappTemplateList"),
   pendingApprovalBadge: document.querySelector("#pendingApprovalBadge"),
   selectedDate: document.querySelector("#selectedDate"),
   dailyStart: document.querySelector("#dailyStart"),
@@ -303,8 +313,20 @@ function savedThemeMode() {
   return localStorage.getItem(THEME_KEY) === "night" ? "night" : "day";
 }
 
+function savedThemePreset() {
+  const preset = localStorage.getItem(THEME_PRESET_KEY) || "premium-red";
+  return ["premium-red", "emerald-gold", "royal-violet", "graphite-gold"].includes(preset) ? preset : "premium-red";
+}
+
+function applyThemePreset(preset = savedThemePreset()) {
+  document.body.dataset.preset = preset;
+  localStorage.setItem(THEME_PRESET_KEY, preset);
+  if (els.themePresetSelect) els.themePresetSelect.value = preset;
+}
+
 function applyThemeMode(mode = savedThemeMode()) {
   const nextMode = mode === "night" ? "night" : "day";
+  applyThemePreset();
   document.body.dataset.theme = nextMode;
   localStorage.setItem(THEME_KEY, nextMode);
   if (els.themeToggleBtn) {
@@ -1434,6 +1456,8 @@ function render() {
   renderEntryCategories(els.editType.value, els.editCategory);
   renderEntryCategories(els.bulkType.value, els.bulkCategory);
   renderTodayEntries(day.entries);
+  renderRoleHome(day, month);
+  renderSmartAlerts();
   renderEntriesTable();
   renderFixedList();
   renderCategories();
@@ -1457,6 +1481,7 @@ function render() {
   renderEmployeeAccess();
   renderEmployeeProfiles();
   renderNotifications();
+  renderWhatsappTemplates();
   renderActivityLog();
   renderCloudSettings();
   renderSystemCheck();
@@ -1803,6 +1828,193 @@ function renderGlobalSearchResults() {
         `,
       )
       .join("") || `<div class="empty">No result found</div>`;
+}
+
+function smartAlerts() {
+  const date = els.selectedDate?.value || today();
+  const alerts = [];
+  const pending = pendingApprovalTotal();
+  if (pending) alerts.push({ level: "danger", title: "Pending Approval", detail: `${bn.format(pending)} request admin decision দরকার`, view: "settings" });
+
+  employees().forEach((employee) => {
+    const record = attendanceFor(date, employee.id);
+    if (record?.checkIn && !record?.checkOut) {
+      alerts.push({ level: "warning", title: "Missing Checkout", detail: `${employee.name} check-in করেছেন, checkout নেই`, view: "attendance" });
+    }
+  });
+
+  breaksForDate(date)
+    .filter((item) => !item.endAt)
+    .forEach((item) => {
+      const minutes = Math.floor(breakDurationSeconds(item) / 60);
+      const limit = BREAK_LIMIT_MINUTES[item.type] || 60;
+      alerts.push({
+        level: minutes > limit ? "danger" : "info",
+        title: minutes > limit ? "Long Running Break" : "Running Break",
+        detail: `${employeeName(item.employeeId)} ${breakLabel(item.type)} ${formatBreakMinutes(breakDurationSeconds(item))}`,
+        view: "attendance",
+      });
+    });
+
+  const month = els.payrollMonth?.value || today().slice(0, 7);
+  payrollForMonth(month).rows.forEach((row) => {
+    if (row.payable < row.salary * 0.6) {
+      alerts.push({ level: "warning", title: "Salary Warning", detail: `${row.name} payable salary কম: ${money(row.payable)}`, view: "attendance" });
+    }
+  });
+
+  if (lastCloudSyncFailed) alerts.push({ level: "danger", title: "Cloud Sync Failed", detail: "শেষ cloud sync failed হয়েছে। Settings থেকে sync check করুন।", view: "settings" });
+  if (!alerts.length) alerts.push({ level: "good", title: "All Clear", detail: "আজ কোনো priority alert নেই।", view: "dashboard" });
+  return alerts;
+}
+
+function renderSmartAlerts() {
+  if (!els.smartAlertList) return;
+  const alerts = smartAlerts();
+  const activeCount = alerts.filter((item) => item.level !== "good").length;
+  els.smartAlertCount.textContent = `${bn.format(activeCount)} alert`;
+  els.smartAlertList.innerHTML = alerts
+    .slice(0, 8)
+    .map(
+      (item) => `
+        <article class="fixed-item smart-alert ${escapeHtml(item.level)}">
+          <div class="item-line">
+            <strong>${escapeHtml(item.title)}</strong>
+            <span class="status-pill">${escapeHtml(item.level)}</span>
+          </div>
+          <small class="muted">${escapeHtml(item.detail)}</small>
+          <div class="action-row">
+            <button class="small-action" data-search-view="${escapeHtml(item.view)}" type="button">Open</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function roleHomeCards(day, month) {
+  const payroll = payrollForMonth(els.payrollMonth?.value || today().slice(0, 7));
+  if (isEmployee()) {
+    const employee = employeeById(currentEmployeeId());
+    const record = employee ? attendanceFor(today(), employee.id) : null;
+    const row = payroll.rows.find((item) => item.id === currentEmployeeId());
+    return {
+      title: `${employee?.name || "Employee"} Dashboard`,
+      subtitle: "নিজের attendance, salary, leave ও request summary",
+      badge: "Employee",
+      cards: [
+        { label: "Check In", value: record?.checkIn || "-", hint: "আজকের check-in", view: "attendance" },
+        { label: "Check Out", value: record?.checkOut || "-", hint: "আজকের check-out", view: "attendance" },
+        { label: "Payable", value: money(row?.payable || 0), hint: "এই মাসে পাবেন", view: "advance" },
+        { label: "Pending", value: bn.format(state.approvals.filter((item) => item.payload?.employeeId === currentEmployeeId() && item.status === "pending").length), hint: "আপনার request", view: "advance" },
+      ],
+    };
+  }
+  if (isManager()) {
+    return {
+      title: "Manager Control Room",
+      subtitle: "Attendance, break ও employee request দ্রুত দেখুন",
+      badge: "Manager",
+      cards: [
+        { label: "Attendance Warning", value: bn.format(attendanceWarningTotal(today())), hint: "আজকের issue", view: "attendance" },
+        { label: "Pending Approval", value: bn.format(pendingApprovalTotal()), hint: "Admin decision দরকার", view: "dashboard" },
+        { label: "Running Break", value: bn.format(breaksForDate(today()).filter((item) => !item.endAt).length), hint: "এখন break চলছে", view: "attendance" },
+        { label: "Today Net", value: money(day.net), hint: "দৈনিক result", view: "dashboard" },
+      ],
+    };
+  }
+  return {
+    title: "Admin Command Center",
+    subtitle: "Finance, approval, payroll ও alert এক জায়গায়",
+    badge: "Admin",
+    cards: [
+      { label: "Today Net", value: money(day.net), hint: day.net >= 0 ? "আজ লাভ" : "আজ লস", view: "dashboard" },
+      { label: "Pending Approval", value: bn.format(pendingApprovalTotal()), hint: "সব approval request", view: "settings" },
+      { label: "Monthly Payable", value: money(payroll.payable), hint: "Payroll payable", view: "attendance" },
+      { label: "Smart Alerts", value: bn.format(smartAlerts().filter((item) => item.level !== "good").length), hint: "Priority issue", view: "dashboard" },
+    ],
+  };
+}
+
+function renderRoleHome(day = totalsForDate(today()), month = totalsForMonth(today())) {
+  if (!els.roleHomeGrid) return;
+  const model = roleHomeCards(day, month);
+  els.roleHomeTitle.textContent = model.title;
+  els.roleHomeSubtitle.textContent = model.subtitle;
+  els.roleHomeBadge.textContent = model.badge;
+  els.roleHomeGrid.innerHTML = model.cards
+    .map(
+      (card) => `
+        <button class="role-home-card" data-search-view="${escapeHtml(card.view)}" type="button">
+          <small>${escapeHtml(card.label)}</small>
+          <strong>${escapeHtml(card.value)}</strong>
+          <span>${escapeHtml(card.hint)}</span>
+        </button>
+      `,
+    )
+    .join("");
+}
+
+function whatsappTemplates() {
+  const date = els.selectedDate?.value || today();
+  const month = els.payrollMonth?.value || today().slice(0, 7);
+  const payroll = payrollForMonth(month);
+  const warningCount = attendanceWarningTotal(date);
+  return [
+    { id: "daily", title: "Daily Summary", message: dailySummaryMessage(date) },
+    { id: "payroll", title: "Salary Summary", message: `Minus Style Salary Summary\nMonth: ${month}\nGross: ${money(payroll.gross)}\nDeduction: ${money(payroll.deduction)}\nPayable: ${money(payroll.payable)}` },
+    { id: "approval", title: "Pending Approval", message: `Minus Style Approval Alert\nPending request: ${bn.format(pendingApprovalTotal())}\nPlease review dashboard approval section.` },
+    { id: "attendance", title: "Attendance Warning", message: `Minus Style Attendance Alert\nDate: ${date}\nWarning count: ${bn.format(warningCount)}\nPlease check attendance panel.` },
+  ];
+}
+
+function renderWhatsappTemplates() {
+  if (!els.whatsappTemplateList) return;
+  els.whatsappTemplateList.innerHTML = whatsappTemplates()
+    .map(
+      (template) => `
+        <article class="template-card">
+          <div>
+            <strong>${escapeHtml(template.title)}</strong>
+            <small>${escapeHtml(template.message.split("\n").slice(0, 2).join(" · "))}</small>
+          </div>
+          <div class="action-row">
+            <button class="small-action" data-copy-template="${escapeHtml(template.id)}" type="button">Copy</button>
+            <button class="small-action" data-whatsapp-template="${escapeHtml(template.id)}" type="button">WhatsApp</button>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function exportPayrollSheetCsv() {
+  const month = els.payrollMonth?.value || today().slice(0, 7);
+  const payroll = payrollForMonth(month);
+  const rows = [
+    ["Salary Month", month],
+    ["Gross Salary", Math.round(payroll.gross)],
+    ["Total Deduction", Math.round(payroll.deduction)],
+    ["Payable Salary", Math.round(payroll.payable)],
+    [],
+    ["Employee", "Base Salary", "Present", "Leave", "Paid Leave", "Absent", "Deduction", "Advance", "Weekend Pay", "Adjustment Plus", "Adjustment Minus", "Payable"],
+    ...payroll.rows.map((row) => [
+      row.name,
+      Math.round(row.salary),
+      row.present,
+      row.leave,
+      row.paidLeave || 0,
+      row.absent,
+      Math.round(row.deduction),
+      Math.round(row.advance),
+      Math.round(row.weekendPay || 0),
+      Math.round(row.additions || 0),
+      Math.round(row.manualDeductions || 0),
+      Math.round(row.payable),
+    ]),
+  ];
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  downloadFile(`minus-style-salary-sheet-${month}.csv`, csv, "text/csv;charset=utf-8");
 }
 
 function renderAttendance() {
@@ -4635,8 +4847,13 @@ els.runSystemCheckBtn?.addEventListener("click", renderSystemCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
 els.themeToggleBtn?.addEventListener("click", toggleThemeMode);
+els.themePresetSelect?.addEventListener("change", () => {
+  applyThemePreset(els.themePresetSelect.value);
+  if (window.lucide) lucide.createIcons();
+});
 els.compactModeBtn?.addEventListener("click", toggleCompactMode);
 els.dailySummaryWhatsappBtn?.addEventListener("click", openDailyWhatsappSummary);
+els.payrollSheetExportBtn?.addEventListener("click", exportPayrollSheetCsv);
 els.globalSearchInput?.addEventListener("input", renderGlobalSearchResults);
 els.globalSearchInput?.addEventListener("focus", renderGlobalSearchResults);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
@@ -4681,6 +4898,8 @@ document.body.addEventListener("click", (event) => {
   const deleteFriday = event.target.closest("[data-delete-friday]");
   const mobileView = event.target.closest("[data-mobile-view]");
   const searchView = event.target.closest("[data-search-view]");
+  const copyTemplate = event.target.closest("[data-copy-template]");
+  const whatsappTemplate = event.target.closest("[data-whatsapp-template]");
 
   if (mobileView) {
     const target = document.querySelector(`.nav-button[data-view="${mobileView.dataset.mobileView}"]`);
@@ -4692,6 +4911,17 @@ document.body.addEventListener("click", (event) => {
     if (target && !target.hidden) target.click();
     if (els.globalSearchResults) els.globalSearchResults.hidden = true;
     if (els.globalSearchInput) els.globalSearchInput.value = "";
+  }
+
+  if (copyTemplate || whatsappTemplate) {
+    const id = (copyTemplate || whatsappTemplate).dataset.copyTemplate || (copyTemplate || whatsappTemplate).dataset.whatsappTemplate;
+    const template = whatsappTemplates().find((item) => item.id === id);
+    if (template && copyTemplate) {
+      navigator.clipboard?.writeText(template.message).then(() => alert("WhatsApp template copy হয়েছে।")).catch(() => alert(template.message));
+    }
+    if (template && whatsappTemplate) {
+      window.open(`https://wa.me/8801676182447?text=${encodeURIComponent(template.message)}`, "_blank", "noopener");
+    }
   }
 
   if (entryEdit) openEditEntry(entryEdit.dataset.editEntry);
