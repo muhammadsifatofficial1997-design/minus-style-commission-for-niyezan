@@ -220,6 +220,7 @@ const els = {
   employeeSelfAttendanceList: document.querySelector("#employeeSelfAttendanceList"),
   employeeSelfBreakList: document.querySelector("#employeeSelfBreakList"),
   employeeSelfLeaveAdvanceList: document.querySelector("#employeeSelfLeaveAdvanceList"),
+  employeeSelfReportBtn: document.querySelector("#employeeSelfReportBtn"),
   performanceSnapshotPanel: document.querySelector("#performanceSnapshotPanel"),
   performanceSnapshotTitle: document.querySelector("#performanceSnapshotTitle"),
   performanceSnapshotGrid: document.querySelector("#performanceSnapshotGrid"),
@@ -312,11 +313,14 @@ const els = {
   notificationList: document.querySelector("#notificationList"),
   cloudApiUrl: document.querySelector("#cloudApiUrl"),
   cloudStatus: document.querySelector("#cloudStatus"),
+  settingsSaveStatus: document.querySelector("#settingsSaveStatus"),
   officeLocationEnabled: document.querySelector("#officeLocationEnabled"),
   officeLatitude: document.querySelector("#officeLatitude"),
   officeLongitude: document.querySelector("#officeLongitude"),
   officeRadius: document.querySelector("#officeRadius"),
   officeLocationStatus: document.querySelector("#officeLocationStatus"),
+  testOfficeLocationBtn: document.querySelector("#testOfficeLocationBtn"),
+  permissionMatrix: document.querySelector("#permissionMatrix"),
   categoryForm: document.querySelector("#categoryForm"),
   categoryType: document.querySelector("#categoryType"),
   categoryName: document.querySelector("#categoryName"),
@@ -329,12 +333,18 @@ const els = {
   restoreBackupVersionBtn: document.querySelector("#restoreBackupVersionBtn"),
   deleteBackupVersionBtn: document.querySelector("#deleteBackupVersionBtn"),
   clearAllBackupsBtn: document.querySelector("#clearAllBackupsBtn"),
+  clearOldNotificationsBtn: document.querySelector("#clearOldNotificationsBtn"),
+  clearRejectedRequestsBtn: document.querySelector("#clearRejectedRequestsBtn"),
+  clearEmptyBackupsBtn: document.querySelector("#clearEmptyBackupsBtn"),
   backupVersionHint: document.querySelector("#backupVersionHint"),
   healthCheckList: document.querySelector("#healthCheckList"),
   runHealthCheckBtn: document.querySelector("#runHealthCheckBtn"),
   systemCheckList: document.querySelector("#systemCheckList"),
   runSystemCheckBtn: document.querySelector("#runSystemCheckBtn"),
   editModal: document.querySelector("#editModal"),
+  approvalDetailModal: document.querySelector("#approvalDetailModal"),
+  approvalDetailBody: document.querySelector("#approvalDetailBody"),
+  closeApprovalDetail: document.querySelector("#closeApprovalDetail"),
   editEntryForm: document.querySelector("#editEntryForm"),
   editId: document.querySelector("#editId"),
   editType: document.querySelector("#editType"),
@@ -488,6 +498,9 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (els?.settingsSaveStatus) {
+    els.settingsSaveStatus.textContent = `Saved · ${new Date().toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+  }
   createAutoBackup();
   cloudDirty = true;
   lastCloudSyncFailed = false;
@@ -1837,6 +1850,7 @@ function renderApprovalsV2() {
             ${
               request.status === "pending" && isAdmin()
                 ? `<div class="action-row">
+                    <button class="small-action" data-approval-detail="${request.id}" type="button">Details</button>
                     <button class="small-action" data-approve-request="${request.id}" type="button">Approve</button>
                     <button class="small-action danger" data-reject-request="${request.id}" type="button">Reject</button>
                   </div>`
@@ -1856,6 +1870,56 @@ function bulkReviewApprovals(approved) {
   ids.forEach((id) => applyApproval(id, approved, { silent: true }));
   saveState();
   render();
+}
+
+function openApprovalDetail(id) {
+  const request = state.approvals.find((item) => item.id === id);
+  if (!request || !els.approvalDetailModal || !els.approvalDetailBody) return;
+  const payload = request.payload || {};
+  const impact = {
+    add_entry: "Approved হলে income/expense dashboard-এ যোগ হবে।",
+    bulk_entries: "Approved হলে range ধরে একাধিক entry যোগ হবে।",
+    edit_entry: "Approved হলে পুরোনো entry update হবে।",
+    delete_entry: "Approved হলে selected entry delete হবে।",
+    attendance_punch: "Approved হলে attendance save হবে এবং payroll effect পড়বে।",
+    correction_request: "Approved হলে attendance/break correction apply হবে।",
+    leave_request: "Approved হলে leave balance/payroll update হবে।",
+    save_fixed: "Approved হলে fixed cost update হবে।",
+    toggle_fixed: "Approved হলে fixed cost active/inactive হবে।",
+    delete_fixed: "Approved হলে fixed cost delete হবে।",
+  }[request.action] || "Approved হলে related data update হবে।";
+  els.approvalDetailBody.innerHTML = `
+    <article class="fixed-item approval-card ${escapeHtml(request.status)}">
+      <div class="item-line">
+        <strong>${escapeHtml(requestTitle(request))}</strong>
+        <span class="status-pill">${escapeHtml(request.status)} · ${escapeHtml(requestCategory(request))}</span>
+      </div>
+      <small class="muted">Created: ${formatDateTime(request.createdAt)} · Reviewed: ${escapeHtml(request.reviewedAt ? formatDateTime(request.reviewedAt) : "Pending")}</small>
+      ${approvalTimelineHtml(request)}
+    </article>
+    <article class="fixed-item">
+      <strong>Request Impact</strong>
+      <small>${escapeHtml(impact)}</small>
+    </article>
+    <article class="fixed-item">
+      <strong>Payload</strong>
+      <pre class="detail-pre">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>
+    </article>
+    ${
+      request.status === "pending" && isAdmin()
+        ? `<div class="button-row">
+            <button class="secondary-button" data-approve-request="${request.id}" type="button">Approve</button>
+            <button class="secondary-button danger" data-reject-request="${request.id}" type="button">Reject</button>
+          </div>`
+        : ""
+    }
+  `;
+  els.approvalDetailModal.classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeApprovalDetail() {
+  els.approvalDetailModal?.classList.add("hidden");
 }
 
 function requestCategory(request) {
@@ -2336,6 +2400,36 @@ function exportPayrollSheetCsv() {
   ];
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   downloadFile(`minus-style-salary-sheet-${month}.csv`, csv, "text/csv;charset=utf-8");
+}
+
+function exportEmployeeSelfReport() {
+  if (!isEmployee()) return;
+  const employeeId = currentEmployeeId();
+  const employee = employees().find((item) => item.id === employeeId);
+  if (!employee) return;
+  const month = els.payrollMonth?.value || today().slice(0, 7);
+  const payroll = payrollForMonth(month).rows.find((row) => row.id === employeeId);
+  const attendanceRows = state.attendance.filter((item) => item.employeeId === employeeId && item.date?.startsWith(month));
+  const breakRows = state.breaks.filter((item) => item.employeeId === employeeId && item.date?.startsWith(month));
+  const leaveRows = state.leaveRequests.filter((item) => item.employeeId === employeeId && (item.start || "").startsWith(month));
+  const rows = [
+    ["Employee", employee.name],
+    ["Month", month],
+    ["Base Salary", employee.salary],
+    ["Present", attendanceRows.filter((item) => item.status === "present").length],
+    ["Absent", attendanceRows.filter((item) => item.status === "absent").length],
+    ["Total Break Minutes", Math.round(breakRows.reduce((total, item) => total + Number(item.durationSeconds || 0), 0) / 60)],
+    ["Leave Requests", leaveRows.length],
+    ["Gross Salary", Math.round(payroll?.gross || employee.salary)],
+    ["Deduction", Math.round(payroll?.deduction || 0)],
+    ["Advance", Math.round(payroll?.advance || 0)],
+    ["Payable", Math.round(payroll?.payable || employee.salary)],
+    [],
+    ["Date", "Status", "Shift", "Check In", "Check Out", "Note"],
+    ...attendanceRows.map((item) => [item.date, item.status, shiftLabel(item.shift), item.checkIn || "", item.checkOut || "", item.note || ""]),
+  ];
+  const reportCsv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  downloadFile(`employee-self-report-${employee.name}-${month}.csv`, reportCsv, "text/csv;charset=utf-8");
 }
 
 function renderAttendance() {
@@ -3614,6 +3708,23 @@ function renderCloudSettings() {
   els.cloudApiUrl.value = cloudUrl();
   if (!cloudUrl()) setCloudStatus("Cloud sync বন্ধ আছে। Apps Script Web App URL দিলে live data sync হবে।");
   renderOfficeLocationSettings();
+  renderPermissionMatrix();
+}
+
+function renderPermissionMatrix() {
+  if (!els.permissionMatrix) return;
+  const rows = [
+    ["Feature", "Admin", "Manager", "Employee"],
+    ["Dashboard & reports", "Full", "Team view", "Own data"],
+    ["Attendance", "Add/Edit/Approve", "Add/Request", "Check in/out"],
+    ["Break", "Full control", "Team report", "Own break"],
+    ["Payroll", "Generate/Adjust", "View team", "Own payslip"],
+    ["Leave/Friday work", "Approve", "Request/Team view", "Request only"],
+    ["Settings & backup", "Full", "No", "No"],
+  ];
+  els.permissionMatrix.innerHTML = rows
+    .map((row, index) => `<div class="${index === 0 ? "permission-head" : ""}">${row.map((cell) => `<span>${escapeHtml(cell)}</span>`).join("")}</div>`)
+    .join("");
 }
 
 function renderOfficeLocationSettings() {
@@ -3855,6 +3966,36 @@ function clearAllBackups() {
   if (window.lucide) lucide.createIcons();
 }
 
+function clearOldNotifications() {
+  if (!isAdmin()) return;
+  const before = state.notifications.length;
+  state.notifications = state.notifications.filter((item) => !item.sent);
+  saveState();
+  render();
+  alert(`${bn.format(before - state.notifications.length)} sent notification cleaned.`);
+}
+
+function clearRejectedRequests() {
+  if (!isAdmin()) return;
+  const before = state.approvals.length;
+  state.approvals = state.approvals.filter((item) => item.status !== "rejected");
+  saveState();
+  render();
+  alert(`${bn.format(before - state.approvals.length)} rejected approval request cleaned.`);
+}
+
+function clearEmptyBackups() {
+  if (!isAdmin()) return;
+  const backups = getBackups();
+  const next = backups.filter((backup) => {
+    const data = backup.data || {};
+    return ["entries", "attendance", "breaks", "leaveRequests", "approvals"].some((key) => (data[key] || []).length);
+  });
+  setBackups(next);
+  renderBackupStatus();
+  alert(`${bn.format(backups.length - next.length)} empty backup cleaned.`);
+}
+
 function renderChart(dateString) {
   const canvas = document.querySelector("#trendChart");
   const ctx = canvas.getContext("2d");
@@ -4021,6 +4162,10 @@ async function attachLocationIfNeeded(payload) {
       els.attendanceLocationStatus.textContent = `Office radius-এর বাইরে: ${bn.format(location.distance)}m দূরে। Attendance save হয়নি।`;
       alert(`আপনি office radius-এর বাইরে আছেন (${location.distance}m)। Attendance save হয়নি।`);
       return false;
+    }
+    if (location.accuracy > 100) {
+      els.attendanceLocationStatus.textContent = `GPS accuracy weak: ${bn.format(location.accuracy)}m. Better signal নিয়ে আবার try করা ভালো।`;
+      if (!confirm(`GPS accuracy ${location.accuracy}m. Location weak হলে attendance ভুল হতে পারে। তারপরও continue করবেন?`)) return false;
     }
     payload.location = location;
     els.attendanceLocationStatus.textContent = `Location verified: office থেকে ${bn.format(location.distance)}m দূরে।`;
@@ -4532,6 +4677,11 @@ async function setOfficeLocationFromCurrentPosition() {
   }
 }
 
+function markSettingsSaved(message = "Settings saved") {
+  if (!els.settingsSaveStatus) return;
+  els.settingsSaveStatus.textContent = `${message} · ${new Date().toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
+
 function saveOfficeLocation() {
   if (!isAdmin()) return;
   state.settings.officeLocation = {
@@ -4555,6 +4705,22 @@ function saveOfficeLocationSilently() {
   };
   saveState();
   renderOfficeLocationSettings();
+}
+
+async function testOfficeLocation() {
+  if (!isAdmin()) return;
+  if (!officeLocationReady()) {
+    alert("আগে Office Location চালু করে latitude/longitude/radius সেভ করুন।");
+    return;
+  }
+  try {
+    if (els.officeLocationStatus) els.officeLocationStatus.textContent = "Location test চলছে...";
+    const location = await verifyOfficeLocation();
+    const accuracyText = location.accuracy > 100 ? "GPS weak" : "GPS good";
+    els.officeLocationStatus.textContent = `Test result: office থেকে ${bn.format(location.distance)}m দূরে · Accuracy ${bn.format(location.accuracy)}m · ${accuracyText}`;
+  } catch (error) {
+    if (els.officeLocationStatus) els.officeLocationStatus.textContent = `Location test failed: ${error.message}`;
+  }
 }
 
 function printPayslip(employeeId) {
@@ -5256,6 +5422,10 @@ els.fixedForm.addEventListener("submit", saveFixed);
 els.categoryForm.addEventListener("submit", addCategory);
 els.editEntryForm.addEventListener("submit", saveEditEntry);
 document.querySelector("#closeModal").addEventListener("click", closeModal);
+els.closeApprovalDetail?.addEventListener("click", closeApprovalDetail);
+els.approvalDetailModal?.addEventListener("click", (event) => {
+  if (event.target === els.approvalDetailModal) closeApprovalDetail();
+});
 document.querySelector("#quickAddBtn").addEventListener("click", () => {
   document.querySelector('[data-view="daily"]').click();
   els.entryAmount.focus();
@@ -5288,6 +5458,9 @@ document.querySelector("#restoreJsonBtn")?.addEventListener("click", restoreJson
 els.restoreBackupVersionBtn?.addEventListener("click", restoreBackupVersion);
 els.deleteBackupVersionBtn?.addEventListener("click", deleteBackupVersion);
 els.clearAllBackupsBtn?.addEventListener("click", clearAllBackups);
+els.clearOldNotificationsBtn?.addEventListener("click", clearOldNotifications);
+els.clearRejectedRequestsBtn?.addEventListener("click", clearRejectedRequests);
+els.clearEmptyBackupsBtn?.addEventListener("click", clearEmptyBackups);
 els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
 els.runSystemCheckBtn?.addEventListener("click", renderSystemCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
@@ -5302,6 +5475,7 @@ els.themePresetSelect?.addEventListener("change", () => {
 els.compactModeBtn?.addEventListener("click", toggleCompactMode);
 els.dailySummaryWhatsappBtn?.addEventListener("click", openDailyWhatsappSummary);
 els.payrollSheetExportBtn?.addEventListener("click", exportPayrollSheetCsv);
+els.employeeSelfReportBtn?.addEventListener("click", exportEmployeeSelfReport);
 els.globalSearchInput?.addEventListener("input", renderGlobalSearchResults);
 els.globalSearchInput?.addEventListener("focus", renderGlobalSearchResults);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);
@@ -5312,6 +5486,7 @@ document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
 document.querySelector("#syncFromCloudBtn").addEventListener("click", () => syncFromCloud(true));
 document.querySelector("#syncToCloudBtn").addEventListener("click", () => syncToCloud(true));
 document.querySelector("#setOfficeLocationBtn")?.addEventListener("click", setOfficeLocationFromCurrentPosition);
+els.testOfficeLocationBtn?.addEventListener("click", testOfficeLocation);
 document.querySelector("#saveOfficeLocationBtn")?.addEventListener("click", saveOfficeLocation);
 els.officeLocationEnabled?.addEventListener("change", saveOfficeLocationSilently);
 els.officeLatitude?.addEventListener("change", saveOfficeLocationSilently);
@@ -5329,6 +5504,7 @@ document.body.addEventListener("click", (event) => {
   const managerDelete = event.target.closest("[data-delete-manager]");
   const approveRequest = event.target.closest("[data-approve-request]");
   const rejectRequest = event.target.closest("[data-reject-request]");
+  const approvalDetail = event.target.closest("[data-approval-detail]");
   const attendanceDelete = event.target.closest("[data-delete-attendance]");
   const approveAdvance = event.target.closest("[data-approve-advance]");
   const rejectAdvance = event.target.closest("[data-reject-advance]");
@@ -5456,6 +5632,7 @@ document.body.addEventListener("click", (event) => {
 
   if (approveRequest) applyApproval(approveRequest.dataset.approveRequest, true);
   if (rejectRequest) applyApproval(rejectRequest.dataset.rejectRequest, false);
+  if (approvalDetail) openApprovalDetail(approvalDetail.dataset.approvalDetail);
   if (deleteHolidayButton) deleteHoliday(deleteHolidayButton.dataset.deleteHoliday);
   if (deleteSalaryAdjustmentButton) deleteSalaryAdjustment(deleteSalaryAdjustmentButton.dataset.deleteSalaryAdjustment);
 

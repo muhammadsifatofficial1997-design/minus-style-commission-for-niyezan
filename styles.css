@@ -4430,6 +4430,42 @@ body[data-theme="night"] .calendar-tag {
   font-weight: 800;
 }
 
+.permission-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.permission-grid > div {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) repeat(3, minmax(110px, 1fr));
+  gap: 8px;
+  min-width: 520px;
+}
+
+.permission-grid span,
+.detail-pre {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.52);
+  padding: 10px 12px;
+  color: var(--ink);
+}
+
+.permission-head span {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  font-weight: 900;
+}
+
+.detail-pre {
+  overflow: auto;
+  max-height: 280px;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+}
+
 .secondary-button.danger {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 30%, transparent);
@@ -4522,6 +4558,11 @@ body[data-theme="night"] .check-card,
 body[data-theme="night"] .performance-card,
 body[data-theme="night"] .employee-notice-strip span,
 body[data-theme="night"] .pwa-status-grid span {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="night"] .permission-grid span,
+body[data-theme="night"] .detail-pre {
   background: rgba(255, 255, 255, 0.08);
 }
 
