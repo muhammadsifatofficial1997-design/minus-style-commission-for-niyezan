@@ -39,6 +39,7 @@ let cloudRetryTimer = null;
 let cloudRetryCount = 0;
 let deferredInstallPrompt = null;
 let approvalFilter = "pending";
+let beginnerMode = localStorage.getItem("minus-style-beginner-mode") === "1";
 
 const categoryLabels = {
   commission: "মাইনাস স্টাইল কমিশন",
@@ -125,6 +126,10 @@ const els = {
   roleHomeSubtitle: document.querySelector("#roleHomeSubtitle"),
   roleHomeBadge: document.querySelector("#roleHomeBadge"),
   roleHomeGrid: document.querySelector("#roleHomeGrid"),
+  friendlyGuideTitle: document.querySelector("#friendlyGuideTitle"),
+  friendlyGuideSubtitle: document.querySelector("#friendlyGuideSubtitle"),
+  friendlySteps: document.querySelector("#friendlySteps"),
+  toggleBeginnerModeBtn: document.querySelector("#toggleBeginnerModeBtn"),
   smartAlertCount: document.querySelector("#smartAlertCount"),
   smartAlertList: document.querySelector("#smartAlertList"),
   noticeBoardPanel: document.querySelector("#noticeBoardPanel"),
@@ -1548,6 +1553,7 @@ function setText(id, value) {
 
 function render() {
   applyThemeMode();
+  document.body.classList.toggle("beginner-mode", beginnerMode);
   ensureHolidayAttendance();
   const date = els.selectedDate.value;
   const day = totalsForDate(date);
@@ -1575,6 +1581,7 @@ function render() {
   renderEntryCategories(els.bulkType.value, els.bulkCategory);
   renderTodayEntries(day.entries);
   renderRoleHome(day, month);
+  renderFriendlyGuide(day, month);
   renderSmartAlerts();
   renderNoticeBoard();
   renderEntriesTable();
@@ -2338,6 +2345,65 @@ function renderRoleHome(day = totalsForDate(today()), month = totalsForMonth(tod
       `,
     )
     .join("");
+}
+
+function friendlyGuideSteps(day = totalsForDate(today()), month = totalsForMonth(today())) {
+  const pending = pendingApprovalTotal();
+  const missingCheckout = state.attendance.filter((item) => item.date === today() && item.checkIn && !item.checkOut).length;
+  if (isEmployee()) {
+    const employeeId = currentEmployeeId();
+    const todayRow = state.attendance.find((item) => item.employeeId === employeeId && item.date === today());
+    const running = runningBreakFor(employeeId, today());
+    return [
+      { title: todayRow?.checkIn ? "Check-in done" : "Start your day", detail: todayRow?.checkIn ? `আজ check-in: ${todayRow.checkIn}` : "Office এ এসে Check In দিন।", view: "attendance", icon: "log-in" },
+      { title: running ? "You are on break" : "Need a break?", detail: running ? "Back from Break চাপুন।" : "Prayer/Lunch/Official break শুরু করুন।", view: "attendance", icon: running ? "play-circle" : "pause-circle" },
+      { title: todayRow?.checkOut ? "Day closed" : "Before leaving", detail: todayRow?.checkOut ? `Check-out: ${todayRow.checkOut}` : "Office থেকে বের হওয়ার আগে Check Out দিন।", view: "attendance", icon: "log-out" },
+      { title: "Your monthly report", detail: "নিজের attendance, break, leave, salary summary দেখুন।", view: "attendance", icon: "file-text" },
+    ];
+  }
+  if (isManager()) {
+    return [
+      { title: "Review today attendance", detail: `${bn.format(missingCheckout)} missing checkout / running issue থাকতে পারে।`, view: "attendance", icon: "clipboard-check" },
+      { title: "Check pending requests", detail: `${bn.format(pending)} approval admin decision দরকার।`, view: "approvals", icon: "bell" },
+      { title: "Break status", detail: "কে এখন break এ আছে দ্রুত দেখুন।", view: "attendance", icon: "timer" },
+      { title: "Daily work logs", detail: "Employee আজ কী কাজ করেছে review করুন।", view: "dashboard", icon: "notebook-tabs" },
+    ];
+  }
+  return [
+    { title: "Check business result", detail: `Today net: ${money(day.net)} · Monthly net: ${money(month.net)}`, view: "dashboard", icon: "chart-no-axes-combined" },
+    { title: "Approve requests", detail: `${bn.format(pending)} pending approval আছে।`, view: "approvals", icon: "check-check" },
+    { title: "Payroll health", detail: "Missing checkout, leave, advance দেখে salary close করুন।", view: "attendance", icon: "wallet-cards" },
+    { title: "Cloud and backup", detail: "Cloud sync, backup, cleanup ও settings check করুন।", view: "settings", icon: "cloud-check" },
+  ];
+}
+
+function renderFriendlyGuide(day = totalsForDate(today()), month = totalsForMonth(today())) {
+  if (!els.friendlySteps) return;
+  const steps = friendlyGuideSteps(day, month);
+  if (els.friendlyGuideTitle) els.friendlyGuideTitle.textContent = isEmployee() ? "Today’s Employee Guide" : isManager() ? "Manager Quick Guide" : "Admin Quick Guide";
+  if (els.friendlyGuideSubtitle) els.friendlyGuideSubtitle.textContent = beginnerMode ? "Simple Mode চালু আছে: শুধু দরকারি কাজগুলো আগে দেখাচ্ছে।" : "কাজ শুরু করার জন্য সবচেয়ে দরকারি shortcuts।";
+  if (els.toggleBeginnerModeBtn) {
+    els.toggleBeginnerModeBtn.classList.toggle("active", beginnerMode);
+    els.toggleBeginnerModeBtn.innerHTML = `<i data-lucide="${beginnerMode ? "sparkle" : "sparkles"}"></i> ${beginnerMode ? "Simple On" : "Simple Mode"}`;
+  }
+  els.friendlySteps.innerHTML = steps
+    .map(
+      (step, index) => `
+        <button class="friendly-step" data-search-view="${escapeHtml(step.view)}" type="button">
+          <span><i data-lucide="${escapeHtml(step.icon)}"></i></span>
+          <strong>${bn.format(index + 1)}. ${escapeHtml(step.title)}</strong>
+          <small>${escapeHtml(step.detail)}</small>
+        </button>
+      `,
+    )
+    .join("");
+}
+
+function toggleBeginnerMode() {
+  beginnerMode = !beginnerMode;
+  localStorage.setItem("minus-style-beginner-mode", beginnerMode ? "1" : "0");
+  document.body.classList.toggle("beginner-mode", beginnerMode);
+  render();
 }
 
 function whatsappTemplates() {
@@ -5476,6 +5542,7 @@ els.compactModeBtn?.addEventListener("click", toggleCompactMode);
 els.dailySummaryWhatsappBtn?.addEventListener("click", openDailyWhatsappSummary);
 els.payrollSheetExportBtn?.addEventListener("click", exportPayrollSheetCsv);
 els.employeeSelfReportBtn?.addEventListener("click", exportEmployeeSelfReport);
+els.toggleBeginnerModeBtn?.addEventListener("click", toggleBeginnerMode);
 els.globalSearchInput?.addEventListener("input", renderGlobalSearchResults);
 els.globalSearchInput?.addEventListener("focus", renderGlobalSearchResults);
 document.querySelector("#copyLinkBtn").addEventListener("click", copyCurrentLink);

@@ -101,7 +101,7 @@
             <span class="notification-badge" id="pendingApprovalBadge"><i data-lucide="bell"></i> 0</span>
             <div class="global-search">
               <i data-lucide="search"></i>
-              <input id="globalSearchInput" type="search" placeholder="Search everything..." autocomplete="off" />
+              <input id="globalSearchInput" type="search" placeholder="Search: attendance, salary, leave..." autocomplete="off" />
               <div class="global-search-results" id="globalSearchResults" hidden></div>
             </div>
             <label for="selectedDate">তারিখ</label>
@@ -146,6 +146,17 @@
               <span class="status-pill" id="roleHomeBadge">Ready</span>
             </div>
             <div class="role-home-grid" id="roleHomeGrid"></div>
+          </section>
+
+          <section class="panel friendly-guide-panel" id="friendlyGuidePanel">
+            <div class="panel-head">
+              <div>
+                <h2 id="friendlyGuideTitle">What should I do now?</h2>
+                <p id="friendlyGuideSubtitle">Role অনুযায়ী সবচেয়ে দরকারি কাজগুলো এখানে দেখাবে।</p>
+              </div>
+              <button class="secondary-button" id="toggleBeginnerModeBtn" type="button"><i data-lucide="sparkles"></i> Simple Mode</button>
+            </div>
+            <div class="friendly-steps" id="friendlySteps"></div>
           </section>
 
           <section class="panel smart-alert-panel" id="smartAlertPanel">
