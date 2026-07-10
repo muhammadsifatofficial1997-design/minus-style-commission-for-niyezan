@@ -148,6 +148,41 @@
             <div class="role-home-grid" id="roleHomeGrid"></div>
           </section>
 
+          <section class="panel role-access-panel" id="roleAccessPanel">
+            <div class="panel-head">
+              <div>
+                <h2>Dashboard Password Setup</h2>
+                <p>Admin dashboard theke Admin, Manager and Employee login PIN/password set korun.</p>
+              </div>
+              <span class="status-pill">Admin only</span>
+            </div>
+            <div class="role-access-grid">
+              <form class="inline-form role-access-card" id="dashboardAdminPinForm">
+                <h3>Admin Password</h3>
+                <label for="dashboardAdminPin">New Admin PIN/Password</label>
+                <input id="dashboardAdminPin" type="password" placeholder="New admin password" required>
+                <button class="primary-button" type="submit"><i data-lucide="key-round"></i> Admin Password Save</button>
+              </form>
+              <form class="inline-form role-access-card" id="dashboardManagerForm">
+                <h3>Manager Access</h3>
+                <label for="dashboardManagerName">Manager Name</label>
+                <input id="dashboardManagerName" type="text" placeholder="Manager name" required>
+                <label for="dashboardManagerPin">Manager PIN/Password</label>
+                <input id="dashboardManagerPin" type="password" placeholder="Manager password" required>
+                <button class="primary-button" type="submit"><i data-lucide="user-cog"></i> Manager Save</button>
+              </form>
+              <form class="inline-form role-access-card" id="dashboardEmployeeAccessForm">
+                <h3>Employee Access</h3>
+                <label for="dashboardEmployeeAccessEmployee">Employee</label>
+                <select id="dashboardEmployeeAccessEmployee" required></select>
+                <label for="dashboardEmployeeAccessPin">Employee PIN/Password</label>
+                <input id="dashboardEmployeeAccessPin" type="password" placeholder="Employee password" required>
+                <button class="primary-button" type="submit"><i data-lucide="badge-check"></i> Employee Save</button>
+              </form>
+            </div>
+            <div class="fixed-list dashboard-access-list" id="dashboardAccessList"></div>
+          </section>
+
           <section class="panel friendly-guide-panel" id="friendlyGuidePanel">
             <div class="panel-head">
               <div>

@@ -127,6 +127,16 @@ const els = {
   roleHomeSubtitle: document.querySelector("#roleHomeSubtitle"),
   roleHomeBadge: document.querySelector("#roleHomeBadge"),
   roleHomeGrid: document.querySelector("#roleHomeGrid"),
+  roleAccessPanel: document.querySelector("#roleAccessPanel"),
+  dashboardAdminPinForm: document.querySelector("#dashboardAdminPinForm"),
+  dashboardAdminPin: document.querySelector("#dashboardAdminPin"),
+  dashboardManagerForm: document.querySelector("#dashboardManagerForm"),
+  dashboardManagerName: document.querySelector("#dashboardManagerName"),
+  dashboardManagerPin: document.querySelector("#dashboardManagerPin"),
+  dashboardEmployeeAccessForm: document.querySelector("#dashboardEmployeeAccessForm"),
+  dashboardEmployeeAccessEmployee: document.querySelector("#dashboardEmployeeAccessEmployee"),
+  dashboardEmployeeAccessPin: document.querySelector("#dashboardEmployeeAccessPin"),
+  dashboardAccessList: document.querySelector("#dashboardAccessList"),
   friendlyGuideTitle: document.querySelector("#friendlyGuideTitle"),
   friendlyGuideSubtitle: document.querySelector("#friendlyGuideSubtitle"),
   friendlySteps: document.querySelector("#friendlySteps"),
@@ -413,9 +423,7 @@ function toggleCompactMode() {
 }
 
 function canOpenView(view) {
-  if (isManager()) return !["reports", "fixed", "settings"].includes(view);
-  if (isEmployee()) return ["attendance", "advance"].includes(view);
-  return true;
+  return view === "dashboard";
 }
 
 function defaultState() {
@@ -1580,6 +1588,7 @@ function render() {
   renderEntryCategories(els.bulkType.value, els.bulkCategory);
   renderTodayEntries(day.entries);
   renderRoleHome(day, month);
+  renderDashboardAccessPanel();
   renderFriendlyGuide(day, month);
   renderSmartAlerts();
   renderNoticeBoard();
@@ -2336,7 +2345,7 @@ function renderRoleHome(day = totalsForDate(today()), month = totalsForMonth(tod
   els.roleHomeGrid.innerHTML = model.cards
     .map(
       (card) => `
-        <button class="role-home-card" data-search-view="${escapeHtml(card.view)}" type="button">
+        <button class="role-home-card" data-search-view="dashboard" type="button">
           <small>${escapeHtml(card.label)}</small>
           <strong>${escapeHtml(card.value)}</strong>
           <span>${escapeHtml(card.hint)}</span>
@@ -2344,6 +2353,67 @@ function renderRoleHome(day = totalsForDate(today()), month = totalsForMonth(tod
       `,
     )
     .join("");
+}
+
+function maskedPin(pin) {
+  const value = String(pin || "");
+  return value ? "*".repeat(Math.max(4, value.length)) : "Not set";
+}
+
+function renderDashboardAccessPanel() {
+  if (!els.roleAccessPanel) return;
+  els.roleAccessPanel.hidden = !isAdmin();
+  if (!isAdmin()) return;
+
+  if (els.dashboardEmployeeAccessEmployee) {
+    const selected = els.dashboardEmployeeAccessEmployee.value;
+    els.dashboardEmployeeAccessEmployee.innerHTML = employees()
+      .map((employee) => `<option value="${escapeHtml(employee.id)}">${escapeHtml(employee.name)}</option>`)
+      .join("");
+    if (selected && employees().some((employee) => employee.id === selected)) {
+      els.dashboardEmployeeAccessEmployee.value = selected;
+    }
+  }
+
+  if (!els.dashboardAccessList) return;
+  const managerRows = state.managers
+    .map(
+      (manager) => `
+        <article class="fixed-item">
+          <div class="item-line">
+            <strong>${escapeHtml(manager.name)}</strong>
+            <span class="status-pill">${manager.active ? "Active" : "Inactive"}</span>
+          </div>
+          <small>Manager password: ${escapeHtml(maskedPin(manager.pin))}</small>
+        </article>
+      `,
+    )
+    .join("");
+  const employeeRows = state.employeeAccess
+    .map(
+      (access) => `
+        <article class="fixed-item">
+          <div class="item-line">
+            <strong>${escapeHtml(access.employeeName || employeeById(access.employeeId)?.name || "Employee")}</strong>
+            <span class="status-pill">${access.active ? "Active" : "Inactive"}</span>
+          </div>
+          <small>Employee password: ${escapeHtml(maskedPin(access.pin))}</small>
+        </article>
+      `,
+    )
+    .join("");
+
+  els.dashboardAccessList.innerHTML = `
+    <article class="fixed-item">
+      <div class="item-line">
+        <strong>Admin Password</strong>
+        <span class="status-pill">${escapeHtml(maskedPin(state.settings.adminPin))}</span>
+      </div>
+      <small>Reload dile login thakbe. Logout korle abar password dite hobe.</small>
+    </article>
+    ${managerRows || `<article class="empty-state">No manager access set.</article>`}
+    ${employeeRows || `<article class="empty-state">No employee access set.</article>`}
+  `;
 }
 
 function friendlyGuideSteps(day = totalsForDate(today()), month = totalsForMonth(today())) {
@@ -2388,7 +2458,7 @@ function renderFriendlyGuide(day = totalsForDate(today()), month = totalsForMont
   els.friendlySteps.innerHTML = steps
     .map(
       (step, index) => `
-        <button class="friendly-step" data-search-view="${escapeHtml(step.view)}" type="button">
+        <button class="friendly-step" data-search-view="dashboard" type="button">
           <span><i data-lucide="${escapeHtml(step.icon)}"></i></span>
           <strong>${bn.format(index + 1)}. ${escapeHtml(step.title)}</strong>
           <small>${escapeHtml(step.detail)}</small>
@@ -4728,6 +4798,66 @@ function saveEmployeeAccess(event) {
   render();
 }
 
+function saveDashboardAdminPin(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const pin = normalizePin(els.dashboardAdminPin.value);
+  if (!pin) return;
+  state.settings.adminPin = pin;
+  els.dashboardAdminPin.value = "";
+  saveState();
+  if (cloudUrl()) syncToCloud(false);
+  alert("Admin password save hoyeche.");
+  render();
+}
+
+function saveDashboardManager(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const baseName = els.dashboardManagerName.value.trim();
+  const pin = normalizePin(els.dashboardManagerPin.value);
+  if (!baseName || !pin) return;
+  state.managers.push({
+    id: crypto.randomUUID(),
+    name: baseName.toLowerCase().includes("manager") || baseName.includes("à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°") ? baseName : `${baseName} (Manager)`,
+    pin,
+    active: true,
+  });
+  els.dashboardManagerForm.reset();
+  saveState();
+  if (cloudUrl()) syncToCloud(false);
+  alert("Manager access save hoyeche.");
+  render();
+}
+
+function saveDashboardEmployeeAccess(event) {
+  event.preventDefault();
+  if (!isAdmin()) return;
+  const employeeId = els.dashboardEmployeeAccessEmployee.value;
+  const pin = normalizePin(els.dashboardEmployeeAccessPin.value);
+  if (!employeeId || !pin) return;
+  const employee = employeeById(employeeId);
+  const existing = state.employeeAccess.find((item) => item.employeeId === employeeId);
+  if (existing) {
+    existing.employeeName = employee?.name || existing.employeeName || "";
+    existing.pin = pin;
+    existing.active = true;
+  } else {
+    state.employeeAccess.push({
+      id: crypto.randomUUID(),
+      employeeId,
+      employeeName: employee?.name || "",
+      pin,
+      active: true,
+    });
+  }
+  els.dashboardEmployeeAccessForm.reset();
+  saveState();
+  if (cloudUrl()) syncToCloud(false);
+  alert("Employee access save hoyeche.");
+  render();
+}
+
 async function setOfficeLocationFromCurrentPosition() {
   if (!isAdmin()) return;
   try {
@@ -5422,6 +5552,9 @@ els.pinForm.addEventListener("submit", (event) => {
 });
 els.managerForm.addEventListener("submit", addManager);
 els.employeeAccessForm.addEventListener("submit", saveEmployeeAccess);
+els.dashboardAdminPinForm?.addEventListener("submit", saveDashboardAdminPin);
+els.dashboardManagerForm?.addEventListener("submit", saveDashboardManager);
+els.dashboardEmployeeAccessForm?.addEventListener("submit", saveDashboardEmployeeAccess);
 els.noticeForm?.addEventListener("submit", saveNotice);
 els.approvalTabs?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-approval-filter]");
