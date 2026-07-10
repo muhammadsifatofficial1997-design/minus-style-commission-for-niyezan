@@ -5303,11 +5303,14 @@ function escapeHtml(value) {
 function unlockApp() {
   els.loginScreen.classList.add("hidden");
   els.appShell.classList.remove("locked");
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+  const session = JSON.stringify(currentUser);
+  sessionStorage.setItem(SESSION_KEY, session);
+  localStorage.setItem(SESSION_KEY, session);
 }
 
 function lockApp() {
   sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
   currentUser = { role: "guest", name: "" };
   els.loginScreen.classList.remove("hidden");
   els.appShell.classList.add("locked");
@@ -5788,13 +5791,14 @@ async function boot() {
   const accessChanged = ensureEmployeeAccess();
   if (cleanupChanged || accessChanged) saveState();
   try {
-    const savedSession = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+    const savedSession = JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "null");
     if (savedSession?.role) {
       currentUser = savedSession;
       unlockApp();
     }
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
