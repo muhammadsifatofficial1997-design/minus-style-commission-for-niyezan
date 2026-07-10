@@ -24,6 +24,7 @@ const LEAVE_POLICY = {
   advance: 5,
   fixedHoliday: 18,
 };
+const PAYROLL_DAYS = 30;
 
 const bn = new Intl.NumberFormat("bn-BD", { maximumFractionDigits: 0 });
 const state = loadState();
@@ -1260,8 +1261,7 @@ function fridayWorkCompleted(request) {
 }
 
 function fridayWorkPayForMonth(employee, month) {
-  const days = getDaysInMonth(`${month}-01`);
-  const dailySalary = employee.salary / days;
+  const dailySalary = employee.salary / PAYROLL_DAYS;
   const requests = (state.fridayWorkRequests || []).filter((item) => {
     return item.employeeId === employee.id && item.request_type === "extra_salary" && item.work_date?.startsWith(month) && fridayWorkCompleted(item);
   });
@@ -1442,7 +1442,6 @@ function salaryAdjustmentsFor(employeeId, month) {
 function calculatePayrollForMonth(month) {
   const start = `${month}-01`;
   const end = monthEnd(start);
-  const days = getDaysInMonth(start);
   const payrollRows = salaryEmployees().map((employee) => {
     const records = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= start && item.date <= end);
     const present = records.filter((item) => item.status === "present").length;
@@ -1450,7 +1449,7 @@ function calculatePayrollForMonth(month) {
     const paidLeave = records.filter((item) => item.status === "paid_leave" || item.status === "paid_holiday").length;
     const absent = records.filter((item) => item.status === "absent").length;
     const cutDays = leave + absent;
-    const dailySalary = employee.salary / days;
+    const dailySalary = employee.salary / PAYROLL_DAYS;
     const deduction = dailySalary * cutDays;
     const fridayPay = fridayWorkPayForMonth(employee, month);
     const adjustments = salaryAdjustmentsFor(employee.id, month);

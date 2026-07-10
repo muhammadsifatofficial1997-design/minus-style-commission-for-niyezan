@@ -4739,3 +4739,148 @@ body[data-theme="night"][data-preset="graphite-gold"] {
     display: grid;
   }
 }
+
+/* Final mobile layout guard: keeps every theme usable on phones. */
+@media (max-width: 760px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    padding: 0 !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 14px 12px 108px !important;
+    overflow-x: hidden !important;
+  }
+
+  .topbar {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    padding: 16px !important;
+    border-radius: 0 0 24px 24px !important;
+  }
+
+  .topbar h1 {
+    max-width: 100%;
+    font-size: clamp(30px, 11vw, 46px) !important;
+    line-height: 1.05 !important;
+    word-break: keep-all;
+  }
+
+  .date-control {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+
+  .date-control > label,
+  .date-control > input,
+  .date-control > button,
+  .date-control > span,
+  .date-control .global-search {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .date-control .global-search {
+    grid-column: 1 / -1;
+  }
+
+  .metrics-grid,
+  .content-grid,
+  .form-grid,
+  .summary-row,
+  .field-row,
+  .compact-summary-grid,
+  .system-check-grid,
+  .pwa-status-grid,
+  .permission-grid,
+  .employee-self-grid,
+  .break-dashboard-grid,
+  .friday-grid,
+  .calendar-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .panel,
+  .metric,
+  .publish-box,
+  .modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-radius: 18px !important;
+  }
+
+  .panel-head,
+  .button-row,
+  .inline-form,
+  .manager-inline,
+  .approval-toolbar,
+  .approval-tabs {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 10px !important;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .icon-button {
+    max-width: 100% !important;
+  }
+
+  .table-wrap,
+  .chart-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .mobile-bottom-nav {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: calc(100% - 20px) !important;
+    border-radius: 22px !important;
+  }
+
+  .mobile-nav-button {
+    min-width: 0 !important;
+    padding: 8px 4px !important;
+    font-size: 11px !important;
+    white-space: nowrap;
+  }
+}
