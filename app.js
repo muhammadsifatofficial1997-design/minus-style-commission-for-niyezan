@@ -103,6 +103,7 @@ const els = {
   appShell: document.querySelector("#appShell"),
   loginScreen: document.querySelector("#loginScreen"),
   loginForm: document.querySelector("#loginForm"),
+  emailInput: document.querySelector("#emailInput"),
   pinInput: document.querySelector("#pinInput"),
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
@@ -129,12 +130,15 @@ const els = {
   roleHomeGrid: document.querySelector("#roleHomeGrid"),
   roleAccessPanel: document.querySelector("#roleAccessPanel"),
   dashboardAdminPinForm: document.querySelector("#dashboardAdminPinForm"),
+  dashboardAdminEmail: document.querySelector("#dashboardAdminEmail"),
   dashboardAdminPin: document.querySelector("#dashboardAdminPin"),
   dashboardManagerForm: document.querySelector("#dashboardManagerForm"),
   dashboardManagerName: document.querySelector("#dashboardManagerName"),
+  dashboardManagerEmail: document.querySelector("#dashboardManagerEmail"),
   dashboardManagerPin: document.querySelector("#dashboardManagerPin"),
   dashboardEmployeeAccessForm: document.querySelector("#dashboardEmployeeAccessForm"),
   dashboardEmployeeAccessEmployee: document.querySelector("#dashboardEmployeeAccessEmployee"),
+  dashboardEmployeeAccessEmail: document.querySelector("#dashboardEmployeeAccessEmail"),
   dashboardEmployeeAccessPin: document.querySelector("#dashboardEmployeeAccessPin"),
   dashboardAccessList: document.querySelector("#dashboardAccessList"),
   friendlyGuideTitle: document.querySelector("#friendlyGuideTitle"),
@@ -430,6 +434,7 @@ function defaultState() {
   return {
     settings: {
       adminPin: "1234",
+      adminEmail: "",
       officeLocation: {
         enabled: false,
         latitude: "",
@@ -739,6 +744,10 @@ function normalizePin(value) {
     .replace(/[০-৯٠-٩]/g, (digit) => digitMap[digit] || digit);
 }
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function createAutoBackup() {
   const backups = getBackups();
   const now = new Date();
@@ -902,7 +911,7 @@ function ensureEmployeeAccess() {
     if (existing) {
       existing.employeeId = employee.id;
       existing.employeeName = employee.name;
-      existing.pin = rule.pin;
+      existing.pin = normalizePin(existing.pin) || rule.pin;
       existing.active = true;
       nextAccess.push(existing);
       return;
@@ -2365,6 +2374,10 @@ function renderDashboardAccessPanel() {
   els.roleAccessPanel.hidden = !isAdmin();
   if (!isAdmin()) return;
 
+  if (els.dashboardAdminEmail) {
+    els.dashboardAdminEmail.value = state.settings.adminEmail || "";
+  }
+
   if (els.dashboardEmployeeAccessEmployee) {
     const selected = els.dashboardEmployeeAccessEmployee.value;
     els.dashboardEmployeeAccessEmployee.innerHTML = employees()
@@ -2384,7 +2397,7 @@ function renderDashboardAccessPanel() {
             <strong>${escapeHtml(manager.name)}</strong>
             <span class="status-pill">${manager.active ? "Active" : "Inactive"}</span>
           </div>
-          <small>Manager password: ${escapeHtml(maskedPin(manager.pin))}</small>
+          <small>Email: ${escapeHtml(manager.email || "Not set")} Â· Password: ${escapeHtml(maskedPin(manager.pin))}</small>
         </article>
       `,
     )
@@ -2397,7 +2410,7 @@ function renderDashboardAccessPanel() {
             <strong>${escapeHtml(access.employeeName || employeeById(access.employeeId)?.name || "Employee")}</strong>
             <span class="status-pill">${access.active ? "Active" : "Inactive"}</span>
           </div>
-          <small>Employee password: ${escapeHtml(maskedPin(access.pin))}</small>
+          <small>Email: ${escapeHtml(access.email || "Not set")} Â· Password: ${escapeHtml(maskedPin(access.pin))}</small>
         </article>
       `,
     )
@@ -2409,7 +2422,7 @@ function renderDashboardAccessPanel() {
         <strong>Admin Password</strong>
         <span class="status-pill">${escapeHtml(maskedPin(state.settings.adminPin))}</span>
       </div>
-      <small>Reload dile login thakbe. Logout korle abar password dite hobe.</small>
+      <small>Email: ${escapeHtml(state.settings.adminEmail || "Not set")} Â· Reload dile login thakbe. Logout korle abar password dite hobe.</small>
     </article>
     ${managerRows || `<article class="empty-state">No manager access set.</article>`}
     ${employeeRows || `<article class="empty-state">No employee access set.</article>`}
@@ -4803,6 +4816,7 @@ function saveDashboardAdminPin(event) {
   if (!isAdmin()) return;
   const pin = normalizePin(els.dashboardAdminPin.value);
   if (!pin) return;
+  state.settings.adminEmail = normalizeEmail(els.dashboardAdminEmail?.value);
   state.settings.adminPin = pin;
   els.dashboardAdminPin.value = "";
   saveState();
@@ -4815,11 +4829,13 @@ function saveDashboardManager(event) {
   event.preventDefault();
   if (!isAdmin()) return;
   const baseName = els.dashboardManagerName.value.trim();
+  const email = normalizeEmail(els.dashboardManagerEmail?.value);
   const pin = normalizePin(els.dashboardManagerPin.value);
-  if (!baseName || !pin) return;
+  if (!baseName || !email || !pin) return;
   state.managers.push({
     id: crypto.randomUUID(),
     name: baseName.toLowerCase().includes("manager") || baseName.includes("à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°") ? baseName : `${baseName} (Manager)`,
+    email,
     pin,
     active: true,
   });
@@ -4834,12 +4850,14 @@ function saveDashboardEmployeeAccess(event) {
   event.preventDefault();
   if (!isAdmin()) return;
   const employeeId = els.dashboardEmployeeAccessEmployee.value;
+  const email = normalizeEmail(els.dashboardEmployeeAccessEmail?.value);
   const pin = normalizePin(els.dashboardEmployeeAccessPin.value);
-  if (!employeeId || !pin) return;
+  if (!employeeId || !email || !pin) return;
   const employee = employeeById(employeeId);
   const existing = state.employeeAccess.find((item) => item.employeeId === employeeId);
   if (existing) {
     existing.employeeName = employee?.name || existing.employeeName || "";
+    existing.email = email;
     existing.pin = pin;
     existing.active = true;
   } else {
@@ -4847,6 +4865,7 @@ function saveDashboardEmployeeAccess(event) {
       id: crypto.randomUUID(),
       employeeId,
       employeeName: employee?.name || "",
+      email,
       pin,
       active: true,
     });
@@ -5508,6 +5527,33 @@ function userForPin(password) {
   return null;
 }
 
+function userForCredentials(email, password) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = normalizePin(password);
+  if (!normalizedEmail) return userForPin(normalizedPassword);
+
+  if (normalizeEmail(state.settings.adminEmail) === normalizedEmail && normalizedPassword === normalizePin(state.settings.adminPin)) {
+    return { role: "admin", name: "Admin" };
+  }
+
+  const manager = state.managers.find((item) => item.active && normalizeEmail(item.email) === normalizedEmail && normalizedPassword === normalizePin(item.pin));
+  if (manager) {
+    return { role: "manager", name: manager.name };
+  }
+
+  const employeeAccess = state.employeeAccess.find((item) => {
+    return item.active && normalizeEmail(item.email) === normalizedEmail && normalizedPassword === normalizePin(item.pin);
+  });
+  if (employeeAccess) {
+    const employee = employeeForAccess(employeeAccess);
+    if (employee) {
+      return { role: "employee", name: employee.name, employeeId: employee.id };
+    }
+  }
+
+  return null;
+}
+
 function finishLogin(user) {
   els.loginError.textContent = "";
   currentUser = user;
@@ -5517,8 +5563,9 @@ function finishLogin(user) {
 
 els.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const email = normalizeEmail(els.emailInput?.value);
   const password = normalizePin(els.pinInput.value);
-  const user = userForPin(password);
+  const user = userForCredentials(email, password);
   if (user) {
     finishLogin(user);
     return;
@@ -5527,7 +5574,7 @@ els.loginForm.addEventListener("submit", async (event) => {
   if (cloudUrl()) {
     els.loginError.textContent = "Cloud থেকে data আনা হচ্ছে, একটু অপেক্ষা করুন...";
     const loaded = await syncFromCloud(false);
-    const cloudUser = userForPin(password);
+    const cloudUser = userForCredentials(email, password);
     if (cloudUser) {
       finishLogin(cloudUser);
       return;

@@ -22,7 +22,8 @@
         <span class="brand-mark">MS</span>
         <h1>Login Access</h1>
         <p>Admin, Manager অথবা Employee PIN দিন। ডিফল্ট Admin: 1234, Manager: 2222, Employee: 3333</p>
-        <input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN" required />
+        <input id="emailInput" type="email" autocomplete="username" placeholder="Email (optional)" />
+        <input id="pinInput" type="password" autocomplete="current-password" placeholder="Password / PIN" required />
         <button class="primary-button" type="submit">
           <i data-lucide="lock-keyhole"></i>
           লগইন
@@ -159,6 +160,8 @@
             <div class="role-access-grid">
               <form class="inline-form role-access-card" id="dashboardAdminPinForm">
                 <h3>Admin Password</h3>
+                <label for="dashboardAdminEmail">Admin Email</label>
+                <input id="dashboardAdminEmail" type="email" placeholder="admin@email.com">
                 <label for="dashboardAdminPin">New Admin PIN/Password</label>
                 <input id="dashboardAdminPin" type="password" placeholder="New admin password" required>
                 <button class="primary-button" type="submit"><i data-lucide="key-round"></i> Admin Password Save</button>
@@ -167,6 +170,8 @@
                 <h3>Manager Access</h3>
                 <label for="dashboardManagerName">Manager Name</label>
                 <input id="dashboardManagerName" type="text" placeholder="Manager name" required>
+                <label for="dashboardManagerEmail">Manager Email</label>
+                <input id="dashboardManagerEmail" type="email" placeholder="manager@email.com" required>
                 <label for="dashboardManagerPin">Manager PIN/Password</label>
                 <input id="dashboardManagerPin" type="password" placeholder="Manager password" required>
                 <button class="primary-button" type="submit"><i data-lucide="user-cog"></i> Manager Save</button>
@@ -175,6 +180,8 @@
                 <h3>Employee Access</h3>
                 <label for="dashboardEmployeeAccessEmployee">Employee</label>
                 <select id="dashboardEmployeeAccessEmployee" required></select>
+                <label for="dashboardEmployeeAccessEmail">Employee Email</label>
+                <input id="dashboardEmployeeAccessEmail" type="email" placeholder="employee@email.com" required>
                 <label for="dashboardEmployeeAccessPin">Employee PIN/Password</label>
                 <input id="dashboardEmployeeAccessPin" type="password" placeholder="Employee password" required>
                 <button class="primary-button" type="submit"><i data-lucide="badge-check"></i> Employee Save</button>
