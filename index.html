@@ -1079,6 +1079,7 @@
               </div>
               <div class="publish-box cloud-box">
                 <strong>Google Sheets Backend</strong>
+                <p>Main live data Supabase-e thakbe. Google Sheets ekhon backup/report copy hisebe use korun.</p>
                 <label>Apps Script Web App URL <input id="cloudApiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
                 <div class="button-row">
                   <button class="secondary-button" id="saveCloudUrlBtn" type="button"><i data-lucide="cloud"></i> URL সেভ</button>
@@ -1087,6 +1088,19 @@
                 </div>
                 <p class="backup-status" id="cloudStatus">Cloud sync বন্ধ আছে।</p>
                 <p class="backup-status" id="settingsSaveStatus">Settings ready.</p>
+              </div>
+              <div class="publish-box supabase-box">
+                <strong>Supabase Backend</strong>
+                <p>Main live data Supabase-e save hobe. Login hobe Supabase Auth email + password diye. RLS employee-ke shudhu nijer data dekhabe.</p>
+                <label>Supabase Project URL <input id="supabaseUrl" type="url" placeholder="https://your-project.supabase.co" /></label>
+                <label>Supabase anon public key <textarea id="supabaseAnonKey" rows="3" placeholder="eyJhbGciOiJIUzI1NiIs..."></textarea></label>
+                <div class="button-row">
+                  <button class="secondary-button" id="saveSupabaseConfigBtn" type="button"><i data-lucide="shield-check"></i> Supabase Config Save</button>
+                  <button class="secondary-button" id="syncFromSupabaseBtn" type="button"><i data-lucide="database-zap"></i> Supabase theke anun</button>
+                  <button class="secondary-button" id="syncToSupabaseBtn" type="button"><i data-lucide="database-backup"></i> Supabase-e pathan</button>
+                  <button class="secondary-button" id="supabaseLogoutBtn" type="button"><i data-lucide="log-out"></i> Supabase Logout</button>
+                </div>
+                <p class="backup-status" id="supabaseStatus">Supabase off. SQL setup kore URL/anon key din.</p>
               </div>
               <div class="publish-box office-location-box">
                 <strong>Office Location Attendance</strong>
@@ -1309,6 +1323,7 @@
     </div>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
   </body>
 </html>

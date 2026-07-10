@@ -3,6 +3,8 @@ const LEGACY_KEY = "minus-style-affiliate-dashboard-v1";
 const BACKUP_KEY = "minus-style-affiliate-backups-v1";
 const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
+const SUPABASE_URL_KEY = "minus-style-supabase-url";
+const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
 const THEME_KEY = "minus-style-theme-mode";
 const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
@@ -31,6 +33,9 @@ const state = loadState();
 let editingFixedId = null;
 let currentUser = { role: "guest", name: "" };
 let cloudPushTimer = null;
+let supabasePushTimer = null;
+let supabaseClientInstance = null;
+let isApplyingSupabaseState = false;
 let isApplyingCloudState = false;
 let breakTicker = null;
 let cloudDirty = false;
@@ -333,6 +338,9 @@ const els = {
   notificationList: document.querySelector("#notificationList"),
   cloudApiUrl: document.querySelector("#cloudApiUrl"),
   cloudStatus: document.querySelector("#cloudStatus"),
+  supabaseUrl: document.querySelector("#supabaseUrl"),
+  supabaseAnonKey: document.querySelector("#supabaseAnonKey"),
+  supabaseStatus: document.querySelector("#supabaseStatus"),
   settingsSaveStatus: document.querySelector("#settingsSaveStatus"),
   officeLocationEnabled: document.querySelector("#officeLocationEnabled"),
   officeLatitude: document.querySelector("#officeLatitude"),
@@ -525,11 +533,49 @@ function saveState() {
   lastCloudSyncFailed = false;
   clearCloudRetry();
   updateCloudSyncBar();
-  queueCloudPush();
+  if (supabaseEnabled()) {
+    if (currentUser.role !== "guest") queueSupabasePush();
+  } else {
+    queueCloudPush();
+  }
 }
 
 function cloudUrl() {
   return localStorage.getItem(CLOUD_URL_KEY) || DEFAULT_CLOUD_URL;
+}
+
+function supabaseConfig() {
+  return {
+    url: localStorage.getItem(SUPABASE_URL_KEY) || "",
+    anonKey: localStorage.getItem(SUPABASE_ANON_KEY) || "",
+  };
+}
+
+function supabaseEnabled() {
+  const config = supabaseConfig();
+  return Boolean(config.url && config.anonKey);
+}
+
+function supabaseClient() {
+  if (!supabaseEnabled() || !window.supabase?.createClient) return null;
+  const config = supabaseConfig();
+  if (supabaseClientInstance?.__url === config.url && supabaseClientInstance?.__anonKey === config.anonKey) return supabaseClientInstance;
+  supabaseClientInstance = window.supabase.createClient(config.url, config.anonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+  supabaseClientInstance.__url = config.url;
+  supabaseClientInstance.__anonKey = config.anonKey;
+  return supabaseClientInstance;
+}
+
+function setSupabaseStatus(message, status = "") {
+  if (els.supabaseStatus) {
+    els.supabaseStatus.textContent = message;
+    if (status) els.supabaseStatus.dataset.status = status;
+  }
+  if (els.loginRoleHint && currentUser.role === "guest" && supabaseEnabled()) {
+    els.loginRoleHint.textContent = message;
+  }
 }
 
 function setCloudStatus(message) {
@@ -702,6 +748,398 @@ async function syncFromCloud(showAlert = true) {
     if (showAlert) alert(`Cloud load failed: ${error.message}`);
     return false;
   }
+}
+
+function queueSupabasePush() {
+  if (isApplyingSupabaseState || !supabaseEnabled()) return;
+  clearTimeout(supabasePushTimer);
+  supabasePushTimer = setTimeout(() => syncToSupabase(false), CLOUD_PUSH_DELAY);
+}
+
+function supabaseLoginSummary() {
+  if (!supabaseEnabled()) return "Supabase off";
+  return "Supabase mode: email + password required";
+}
+
+async function signInWithSupabase(email, password) {
+  const client = supabaseClient();
+  if (!client) throw new Error("Supabase library/config missing");
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  const user = data?.user;
+  if (!user) throw new Error("Supabase user not found");
+  return supabaseUserToCurrentUser(user);
+}
+
+async function supabaseUserToCurrentUser(user) {
+  const client = supabaseClient();
+  if (!client) throw new Error("Supabase library/config missing");
+  const { data: profile, error: profileError } = await client
+    .from("profiles")
+    .select("id,email,role,employee_id,display_name,active")
+    .eq("id", user.id)
+    .single();
+  if (profileError) throw profileError;
+  if (!profile?.active) throw new Error("This user is inactive");
+
+  let employeeName = profile.display_name || user.email;
+  if (profile.employee_id) {
+    const { data: employee } = await client.from("employees").select("id,name").eq("id", profile.employee_id).maybeSingle();
+    if (employee?.name) employeeName = employee.name;
+  }
+
+  return {
+    role: profile.role,
+    name: profile.role === "admin" ? profile.display_name || "Admin" : employeeName,
+    employeeId: profile.employee_id || null,
+    authId: user.id,
+    email: user.email,
+    source: "supabase",
+  };
+}
+
+function supabaseEmployeeScope() {
+  return isEmployee() ? currentEmployeeId() : "";
+}
+
+function visibleByEmployeeScope(rows, employeeKey = "employeeId") {
+  const scope = supabaseEmployeeScope();
+  return scope ? rows.filter((row) => row[employeeKey] === scope) : rows;
+}
+
+function sanitizeRows(rows) {
+  return rows.filter((row) => row && row.id).map((row) => ({ ...row }));
+}
+
+function tableRowsForSupabase() {
+  const scope = supabaseEmployeeScope();
+  const teamScope = !scope;
+  const scopeRows = (rows, employeeKey = "employeeId") => (scope ? rows.filter((row) => row[employeeKey] === scope) : rows);
+  return {
+    employees: scope
+      ? employees().filter((employee) => employee.id === scope).map((employee) => ({ id: employee.id, name: employee.name, salary: Number(employee.salary || 0), active: true }))
+      : employees().map((employee) => ({ id: employee.id, name: employee.name, salary: Number(employee.salary || 0), active: true })),
+    daily_entries: teamScope ? sanitizeRows(state.entries).map((entry) => ({
+      id: entry.id,
+      entry_date: entry.date,
+      type: entry.type,
+      category: entry.category,
+      amount: Number(entry.amount || 0),
+      note: entry.note || "",
+      created_by_name: entry.createdBy || currentUser.name || "",
+    })) : [],
+    fixed_expenses: teamScope ? sanitizeRows(state.fixedExpenses).map((item) => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      amount: Number(item.amount || 0),
+      active: Boolean(item.active),
+      note: item.note || "",
+    })) : [],
+    attendance_records: sanitizeRows(scopeRows(state.attendance || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      work_date: item.date,
+      status: item.status,
+      shift: item.shift,
+      check_in: item.checkIn || null,
+      check_out: item.checkOut || null,
+      break_minutes: Number(item.breakMinutes || item.break || 0),
+      note: item.note || "",
+      marked_by: item.markedBy || currentUser.name || "",
+      source: item.source || "web",
+    })),
+    break_records: sanitizeRows(scopeRows(state.breaks || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      break_date: item.date,
+      type: item.type,
+      note: item.note || "",
+      started_at: item.startedAt || item.startAt || null,
+      ended_at: item.endedAt || item.endAt || null,
+      duration_seconds: Number(item.durationSeconds || 0),
+      status: item.status || (item.endedAt ? "completed" : "running"),
+    })),
+    leave_requests: sanitizeRows(scopeRows(state.leaveRequests || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      leave_type: item.type,
+      start_date: item.start || item.startDate,
+      end_date: item.end || item.endDate,
+      days: Number(item.days || 0),
+      reason: item.reason || "",
+      status: item.status || "pending",
+      breakdown: item.breakdown || [],
+      requested_by: item.requestedBy || currentUser.name || "",
+      reviewed_by: item.reviewedBy || "",
+    })),
+    advance_requests: sanitizeRows(scopeRows(state.advances || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      salary_month: item.month,
+      amount: Number(item.amount || 0),
+      reason: item.reason || "",
+      status: item.status || "pending",
+      approved_by: item.approvedBy || "",
+    })),
+    approvals: sanitizeRows(scope ? (state.approvals || []).filter((item) => item.payload?.employeeId === scope) : state.approvals || []).map((item) => ({
+      id: item.id,
+      action: item.action,
+      status: item.status || "pending",
+      payload: item.payload || {},
+      requested_by: item.requestedBy || "",
+      reviewed_by: item.reviewedBy || "",
+      created_at: item.createdAt || new Date().toISOString(),
+      updated_at: item.updatedAt || new Date().toISOString(),
+    })),
+    friday_work_requests: sanitizeRows(scopeRows(state.fridayWorkRequests || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      work_date: item.work_date || item.workDate,
+      request_type: item.request_type || item.requestType,
+      reason: item.reason || "",
+      note: item.note || "",
+      status: item.status || "pending",
+      approved_by: item.approved_by || item.approvedBy || "",
+      attendance_id: item.attendance_id || item.attendanceId || null,
+      salary_added: Boolean(item.salary_added || item.salaryAdded),
+      compensatory_leave_added: Boolean(item.compensatory_leave_added || item.compensatoryLeaveAdded),
+    })),
+    salary_adjustments: teamScope ? sanitizeRows(scopeRows(state.salaryAdjustments || [])).map((item) => ({
+      id: item.id,
+      employee_id: item.employeeId,
+      salary_month: item.month,
+      type: item.type,
+      label: item.label || item.reason || "",
+      amount: Number(item.amount || 0),
+      note: item.note || "",
+    })) : [],
+  };
+}
+
+async function upsertSupabaseTable(client, table, rows) {
+  if (!rows?.length) return;
+  const { error } = await client.from(table).upsert(rows, { onConflict: "id" });
+  if (error) throw new Error(`${table}: ${error.message}`);
+}
+
+async function syncToSupabase(showAlert = true) {
+  const client = supabaseClient();
+  if (!client) {
+    setSupabaseStatus("Supabase config/library missing.", "failed");
+    return false;
+  }
+  try {
+    setSupabaseStatus("Supabase-e data pathano hocche...", "dirty");
+    const rows = tableRowsForSupabase();
+    await upsertSupabaseTable(client, "employees", rows.employees);
+    await upsertSupabaseTable(client, "daily_entries", rows.daily_entries);
+    await upsertSupabaseTable(client, "fixed_expenses", rows.fixed_expenses);
+    await upsertSupabaseTable(client, "attendance_records", rows.attendance_records);
+    await upsertSupabaseTable(client, "break_records", rows.break_records);
+    await upsertSupabaseTable(client, "leave_requests", rows.leave_requests);
+    await upsertSupabaseTable(client, "advance_requests", rows.advance_requests);
+    await upsertSupabaseTable(client, "approvals", rows.approvals);
+    await upsertSupabaseTable(client, "friday_work_requests", rows.friday_work_requests);
+    await upsertSupabaseTable(client, "salary_adjustments", rows.salary_adjustments);
+    if (isAdmin()) {
+      await client.from("app_state").upsert({ id: "main", snapshot: state, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      await client.from("app_backups").insert({ snapshot: state, label: "manual/frontend backup" });
+    }
+    cloudDirty = false;
+    lastCloudSyncFailed = false;
+    lastCloudSyncAt = new Date().toISOString();
+    updateCloudSyncBar("Supabase synced");
+    setSupabaseStatus(`Supabase synced: ${new Date().toLocaleString("bn-BD")}`, "synced");
+    if (showAlert) alert("Supabase-e data save hoyeche.");
+    return true;
+  } catch (error) {
+    lastCloudSyncFailed = true;
+    setSupabaseStatus(`Supabase save failed: ${error.message}`, "failed");
+    updateCloudSyncBar(`Supabase save failed: ${error.message}`);
+    if (showAlert) alert(`Supabase save failed: ${error.message}`);
+    return false;
+  }
+}
+
+function mergeSupabaseRows(payload) {
+  if (payload.employees?.length) state.employees = payload.employees.map((item) => ({ id: item.id, name: item.name, salary: Number(item.salary || 0) }));
+  if (payload.daily_entries) {
+    state.entries = payload.daily_entries.map((item) => ({
+      id: item.id,
+      date: item.entry_date,
+      type: item.type,
+      category: item.category,
+      amount: Number(item.amount || 0),
+      note: item.note || "",
+      createdBy: item.created_by_name || "",
+    }));
+  }
+  if (payload.fixed_expenses) {
+    state.fixedExpenses = payload.fixed_expenses.map((item) => ({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      amount: Number(item.amount || 0),
+      active: Boolean(item.active),
+      note: item.note || "",
+    }));
+  }
+  if (payload.attendance_records) {
+    state.attendance = payload.attendance_records.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      date: item.work_date,
+      status: item.status,
+      shift: item.shift,
+      checkIn: item.check_in || "",
+      checkOut: item.check_out || "",
+      breakMinutes: Number(item.break_minutes || 0),
+      note: item.note || "",
+      markedBy: item.marked_by || "",
+      source: item.source || "supabase",
+    }));
+  }
+  if (payload.break_records) {
+    state.breaks = payload.break_records.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      date: item.break_date,
+      type: item.type,
+      note: item.note || "",
+      startedAt: item.started_at || "",
+      endedAt: item.ended_at || "",
+      durationSeconds: Number(item.duration_seconds || 0),
+      status: item.status || "completed",
+    }));
+  }
+  if (payload.leave_requests) {
+    state.leaveRequests = payload.leave_requests.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      type: item.leave_type,
+      start: item.start_date,
+      end: item.end_date,
+      days: Number(item.days || 0),
+      reason: item.reason || "",
+      status: item.status || "pending",
+      breakdown: item.breakdown || [],
+      requestedBy: item.requested_by || "",
+      reviewedBy: item.reviewed_by || "",
+    }));
+  }
+  if (payload.advance_requests) {
+    state.advances = payload.advance_requests.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      month: item.salary_month,
+      amount: Number(item.amount || 0),
+      reason: item.reason || "",
+      status: item.status || "pending",
+      approvedBy: item.approved_by || "",
+    }));
+  }
+  if (payload.approvals) {
+    state.approvals = payload.approvals.map((item) => ({
+      id: item.id,
+      action: item.action,
+      status: item.status || "pending",
+      payload: item.payload || {},
+      requestedBy: item.requested_by || "",
+      reviewedBy: item.reviewed_by || "",
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+  }
+  if (payload.friday_work_requests) {
+    state.fridayWorkRequests = payload.friday_work_requests.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      work_date: item.work_date,
+      request_type: item.request_type,
+      reason: item.reason || "",
+      note: item.note || "",
+      status: item.status || "pending",
+      approved_by: item.approved_by || "",
+      attendance_id: item.attendance_id || "",
+      salary_added: Boolean(item.salary_added),
+      compensatory_leave_added: Boolean(item.compensatory_leave_added),
+    }));
+  }
+  if (payload.salary_adjustments) {
+    state.salaryAdjustments = payload.salary_adjustments.map((item) => ({
+      id: item.id,
+      employeeId: item.employee_id,
+      employeeName: employeeById(item.employee_id)?.name || "",
+      month: item.salary_month,
+      type: item.type,
+      label: item.label || "",
+      amount: Number(item.amount || 0),
+      note: item.note || "",
+    }));
+  }
+}
+
+async function selectSupabaseTable(client, table, orderColumn = "created_at") {
+  let query = client.from(table).select("*");
+  if (orderColumn) query = query.order(orderColumn, { ascending: false });
+  const { data, error } = await query;
+  if (error) throw new Error(`${table}: ${error.message}`);
+  return data || [];
+}
+
+async function syncFromSupabase(showAlert = true) {
+  const client = supabaseClient();
+  if (!client) {
+    setSupabaseStatus("Supabase config/library missing.", "failed");
+    return false;
+  }
+  try {
+    setSupabaseStatus("Supabase theke data ana hocche...", "dirty");
+    isApplyingSupabaseState = true;
+    const payload = {
+      employees: await selectSupabaseTable(client, "employees", "name"),
+      daily_entries: await selectSupabaseTable(client, "daily_entries", "entry_date"),
+      fixed_expenses: await selectSupabaseTable(client, "fixed_expenses", "name"),
+      attendance_records: await selectSupabaseTable(client, "attendance_records", "work_date"),
+      break_records: await selectSupabaseTable(client, "break_records", "break_date"),
+      leave_requests: await selectSupabaseTable(client, "leave_requests", "start_date"),
+      advance_requests: await selectSupabaseTable(client, "advance_requests", "salary_month"),
+      approvals: await selectSupabaseTable(client, "approvals", "created_at"),
+      friday_work_requests: await selectSupabaseTable(client, "friday_work_requests", "work_date"),
+      salary_adjustments: await selectSupabaseTable(client, "salary_adjustments", "salary_month"),
+    };
+    mergeSupabaseRows(payload);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    cloudDirty = false;
+    lastCloudSyncFailed = false;
+    lastCloudSyncAt = new Date().toISOString();
+    isApplyingSupabaseState = false;
+    ensureEmployeeAccess();
+    render();
+    updateCloudSyncBar("Supabase synced");
+    setSupabaseStatus(`Supabase load complete: ${new Date().toLocaleString("bn-BD")}`, "synced");
+    if (showAlert) alert("Supabase theke data load hoyeche.");
+    return true;
+  } catch (error) {
+    isApplyingSupabaseState = false;
+    lastCloudSyncFailed = true;
+    setSupabaseStatus(`Supabase load failed: ${error.message}`, "failed");
+    updateCloudSyncBar(`Supabase load failed: ${error.message}`);
+    if (showAlert) alert(`Supabase load failed: ${error.message}`);
+    return false;
+  }
+}
+
+async function logoutSupabase() {
+  const client = supabaseClient();
+  if (client) await client.auth.signOut().catch(() => null);
+  lockApp();
 }
 
 function isAdmin() {
@@ -3864,6 +4302,12 @@ function renderNotifications() {
 function renderCloudSettings() {
   if (!els.cloudApiUrl) return;
   els.cloudApiUrl.value = cloudUrl();
+  if (els.supabaseUrl) {
+    const config = supabaseConfig();
+    els.supabaseUrl.value = config.url;
+    els.supabaseAnonKey.value = config.anonKey;
+    setSupabaseStatus(supabaseEnabled() ? "Supabase ready. Email/password login active." : "Supabase off. SQL setup kore URL/anon key din.", supabaseEnabled() ? "ready" : "off");
+  }
   if (!cloudUrl()) setCloudStatus("Cloud sync বন্ধ আছে। Apps Script Web App URL দিলে live data sync হবে।");
   renderOfficeLocationSettings();
   renderPermissionMatrix();
@@ -5468,6 +5912,7 @@ function unlockApp() {
 }
 
 function lockApp() {
+  if (currentUser.source === "supabase") supabaseClient()?.auth.signOut().catch(() => null);
   sessionStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_KEY);
   currentUser = { role: "guest", name: "" };
@@ -5574,8 +6019,26 @@ function finishLogin(user) {
 els.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const email = normalizeEmail(els.emailInput?.value);
-  const password = normalizePin(els.pinInput.value);
-  const user = userForCredentials(email, password);
+  const password = els.pinInput.value;
+  if (supabaseEnabled()) {
+    if (!email) {
+      els.loginError.textContent = "Supabase mode chalu. Email + password diye login korun.";
+      return;
+    }
+    try {
+      els.loginError.textContent = "Supabase Auth diye login hocche...";
+      const supabaseUser = await signInWithSupabase(email, password);
+      finishLogin(supabaseUser);
+      await syncFromSupabase(false);
+      return;
+    } catch (error) {
+      els.loginError.textContent = `Supabase login failed: ${error.message}`;
+      return;
+    }
+  }
+
+  const normalizedPassword = normalizePin(password);
+  const user = userForCredentials(email, normalizedPassword);
   if (user) {
     finishLogin(user);
     return;
@@ -5584,7 +6047,7 @@ els.loginForm.addEventListener("submit", async (event) => {
   if (cloudUrl()) {
     els.loginError.textContent = "Cloud থেকে data আনা হচ্ছে, একটু অপেক্ষা করুন...";
     const loaded = await syncFromCloud(false);
-    const cloudUser = userForCredentials(email, password);
+    const cloudUser = userForCredentials(email, normalizedPassword);
     if (cloudUser) {
       finishLogin(cloudUser);
       return;
@@ -5744,6 +6207,16 @@ document.querySelector("#saveCloudUrlBtn").addEventListener("click", () => {
 });
 document.querySelector("#syncFromCloudBtn").addEventListener("click", () => syncFromCloud(true));
 document.querySelector("#syncToCloudBtn").addEventListener("click", () => syncToCloud(true));
+document.querySelector("#saveSupabaseConfigBtn")?.addEventListener("click", () => {
+  localStorage.setItem(SUPABASE_URL_KEY, els.supabaseUrl?.value.trim() || "");
+  localStorage.setItem(SUPABASE_ANON_KEY, els.supabaseAnonKey?.value.trim() || "");
+  supabaseClientInstance = null;
+  setSupabaseStatus(supabaseEnabled() ? "Supabase config saved. Email/password login active." : "Supabase config blank.", supabaseEnabled() ? "ready" : "off");
+  updateCloudSyncBar();
+});
+document.querySelector("#syncFromSupabaseBtn")?.addEventListener("click", () => syncFromSupabase(true));
+document.querySelector("#syncToSupabaseBtn")?.addEventListener("click", () => syncToSupabase(true));
+document.querySelector("#supabaseLogoutBtn")?.addEventListener("click", logoutSupabase);
 document.querySelector("#setOfficeLocationBtn")?.addEventListener("click", setOfficeLocationFromCurrentPosition);
 els.testOfficeLocationBtn?.addEventListener("click", testOfficeLocation);
 document.querySelector("#saveOfficeLocationBtn")?.addEventListener("click", saveOfficeLocation);
@@ -5986,15 +6459,28 @@ breakTicker = setInterval(() => {
 
 async function boot() {
   registerServiceWorker();
-  if (cloudUrl()) await syncFromCloud(false);
+  if (!supabaseEnabled() && cloudUrl()) await syncFromCloud(false);
   const cleanupChanged = cleanupPayrollOnlyAdminData() || cleanupFormerEmployeeData();
   const accessChanged = ensureEmployeeAccess();
   if (cleanupChanged || accessChanged) saveState();
   try {
-    const savedSession = JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "null");
-    if (savedSession?.role) {
-      currentUser = savedSession;
-      unlockApp();
+    if (supabaseEnabled()) {
+      const client = supabaseClient();
+      const { data } = await client.auth.getSession();
+      if (data?.session?.user) {
+        currentUser = await supabaseUserToCurrentUser(data.session.user);
+        unlockApp();
+        await syncFromSupabase(false);
+      } else {
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+      }
+    } else {
+      const savedSession = JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "null");
+      if (savedSession?.role) {
+        currentUser = savedSession;
+        unlockApp();
+      }
     }
   } catch {
     sessionStorage.removeItem(SESSION_KEY);
@@ -6002,7 +6488,7 @@ async function boot() {
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   render();
-  if (els.loginRoleHint && currentUser.role === "guest") els.loginRoleHint.textContent = cloudLoginSummary();
+  if (els.loginRoleHint && currentUser.role === "guest") els.loginRoleHint.textContent = supabaseEnabled() ? supabaseLoginSummary() : cloudLoginSummary();
 }
 
 function registerServiceWorker() {
