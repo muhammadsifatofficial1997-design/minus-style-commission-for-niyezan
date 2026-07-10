@@ -3858,7 +3858,7 @@ body[data-theme="night"] .global-search-results button:hover {
   background: rgba(216, 181, 111, 0.16);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .date-control {
     align-items: stretch;
   }
@@ -4741,7 +4741,7 @@ body[data-theme="night"][data-preset="graphite-gold"] {
 }
 
 /* Final mobile layout guard: keeps every theme usable on phones. */
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   html,
   body {
     width: 100%;
@@ -4867,7 +4867,9 @@ body[data-theme="night"][data-preset="graphite-gold"] {
   }
 
   .mobile-bottom-nav {
+    position: fixed !important;
     display: grid !important;
+    z-index: 9999 !important;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     top: calc(8px + env(safe-area-inset-top)) !important;
     bottom: auto !important;
@@ -4883,5 +4885,310 @@ body[data-theme="night"][data-preset="graphite-gold"] {
     padding: 8px 4px !important;
     font-size: 11px !important;
     white-space: nowrap;
+  }
+}
+
+/* Minus Style cosmic black theme: single day/night look with moving space objects. */
+:root,
+body[data-theme="night"],
+body[data-theme="day"] {
+  --bg: #020812;
+  --surface: rgba(6, 18, 34, 0.76);
+  --surface-2: rgba(12, 32, 55, 0.78);
+  --ink: #f4fbff;
+  --muted: rgba(203, 224, 239, 0.76);
+  --line: rgba(86, 188, 255, 0.22);
+  --primary: #55c8ff;
+  --primary-dark: #0a6fc2;
+  --accent: #69e1ff;
+  --danger: #ff6d7a;
+  --success: #59f0b0;
+  --warning: #ffd36d;
+}
+
+@keyframes starDrift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: translate3d(-42px, 54px, 0) rotate(7deg);
+  }
+}
+
+@keyframes orbitFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: translate3d(18px, -22px, 0) scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(85, 200, 255, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 34px rgba(85, 200, 255, 0.28);
+  }
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  position: relative;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 50% 110%, rgba(21, 149, 220, 0.34), transparent 22rem),
+    radial-gradient(circle at 82% 18%, rgba(45, 184, 255, 0.18), transparent 18rem),
+    radial-gradient(circle at 12% 8%, rgba(16, 87, 160, 0.22), transparent 16rem),
+    linear-gradient(180deg, #010711 0%, #06101d 46%, #020611 100%) !important;
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  opacity: 0.72;
+  background:
+    radial-gradient(circle, rgba(111, 216, 255, 0.9) 0 1px, transparent 1.6px) 0 0 / 92px 92px,
+    radial-gradient(circle, rgba(255, 255, 255, 0.58) 0 1px, transparent 1.4px) 28px 42px / 134px 134px,
+    radial-gradient(circle, rgba(88, 201, 255, 0.42) 0 1.5px, transparent 2px) 68px 20px / 176px 176px;
+  animation: starDrift 18s linear infinite alternate;
+}
+
+body::after {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(79, 190, 255, 0.28), transparent 32%),
+    radial-gradient(ellipse at 52% 112%, rgba(67, 220, 255, 0.24) 0 11%, transparent 11.4%),
+    linear-gradient(115deg, transparent 18%, rgba(77, 185, 255, 0.12) 19%, transparent 33%),
+    linear-gradient(63deg, transparent 64%, rgba(77, 185, 255, 0.09) 65%, transparent 75%);
+  filter: blur(0.2px);
+  animation: orbitFloat 11s ease-in-out infinite;
+}
+
+.login-screen,
+.app-shell,
+.modal {
+  position: relative;
+  z-index: 1;
+}
+
+.login-screen {
+  background:
+    radial-gradient(circle at 50% 110%, rgba(36, 169, 255, 0.3), transparent 28rem),
+    radial-gradient(circle at 18% 14%, rgba(87, 205, 255, 0.16), transparent 16rem),
+    linear-gradient(180deg, rgba(1, 7, 17, 0.98), rgba(2, 9, 21, 0.98)) !important;
+}
+
+.login-screen::before {
+  content: "";
+  position: fixed;
+  inset: 14% auto auto 8%;
+  width: min(56vw, 420px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(94, 205, 255, 0.22);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 48% 48%, transparent 0 57%, rgba(64, 196, 255, 0.2) 58%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(28, 119, 190, 0.18), transparent 64%);
+  opacity: 0.8;
+  pointer-events: none;
+  animation: orbitFloat 13s ease-in-out infinite;
+}
+
+.login-card,
+.panel,
+.metric,
+.publish-box,
+.fixed-item,
+.entry-item,
+.modal-card,
+.topbar,
+.mobile-bottom-nav,
+.global-search-results,
+.table-wrap,
+.summary-row > div,
+.employee-status-grid div,
+.system-check-item,
+.role-home-card,
+.friendly-step,
+.template-card {
+  color: var(--ink);
+  border: 1px solid rgba(104, 207, 255, 0.2) !important;
+  background:
+    linear-gradient(145deg, rgba(10, 27, 47, 0.82), rgba(4, 14, 27, 0.68)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 20px 64px rgba(0, 0, 0, 0.34),
+    0 0 34px rgba(53, 173, 255, 0.08) !important;
+  backdrop-filter: blur(20px);
+}
+
+.app-shell {
+  position: relative;
+  border-color: rgba(91, 197, 255, 0.22) !important;
+  background:
+    radial-gradient(circle at 70% 10%, rgba(44, 181, 255, 0.14), transparent 28rem),
+    linear-gradient(180deg, rgba(4, 13, 26, 0.78), rgba(1, 6, 14, 0.92)) !important;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  right: min(4vw, 52px);
+  top: 16vh;
+  width: min(22vw, 240px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.7), transparent 0.7rem),
+    radial-gradient(circle at 45% 44%, #0d7fc2, #052c58 58%, transparent 60%),
+    radial-gradient(circle, rgba(72, 194, 255, 0.28), transparent 68%);
+  opacity: 0.7;
+  pointer-events: none;
+  filter: drop-shadow(0 0 34px rgba(72, 194, 255, 0.35));
+  animation: orbitFloat 14s ease-in-out infinite;
+}
+
+.main {
+  background: transparent !important;
+}
+
+.main::before {
+  background:
+    radial-gradient(circle at 18% 2%, rgba(83, 200, 255, 0.16), transparent 20rem),
+    radial-gradient(circle at 92% 78%, rgba(37, 139, 239, 0.13), transparent 24rem) !important;
+}
+
+.sidebar {
+  color: #eaf8ff !important;
+  border-right-color: rgba(94, 205, 255, 0.16) !important;
+  background:
+    linear-gradient(180deg, rgba(2, 12, 25, 0.92), rgba(1, 7, 17, 0.96)),
+    radial-gradient(circle at 50% 0%, rgba(79, 195, 255, 0.2), transparent 18rem) !important;
+}
+
+.sidebar::before {
+  background:
+    radial-gradient(circle, rgba(85, 200, 255, 0.14), transparent 12rem),
+    linear-gradient(155deg, transparent 22%, rgba(85, 200, 255, 0.11) 23%, transparent 34%) !important;
+}
+
+.brand-mark,
+.metric-icon,
+.primary-button,
+.secondary-button.active,
+.mobile-nav-button.active,
+.status-pill[data-status="synced"] {
+  color: #00111d !important;
+  background: linear-gradient(145deg, #8be2ff, #30aaf2 58%, #1471d4) !important;
+  animation: glowPulse 4.8s ease-in-out infinite;
+}
+
+.nav-button,
+.mobile-nav-button,
+.secondary-button,
+.icon-button,
+.small-action,
+.danger-button,
+input,
+select,
+textarea {
+  border-color: rgba(92, 199, 255, 0.2) !important;
+  color: var(--ink) !important;
+  background: rgba(2, 11, 23, 0.68) !important;
+}
+
+.nav-button:hover,
+.nav-button.active,
+.secondary-button:hover,
+.icon-button:hover,
+.small-action:hover {
+  color: #dff7ff !important;
+  border-color: rgba(109, 214, 255, 0.42) !important;
+  background: linear-gradient(145deg, rgba(22, 92, 145, 0.58), rgba(4, 20, 39, 0.78)) !important;
+  box-shadow: 0 0 24px rgba(71, 189, 255, 0.14) !important;
+}
+
+.topbar h1,
+.login-card h1,
+.panel h2,
+.metric strong {
+  color: #f8fdff !important;
+  text-shadow: 0 0 22px rgba(75, 196, 255, 0.28);
+}
+
+.eyebrow,
+.panel p,
+.metric p,
+.metric small,
+.muted,
+label,
+small,
+.cloud-sync-bar,
+.backup-status {
+  color: var(--muted) !important;
+}
+
+.cloud-sync-bar,
+.notification-badge,
+.status-pill {
+  border-color: rgba(92, 199, 255, 0.22) !important;
+  color: #d9f6ff !important;
+  background: rgba(4, 18, 34, 0.74) !important;
+}
+
+.metric.highlight,
+.metric:hover,
+.panel:hover {
+  border-color: rgba(105, 225, 255, 0.32) !important;
+}
+
+table th,
+table td {
+  border-color: rgba(92, 199, 255, 0.14) !important;
+}
+
+table th {
+  color: #bfeeff !important;
+  background: rgba(11, 43, 72, 0.58) !important;
+}
+
+.danger-button,
+.small-action.danger,
+.danger {
+  color: #ffd9dd !important;
+  border-color: rgba(255, 109, 122, 0.3) !important;
+}
+
+@media (max-width: 900px) {
+  .app-shell::before,
+  .login-screen::before {
+    opacity: 0.42;
+  }
+
+  .mobile-bottom-nav {
+    border-color: rgba(107, 212, 255, 0.32) !important;
+    background:
+      linear-gradient(145deg, rgba(5, 18, 34, 0.94), rgba(1, 7, 17, 0.92)) !important;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.46), 0 0 28px rgba(67, 184, 255, 0.12) !important;
   }
 }
