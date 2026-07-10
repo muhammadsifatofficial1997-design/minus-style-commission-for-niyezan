@@ -4380,6 +4380,13 @@ body[data-theme="night"] .calendar-tag {
   background: color-mix(in srgb, var(--surface) 72%, transparent);
 }
 
+.focus-pulse {
+  outline: 3px solid color-mix(in srgb, var(--primary) 78%, #ffffff 22%);
+  outline-offset: 5px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 18%, transparent);
+  transition: outline-color 0.2s ease, box-shadow 0.2s ease;
+}
+
 .friendly-guide-panel {
   border-color: color-mix(in srgb, var(--primary) 22%, var(--line));
 }

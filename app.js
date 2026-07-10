@@ -2151,12 +2151,22 @@ function renderSmartAlerts() {
           </div>
           <small class="muted">${escapeHtml(item.detail)}</small>
           <div class="action-row">
-            <button class="small-action" data-search-view="${escapeHtml(item.view)}" type="button">Open</button>
+            <button class="small-action" data-alert-target="${escapeHtml(smartAlertTarget(item))}" type="button">Open</button>
           </div>
         </article>
       `,
     )
     .join("");
+}
+
+function smartAlertTarget(item) {
+  const title = String(item?.title || "").toLowerCase();
+  if (title.includes("approval")) return "approvalList";
+  if (title.includes("checkout") || title.includes("attendance")) return "attendanceTable";
+  if (title.includes("break")) return "breakTable";
+  if (title.includes("salary") || title.includes("payroll")) return "payrollTable";
+  if (title.includes("cloud")) return "cloudSyncBar";
+  return "dashboardView";
 }
 
 function noticeVisibleForRole(notice) {
@@ -5775,6 +5785,7 @@ document.body.addEventListener("click", (event) => {
   const deleteFriday = event.target.closest("[data-delete-friday]");
   const mobileView = event.target.closest("[data-mobile-view]");
   const searchView = event.target.closest("[data-search-view]");
+  const alertTarget = event.target.closest("[data-alert-target]");
   const copyTemplate = event.target.closest("[data-copy-template]");
   const whatsappTemplate = event.target.closest("[data-whatsapp-template]");
   const deleteNoticeButton = event.target.closest("[data-delete-notice]");
@@ -5790,6 +5801,15 @@ document.body.addEventListener("click", (event) => {
     if (target && !target.hidden) target.click();
     if (els.globalSearchResults) els.globalSearchResults.hidden = true;
     if (els.globalSearchInput) els.globalSearchInput.value = "";
+  }
+
+  if (alertTarget) {
+    const target = document.querySelector(`#${CSS.escape(alertTarget.dataset.alertTarget || "dashboardView")}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("focus-pulse");
+      setTimeout(() => target.classList.remove("focus-pulse"), 1600);
+    }
   }
 
   if (copyTemplate || whatsappTemplate) {
