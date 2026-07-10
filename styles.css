@@ -4339,7 +4339,10 @@ body[data-theme="night"] .calendar-tag {
 }
 
 .role-access-card {
+  display: grid;
+  grid-template-columns: 1fr !important;
   align-content: start;
+  gap: 10px;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -4351,6 +4354,22 @@ body[data-theme="night"] .calendar-tag {
   margin: 0;
   color: var(--ink);
   font-size: 1rem;
+}
+
+.role-access-card label {
+  margin-top: 4px;
+}
+
+.role-access-card input,
+.role-access-card select,
+.role-access-card button {
+  width: 100%;
+  min-width: 0;
+}
+
+.role-access-card .primary-button {
+  justify-content: center;
+  margin-top: 4px;
 }
 
 .dashboard-access-list {
