@@ -5249,3 +5249,134 @@ table th {
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.46), 0 0 28px rgba(67, 184, 255, 0.12) !important;
   }
 }
+
+/* Performance polish: keep the premium dark look, but remove expensive paint work. */
+body {
+  background:
+    radial-gradient(circle at 88% 10%, rgba(45, 184, 255, 0.12), transparent 16rem),
+    linear-gradient(180deg, #010711 0%, #06101d 52%, #020611 100%) !important;
+}
+
+body::before {
+  opacity: 0.26;
+  background:
+    radial-gradient(circle, rgba(111, 216, 255, 0.7) 0 1px, transparent 1.4px) 0 0 / 126px 126px,
+    radial-gradient(circle, rgba(255, 255, 255, 0.38) 0 1px, transparent 1.3px) 42px 64px / 186px 186px;
+  animation: none !important;
+}
+
+body::after,
+.app-shell::before,
+.login-screen::before,
+.main::before {
+  display: none !important;
+}
+
+.login-card,
+.panel,
+.metric,
+.publish-box,
+.fixed-item,
+.entry-item,
+.modal-card,
+.topbar,
+.mobile-bottom-nav,
+.global-search-results,
+.table-wrap,
+.summary-row > div,
+.employee-status-grid div,
+.system-check-item,
+.role-home-card,
+.friendly-step,
+.template-card {
+  background: rgba(7, 19, 35, 0.9) !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.26) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.brand-mark,
+.metric-icon,
+.primary-button,
+.secondary-button.active,
+.mobile-nav-button.active,
+.status-pill[data-status="synced"] {
+  animation: none !important;
+}
+
+.nav-button,
+.mobile-nav-button,
+.role-home-card,
+.metric,
+.panel,
+.primary-button,
+.secondary-button,
+.icon-button,
+.small-action {
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease !important;
+}
+
+.role-home-card:hover,
+.metric:hover,
+.panel:hover,
+.nav-button:hover,
+.nav-button.active,
+.secondary-button:hover,
+.icon-button:hover,
+.small-action:hover {
+  transform: none !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22) !important;
+}
+
+.topbar h1,
+.login-card h1,
+.panel h2,
+.metric strong {
+  text-shadow: none !important;
+}
+
+@media (max-width: 900px) {
+  body::before {
+    opacity: 0.14;
+  }
+
+  .login-card,
+  .panel,
+  .metric,
+  .publish-box,
+  .fixed-item,
+  .entry-item,
+  .modal-card,
+  .topbar,
+  .mobile-bottom-nav,
+  .global-search-results,
+  .table-wrap,
+  .summary-row > div,
+  .employee-status-grid div,
+  .system-check-item,
+  .role-home-card,
+  .friendly-step,
+  .template-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .sidebar {
+    background: rgba(2, 12, 25, 0.98) !important;
+  }
+
+  .mobile-bottom-nav {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
