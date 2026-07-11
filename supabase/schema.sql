@@ -342,6 +342,13 @@ drop policy if exists profiles_admin_all on public.profiles;
 create policy profiles_admin_all on public.profiles for all using (public.is_admin()) with check (public.is_admin());
 drop policy if exists profiles_self_read on public.profiles;
 create policy profiles_self_read on public.profiles for select using (id = auth.uid());
+drop policy if exists profiles_owner_bootstrap on public.profiles;
+create policy profiles_owner_bootstrap on public.profiles for insert
+  with check (
+    id = auth.uid()
+    and lower(email) = 'muhammadsifatofficial1997@gmail.com'
+    and role = 'admin'
+  );
 
 drop policy if exists employees_admin_all on public.employees;
 create policy employees_admin_all on public.employees for all using (public.is_admin()) with check (public.is_admin());

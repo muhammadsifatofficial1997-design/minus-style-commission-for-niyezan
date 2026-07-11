@@ -7,6 +7,7 @@ const SUPABASE_URL_KEY = "minus-style-supabase-url";
 const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
 const DEFAULT_SUPABASE_URL = "https://alvtxfoywlybipindkmr.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_D_0uW-B3Mg6rWzXYNoMZwg_R6QiASob";
+const OWNER_ADMIN_EMAIL = "muhammadsifatofficial1997@gmail.com";
 const THEME_KEY = "minus-style-theme-mode";
 const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
@@ -776,11 +777,29 @@ async function signInWithSupabase(email, password) {
 async function supabaseUserToCurrentUser(user) {
   const client = supabaseClient();
   if (!client) throw new Error("Supabase library/config missing");
-  const { data: profile, error: profileError } = await client
+  let { data: profile, error: profileError } = await client
     .from("profiles")
     .select("id,email,role,employee_id,display_name,active")
     .eq("id", user.id)
     .single();
+  if (profileError && String(user.email || "").toLowerCase() === OWNER_ADMIN_EMAIL) {
+    const { error: bootstrapError } = await client.from("profiles").upsert({
+      id: user.id,
+      email: user.email,
+      role: "admin",
+      display_name: "Admin",
+      active: true,
+    });
+    if (!bootstrapError) {
+      const retry = await client
+        .from("profiles")
+        .select("id,email,role,employee_id,display_name,active")
+        .eq("id", user.id)
+        .single();
+      profile = retry.data;
+      profileError = retry.error;
+    }
+  }
   if (profileError) throw profileError;
   if (!profile?.active) throw new Error("This user is inactive");
 
