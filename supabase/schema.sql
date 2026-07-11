@@ -417,6 +417,34 @@ create policy app_state_admin_all on public.app_state for all using (public.is_a
 drop policy if exists app_backups_admin_all on public.app_backups;
 create policy app_backups_admin_all on public.app_backups for all using (public.is_admin()) with check (public.is_admin());
 
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on table
+  public.profiles,
+  public.employees,
+  public.daily_entries,
+  public.fixed_expenses,
+  public.attendance_records,
+  public.break_records,
+  public.leave_requests,
+  public.advance_requests,
+  public.approvals,
+  public.friday_work_requests,
+  public.salary_adjustments,
+  public.payroll_runs,
+  public.app_state,
+  public.app_backups
+to authenticated;
+
+grant execute on all functions in schema public to authenticated;
+grant usage on all sequences in schema public to authenticated;
+
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+
+alter default privileges in schema public
+  grant execute on functions to authenticated;
+
 do $$
 declare
   t text;
