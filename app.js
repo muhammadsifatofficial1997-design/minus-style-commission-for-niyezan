@@ -695,8 +695,8 @@ function scheduleCloudRetry(errorMessage = "Sync failed") {
 }
 
 function cloudLoginSummary() {
-  const savedPins = state.employeeAccess.filter((access) => normalizePin(access.pin)).length;
-  return `Cloud ready: ${bn.format(savedPins)} employee PIN, ${bn.format(employees().length)} employee`;
+  const linkedEmails = state.employeeAccess.filter((access) => normalizeEmail(access.email)).length;
+  return `Access ready: ${bn.format(linkedEmails)} email linked, ${bn.format(employees().length)} employee`;
 }
 
 function queueCloudPush() {
@@ -781,7 +781,7 @@ function queueSupabasePush() {
 
 function supabaseLoginSummary() {
   if (!supabaseEnabled()) return "Supabase off";
-  return "Supabase mode: email + password required";
+  return "Supabase mode: email + password login";
 }
 
 async function signInWithSupabase(email, password) {
@@ -3018,6 +3018,67 @@ function renderDashboardAccessPanel() {
   }
 
   if (!els.dashboardAccessList) return;
+  {
+    const accessStatus = (email, active = true) => {
+      if (!active) return "Inactive";
+      if (!supabaseMode) return "Active";
+      return normalizeEmail(email) ? "Email linked" : "Email missing";
+    };
+    const accessMeta = (email, pin) => {
+      const cleanEmail = escapeHtml(email || "Not set");
+      if (supabaseMode) return `Email: ${cleanEmail} · Auth: Supabase`;
+      return `Email: ${cleanEmail} · Password: ${escapeHtml(maskedPin(pin))}`;
+    };
+    const managerRows = state.managers
+      .map(
+        (manager) => `
+          <article class="fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(manager.name)}</strong>
+              <span class="status-pill">${accessStatus(manager.email, manager.active)}</span>
+            </div>
+            <small>${accessMeta(manager.email, manager.pin)}</small>
+          </article>
+        `,
+      )
+      .join("");
+    const employeeRows = state.employeeAccess
+      .map(
+        (access) => `
+          <article class="fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(access.employeeName || employeeById(access.employeeId)?.name || "Employee")}</strong>
+              <span class="status-pill">${accessStatus(access.email, access.active)}</span>
+            </div>
+            <small>${accessMeta(access.email, access.pin)}</small>
+          </article>
+        `,
+      )
+      .join("");
+    const supabaseNotice = supabaseMode
+      ? `<article class="fixed-item">
+          <div class="item-line">
+            <strong>Supabase Auth Active</strong>
+            <span class="status-pill">Secure</span>
+          </div>
+          <small>Password Supabase Authentication > Users theke manage hobe. Ei panel sudhu admin/manager/employee email link korar jonno.</small>
+        </article>`
+      : "";
+
+    els.dashboardAccessList.innerHTML = `
+      ${supabaseNotice}
+      <article class="fixed-item">
+        <div class="item-line">
+          <strong>Admin Access</strong>
+          <span class="status-pill">${supabaseMode ? "Supabase Auth" : escapeHtml(maskedPin(state.settings.adminPin))}</span>
+        </div>
+        <small>Email: ${escapeHtml(state.settings.adminEmail || "Not set")} · ${supabaseMode ? "Password Supabase Auth-e manage hobe." : "Reload dile login thakbe. Logout korle abar password dite hobe."}</small>
+      </article>
+      ${managerRows || `<article class="empty-state">No manager access set.</article>`}
+      ${employeeRows || `<article class="empty-state">No employee access set.</article>`}
+    `;
+    return;
+  }
   const managerRows = state.managers
     .map(
       (manager) => `
