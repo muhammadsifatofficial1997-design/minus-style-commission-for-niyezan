@@ -809,13 +809,43 @@ async function sendSupabasePasswordReset(email) {
   if (error) throw error;
 }
 
+function supabaseAuthUrlParams() {
+  const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  const hashParams = new URLSearchParams(rawHash);
+  const searchParams = new URLSearchParams(window.location.search);
+  return {
+    type: hashParams.get("type") || searchParams.get("type"),
+    error: hashParams.get("error") || searchParams.get("error"),
+    errorCode: hashParams.get("error_code") || searchParams.get("error_code"),
+    errorDescription: hashParams.get("error_description") || searchParams.get("error_description"),
+  };
+}
+
+function showSupabaseAuthUrlError(params) {
+  if (!params.error && !params.errorCode) return false;
+  const isExpired = params.errorCode === "otp_expired";
+  const message = isExpired
+    ? "Password reset link expired/invalid. Email diye Set / Reset password abar click kore newest email link open korun."
+    : `Supabase auth link failed: ${params.errorDescription || params.errorCode || params.error}`;
+  if (els.loginError) els.loginError.textContent = message;
+  if (els.loginRoleHint) els.loginRoleHint.textContent = "Reset link kaj na korle fresh email nin";
+  window.history.replaceState({}, document.title, window.location.pathname);
+  return true;
+}
+
 async function completeSupabasePasswordRecovery() {
   if (!supabaseEnabled()) return false;
-  const isRecovery = window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery");
-  if (!isRecovery) return false;
+  const params = supabaseAuthUrlParams();
+  if (showSupabaseAuthUrlError(params)) return false;
+  if (params.type !== "recovery") return false;
   const client = supabaseClient();
   if (!client) return false;
-  const { data } = await client.auth.getSession();
+  let { data } = await client.auth.getSession();
+  for (let attempt = 0; attempt < 8 && !data?.session; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const result = await client.auth.getSession();
+    data = result.data;
+  }
   if (!data?.session) return false;
   const nextPassword = window.prompt("New password din (minimum 6 character):");
   if (!nextPassword) return false;
@@ -6609,8 +6639,8 @@ async function boot() {
   try {
     if (supabaseEnabled()) {
       const client = supabaseClient();
-      const { data } = await client.auth.getSession();
       await completeSupabasePasswordRecovery();
+      const { data } = await client.auth.getSession();
       if (data?.session?.user) {
         currentUser = await supabaseUserToCurrentUser(data.session.user);
         unlockApp();
