@@ -449,7 +449,14 @@ function toggleCompactMode() {
 }
 
 function canOpenView(view) {
-  return view === "dashboard";
+  const role = currentUser?.role || "guest";
+  const access = {
+    admin: ["dashboard", "daily", "reports", "attendance", "advance", "fixed", "approvals", "settings"],
+    manager: ["dashboard", "daily", "reports", "attendance", "advance", "approvals"],
+    employee: ["dashboard", "attendance", "advance"],
+    guest: ["dashboard"],
+  };
+  return (access[role] || access.guest).includes(view);
 }
 
 function defaultState() {
