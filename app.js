@@ -474,6 +474,7 @@ function defaultState() {
     managers: [{ id: crypto.randomUUID(), name: "ফাইজুর (ম্যানেজার)", pin: "2222", active: true }],
     employeeAccess: [],
     employeeProfiles: [],
+    employees: [],
     approvals: [],
     activityLogs: [],
     notices: [],
@@ -522,6 +523,7 @@ function loadState() {
       ...parsed,
       settings: { ...defaults.settings, ...parsed.settings },
       managers: parsed.managers || defaults.managers,
+      employees: parsed.employees || defaults.employees,
       employeeAccess: parsed.employeeAccess || defaults.employeeAccess,
       employeeProfiles: parsed.employeeProfiles || defaults.employeeProfiles,
       approvals: parsed.approvals || defaults.approvals,
@@ -1418,12 +1420,20 @@ function activeFixedTotal() {
 }
 
 function salaryEmployees() {
-  return state.fixedExpenses
+  const fromSalary = state.fixedExpenses
     .filter((item) => item.active && item.category === "salary")
     .map((item) => ({
       id: item.id,
       name: item.name.replace(/\s*বেতন\s*$/u, "").trim(),
       salary: Number(item.amount || 0),
+    }));
+  if (fromSalary.length) return fromSalary;
+  return (state.employees || [])
+    .filter((item) => item.active !== false)
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      salary: Number(item.salary || 0),
     }));
 }
 
@@ -2961,12 +2971,30 @@ function renderDashboardAccessPanel() {
     els.dashboardAdminEmail.value = state.settings.adminEmail || "";
   }
 
+  const supabaseMode = supabaseEnabled();
+  [els.dashboardManagerPin, els.dashboardEmployeeAccessPin].forEach((input) => {
+    if (!input) return;
+    input.required = !supabaseMode;
+    input.placeholder = supabaseMode ? "Supabase Auth password এখানে set হবে না" : input.placeholder;
+  });
+  if (els.dashboardAdminPin) {
+    els.dashboardAdminPin.placeholder = supabaseMode ? "Local fallback admin password" : "New admin password";
+  }
+  const employeeSaveButton = els.dashboardEmployeeAccessForm?.querySelector("button[type='submit']");
+  if (employeeSaveButton) {
+    employeeSaveButton.innerHTML = supabaseMode
+      ? `<i data-lucide="link"></i> Employee Email Link Save`
+      : `<i data-lucide="badge-check"></i> Employee Save`;
+  }
+
   if (els.dashboardEmployeeAccessEmployee) {
     const selected = els.dashboardEmployeeAccessEmployee.value;
-    els.dashboardEmployeeAccessEmployee.innerHTML = employees()
-      .map((employee) => `<option value="${escapeHtml(employee.id)}">${escapeHtml(employee.name)}</option>`)
-      .join("");
-    if (selected && employees().some((employee) => employee.id === selected)) {
+    const employeeOptions = employees();
+    els.dashboardEmployeeAccessEmployee.innerHTML = employeeOptions.length
+      ? employeeOptions.map((employee) => `<option value="${escapeHtml(employee.id)}">${escapeHtml(employee.name)}</option>`).join("")
+      : `<option value="">Employee list empty - Supabase থেকে আনুন</option>`;
+    els.dashboardEmployeeAccessEmployee.disabled = !employeeOptions.length;
+    if (selected && employeeOptions.some((employee) => employee.id === selected)) {
       els.dashboardEmployeeAccessEmployee.value = selected;
     }
   }
@@ -2999,7 +3027,18 @@ function renderDashboardAccessPanel() {
     )
     .join("");
 
+  const supabaseNotice = supabaseMode
+    ? `<article class="fixed-item">
+        <div class="item-line">
+          <strong>Supabase Auth Active</strong>
+          <span class="status-pill">Secure</span>
+        </div>
+        <small>Employee password এই dashboard থেকে set হবে না। Supabase Auth > Users থেকে password/update বা login page-এর reset link ব্যবহার করুন। এখানে শুধু email/employee mapping রাখা যায়।</small>
+      </article>`
+    : "";
+
   els.dashboardAccessList.innerHTML = `
+    ${supabaseNotice}
     <article class="fixed-item">
       <div class="item-line">
         <strong>Admin Password</strong>
@@ -5441,13 +5480,13 @@ function saveDashboardEmployeeAccess(event) {
   const employeeId = els.dashboardEmployeeAccessEmployee.value;
   const email = normalizeEmail(els.dashboardEmployeeAccessEmail?.value);
   const pin = normalizePin(els.dashboardEmployeeAccessPin.value);
-  if (!employeeId || !email || !pin) return;
+  if (!employeeId || !email || (!pin && !supabaseEnabled())) return;
   const employee = employeeById(employeeId);
   const existing = state.employeeAccess.find((item) => item.employeeId === employeeId);
   if (existing) {
     existing.employeeName = employee?.name || existing.employeeName || "";
     existing.email = email;
-    existing.pin = pin;
+    if (pin) existing.pin = pin;
     existing.active = true;
   } else {
     state.employeeAccess.push({
@@ -5462,7 +5501,7 @@ function saveDashboardEmployeeAccess(event) {
   els.dashboardEmployeeAccessForm.reset();
   saveState();
   if (cloudUrl()) syncToCloud(false);
-  alert("Employee access save hoyeche.");
+  alert(supabaseEnabled() ? "Employee email link save hoyeche. Password Supabase Auth theke set/reset korte hobe." : "Employee access save hoyeche.");
   render();
 }
 
