@@ -804,6 +804,14 @@ async function supabaseUserToCurrentUser(user) {
   if (!profile?.active) throw new Error("This user is inactive");
 
   let employeeName = profile.display_name || user.email;
+  let employeeId = profile.employee_id || null;
+  if (!employeeId && profile.role === "employee") {
+    const inferredEmployee = inferEmployeeFromAuthProfile(profile, user);
+    if (inferredEmployee) {
+      employeeId = inferredEmployee.id;
+      employeeName = inferredEmployee.name;
+    }
+  }
   if (profile.employee_id) {
     const { data: employee } = await client.from("employees").select("id,name").eq("id", profile.employee_id).maybeSingle();
     if (employee?.name) employeeName = employee.name;
@@ -812,11 +820,18 @@ async function supabaseUserToCurrentUser(user) {
   return {
     role: profile.role,
     name: profile.role === "admin" ? profile.display_name || "Admin" : employeeName,
-    employeeId: profile.employee_id || null,
+    employeeId,
     authId: user.id,
     email: user.email,
     source: "supabase",
   };
+}
+
+function inferEmployeeFromAuthProfile(profile, user) {
+  const haystack = normalizeName(`${profile.display_name || ""} ${profile.email || ""} ${user?.email || ""}`).replace(/shakib/g, "sakib");
+  const accessRule = employeeAccessPins.find((rule) => rule.matches.some((match) => haystack.includes(normalizeName(match))));
+  if (!accessRule) return null;
+  return employees().find((employee) => employeeAccessRule(employee) === accessRule) || null;
 }
 
 function supabaseEmployeeScope() {
