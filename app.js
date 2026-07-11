@@ -123,6 +123,7 @@ const els = {
   emailInput: document.querySelector("#emailInput"),
   pinInput: document.querySelector("#pinInput"),
   signupBtn: document.querySelector("#signupBtn"),
+  resetPasswordBtn: document.querySelector("#resetPasswordBtn"),
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
   themeToggleBtn: document.querySelector("#themeToggleBtn"),
@@ -797,6 +798,39 @@ async function signUpWithSupabase(email, password) {
   });
   if (error) throw error;
   return data;
+}
+
+async function sendSupabasePasswordReset(email) {
+  const client = supabaseClient();
+  if (!client) throw new Error("Supabase library/config missing");
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: APP_PUBLIC_URL,
+  });
+  if (error) throw error;
+}
+
+async function completeSupabasePasswordRecovery() {
+  if (!supabaseEnabled()) return false;
+  const isRecovery = window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery");
+  if (!isRecovery) return false;
+  const client = supabaseClient();
+  if (!client) return false;
+  const { data } = await client.auth.getSession();
+  if (!data?.session) return false;
+  const nextPassword = window.prompt("New password din (minimum 6 character):");
+  if (!nextPassword) return false;
+  if (nextPassword.length < 6) {
+    alert("Password minimum 6 character hote hobe.");
+    return false;
+  }
+  const { error } = await client.auth.updateUser({ password: nextPassword });
+  if (error) {
+    alert(`Password update failed: ${error.message}`);
+    return false;
+  }
+  window.history.replaceState({}, document.title, window.location.pathname);
+  alert("Password set hoyeche. Ebar email + new password diye login korun.");
+  return true;
 }
 
 async function supabaseUserToCurrentUser(user) {
@@ -6105,6 +6139,26 @@ els.signupBtn?.addEventListener("click", async () => {
   }
 });
 
+els.resetPasswordBtn?.addEventListener("click", async () => {
+  const email = normalizeEmail(els.emailInput?.value);
+  if (!supabaseEnabled()) {
+    els.loginError.textContent = "Password reset-er jonno Supabase setup active korte hobe.";
+    return;
+  }
+  if (!email) {
+    els.loginError.textContent = "Password set/reset korte email din.";
+    return;
+  }
+  try {
+    els.loginError.textContent = "Password setup email pathano hocche...";
+    await sendSupabasePasswordReset(email);
+    els.loginError.textContent = "Password setup/reset email pathano hoyeche. Inbox/spam check korun.";
+    if (els.loginRoleHint) els.loginRoleHint.textContent = "Email link open kore new password set korun";
+  } catch (error) {
+    els.loginError.textContent = `Password reset failed: ${error.message}`;
+  }
+});
+
 els.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const email = normalizeEmail(els.emailInput?.value);
@@ -6556,6 +6610,7 @@ async function boot() {
     if (supabaseEnabled()) {
       const client = supabaseClient();
       const { data } = await client.auth.getSession();
+      await completeSupabasePasswordRecovery();
       if (data?.session?.user) {
         currentUser = await supabaseUserToCurrentUser(data.session.user);
         unlockApp();
