@@ -2980,6 +2980,24 @@ function renderDashboardAccessPanel() {
   if (els.dashboardAdminPin) {
     els.dashboardAdminPin.placeholder = supabaseMode ? "Local fallback admin password" : "New admin password";
   }
+  const hideSupabasePasswordInput = (input) => {
+    if (!input) return;
+    input.required = false;
+    input.disabled = supabaseMode;
+    input.hidden = supabaseMode;
+    if (supabaseMode) input.value = "";
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    if (label) label.hidden = supabaseMode;
+  };
+  [els.dashboardAdminPin, els.dashboardManagerPin, els.dashboardEmployeeAccessPin].forEach(hideSupabasePasswordInput);
+  const adminSaveButton = els.dashboardAdminPinForm?.querySelector("button[type='submit']");
+  if (adminSaveButton) adminSaveButton.hidden = supabaseMode;
+  const managerSaveButton = els.dashboardManagerForm?.querySelector("button[type='submit']");
+  if (managerSaveButton) {
+    managerSaveButton.innerHTML = supabaseMode
+      ? `<i data-lucide="link"></i> Manager Email Link Save`
+      : `<i data-lucide="user-cog"></i> Manager Save`;
+  }
   const employeeSaveButton = els.dashboardEmployeeAccessForm?.querySelector("button[type='submit']");
   if (employeeSaveButton) {
     employeeSaveButton.innerHTML = supabaseMode
@@ -4322,6 +4340,20 @@ function renderLeaveDecisionPreview() {
 
 function renderEmployeeAccess() {
   if (!els.employeeAccessEmployee) return;
+  if (supabaseEnabled()) {
+    if (els.employeeAccessForm) els.employeeAccessForm.hidden = true;
+    els.employeeAccessList.innerHTML = `
+      <article class="fixed-item">
+        <div class="item-line">
+          <strong>Supabase Auth Active</strong>
+          <span class="status-pill">Secure</span>
+        </div>
+        <small class="muted">Employee PIN setup বন্ধ আছে। Employee password Supabase Authentication > Users অথবা login page-এর reset link দিয়ে set/reset হবে।</small>
+      </article>
+    `;
+    return;
+  }
+  if (els.employeeAccessForm) els.employeeAccessForm.hidden = false;
   ensureEmployeeAccess();
   els.employeeAccessEmployee.innerHTML = employees().map((employee) => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("");
   els.employeeAccessList.innerHTML =
@@ -5416,6 +5448,10 @@ function reviewAdvance(id, approved) {
 function saveEmployeeAccess(event) {
   event.preventDefault();
   if (!isAdmin()) return;
+  if (supabaseEnabled()) {
+    alert("Supabase mode-e employee PIN/password dashboard theke set hobe na. Supabase Auth ba reset link use korun.");
+    return;
+  }
   const pin = normalizePin(els.employeeAccessPin.value);
   if (!pin) return;
   const existing = state.employeeAccess.find((item) => item.employeeId === els.employeeAccessEmployee.value);
@@ -5442,6 +5478,10 @@ function saveEmployeeAccess(event) {
 function saveDashboardAdminPin(event) {
   event.preventDefault();
   if (!isAdmin()) return;
+  if (supabaseEnabled()) {
+    alert("Supabase mode-e admin password dashboard theke set hobe na. Supabase Auth ba reset link use korun.");
+    return;
+  }
   const pin = normalizePin(els.dashboardAdminPin.value);
   if (!pin) return;
   state.settings.adminEmail = normalizeEmail(els.dashboardAdminEmail?.value);
@@ -5459,7 +5499,7 @@ function saveDashboardManager(event) {
   const baseName = els.dashboardManagerName.value.trim();
   const email = normalizeEmail(els.dashboardManagerEmail?.value);
   const pin = normalizePin(els.dashboardManagerPin.value);
-  if (!baseName || !email || !pin) return;
+  if (!baseName || !email || (!pin && !supabaseEnabled())) return;
   state.managers.push({
     id: crypto.randomUUID(),
     name: baseName.toLowerCase().includes("manager") || baseName.includes("à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦¾à¦°") ? baseName : `${baseName} (Manager)`,
@@ -5470,7 +5510,7 @@ function saveDashboardManager(event) {
   els.dashboardManagerForm.reset();
   saveState();
   if (cloudUrl()) syncToCloud(false);
-  alert("Manager access save hoyeche.");
+  alert(supabaseEnabled() ? "Manager email link save hoyeche. Role/password Supabase Auth theke manage korte hobe." : "Manager access save hoyeche.");
   render();
 }
 

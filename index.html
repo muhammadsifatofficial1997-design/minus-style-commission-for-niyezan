@@ -160,19 +160,19 @@
           <section class="panel role-access-panel" id="roleAccessPanel">
             <div class="panel-head">
               <div>
-                <h2>Dashboard Password Setup</h2>
-                <p>Admin dashboard theke Admin, Manager and Employee login PIN/password set korun.</p>
+                <h2>Dashboard Access Setup</h2>
+                <p>Supabase mode-e password ekhane set hobe na. Ekhane shudhu role/email/employee link manage korun.</p>
               </div>
               <span class="status-pill">Admin only</span>
             </div>
             <div class="role-access-grid">
               <form class="inline-form role-access-card" id="dashboardAdminPinForm">
-                <h3>Admin Password</h3>
+                <h3>Admin Access</h3>
                 <label for="dashboardAdminEmail">Admin Email</label>
                 <input id="dashboardAdminEmail" type="email" placeholder="admin@email.com">
-                <label for="dashboardAdminPin">New Admin PIN/Password</label>
+                <label for="dashboardAdminPin">Local fallback password</label>
                 <input id="dashboardAdminPin" type="password" placeholder="New admin password" required>
-                <button class="primary-button" type="submit"><i data-lucide="key-round"></i> Admin Password Save</button>
+                <button class="primary-button" type="submit"><i data-lucide="key-round"></i> Local Admin Save</button>
               </form>
               <form class="inline-form role-access-card" id="dashboardManagerForm">
                 <h3>Manager Access</h3>
@@ -180,7 +180,7 @@
                 <input id="dashboardManagerName" type="text" placeholder="Manager name" required>
                 <label for="dashboardManagerEmail">Manager Email</label>
                 <input id="dashboardManagerEmail" type="email" placeholder="manager@email.com" required>
-                <label for="dashboardManagerPin">Manager PIN/Password</label>
+                <label for="dashboardManagerPin">Local fallback password</label>
                 <input id="dashboardManagerPin" type="password" placeholder="Manager password" required>
                 <button class="primary-button" type="submit"><i data-lucide="user-cog"></i> Manager Save</button>
               </form>
@@ -190,7 +190,7 @@
                 <select id="dashboardEmployeeAccessEmployee" required></select>
                 <label for="dashboardEmployeeAccessEmail">Employee Email</label>
                 <input id="dashboardEmployeeAccessEmail" type="email" placeholder="employee@email.com" required>
-                <label for="dashboardEmployeeAccessPin">Employee PIN/Password</label>
+                <label for="dashboardEmployeeAccessPin">Local fallback password</label>
                 <input id="dashboardEmployeeAccessPin" type="password" placeholder="Employee password" required>
                 <button class="primary-button" type="submit"><i data-lucide="badge-check"></i> Employee Save</button>
               </form>
