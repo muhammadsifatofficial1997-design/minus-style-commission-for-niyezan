@@ -5,6 +5,8 @@ const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
 const SUPABASE_URL_KEY = "minus-style-supabase-url";
 const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
+const DEFAULT_SUPABASE_URL = "https://alvtxfoywlybipindkmr.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_D_0uW-B3Mg6rWzXYNoMZwg_R6QiASob";
 const THEME_KEY = "minus-style-theme-mode";
 const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
@@ -546,8 +548,8 @@ function cloudUrl() {
 
 function supabaseConfig() {
   return {
-    url: localStorage.getItem(SUPABASE_URL_KEY) || "",
-    anonKey: localStorage.getItem(SUPABASE_ANON_KEY) || "",
+    url: localStorage.getItem(SUPABASE_URL_KEY) || DEFAULT_SUPABASE_URL,
+    anonKey: localStorage.getItem(SUPABASE_ANON_KEY) || DEFAULT_SUPABASE_ANON_KEY,
   };
 }
 

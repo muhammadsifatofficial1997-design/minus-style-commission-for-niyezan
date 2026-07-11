@@ -24,6 +24,27 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists email text;
+alter table public.profiles add column if not exists role text;
+alter table public.profiles add column if not exists employee_id text;
+alter table public.profiles add column if not exists display_name text;
+alter table public.profiles add column if not exists active boolean not null default true;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+alter table public.profiles add column if not exists updated_at timestamptz not null default now();
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'profiles_role_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_role_check
+      check (role in ('admin', 'manager', 'employee'));
+  end if;
+end $$;
+
 create table if not exists public.employees (
   id text primary key,
   name text not null,
@@ -36,6 +57,16 @@ create table if not exists public.employees (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.employees add column if not exists name text;
+alter table public.employees add column if not exists salary numeric not null default 0;
+alter table public.employees add column if not exists active boolean not null default true;
+alter table public.employees add column if not exists shift text default 'morning';
+alter table public.employees add column if not exists join_date date;
+alter table public.employees add column if not exists phone text;
+alter table public.employees add column if not exists emergency_contact text;
+alter table public.employees add column if not exists created_at timestamptz not null default now();
+alter table public.employees add column if not exists updated_at timestamptz not null default now();
 
 do $$
 begin
@@ -199,6 +230,37 @@ create table if not exists public.app_backups (
   snapshot jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, role, display_name, active)
+  values (
+    new.id,
+    new.email,
+    case
+      when lower(new.email) = 'muhammadsifatofficial1997@gmail.com' then 'admin'
+      else 'employee'
+    end,
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
+    true
+  )
+  on conflict (id) do update
+    set email = excluded.email,
+        display_name = coalesce(public.profiles.display_name, excluded.display_name),
+        updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_auth_user();
 
 create or replace function public.current_profile()
 returns public.profiles
