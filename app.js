@@ -8,6 +8,7 @@ const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
 const DEFAULT_SUPABASE_URL = "https://awywuyxcjcrbxrxghszu.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_Fk5Yk3q2bRqS40Hdmkd0zw_mimgyRXf";
 const OWNER_ADMIN_EMAIL = "asifat553@gmail.com";
+const APP_PUBLIC_URL = "https://muhammadsifatofficial1997-design.github.io/minus-style-commission-for-niyezan/";
 try {
   if (localStorage.getItem(SUPABASE_URL_KEY) === "https://alvtxfoywlybipindkmr.supabase.co") {
     localStorage.setItem(SUPABASE_URL_KEY, DEFAULT_SUPABASE_URL);
@@ -121,6 +122,7 @@ const els = {
   loginForm: document.querySelector("#loginForm"),
   emailInput: document.querySelector("#emailInput"),
   pinInput: document.querySelector("#pinInput"),
+  signupBtn: document.querySelector("#signupBtn"),
   loginRoleHint: document.querySelector("#loginRoleHint"),
   loginError: document.querySelector("#loginError"),
   themeToggleBtn: document.querySelector("#themeToggleBtn"),
@@ -782,6 +784,21 @@ async function signInWithSupabase(email, password) {
   return supabaseUserToCurrentUser(user);
 }
 
+async function signUpWithSupabase(email, password) {
+  const client = supabaseClient();
+  if (!client) throw new Error("Supabase library/config missing");
+  const { data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: APP_PUBLIC_URL,
+      data: { display_name: email.split("@")[0] },
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
 async function supabaseUserToCurrentUser(user) {
   const client = supabaseClient();
   if (!client) throw new Error("Supabase library/config missing");
@@ -819,6 +836,9 @@ async function supabaseUserToCurrentUser(user) {
       employeeId = inferredEmployee.id;
       employeeName = inferredEmployee.name;
     }
+  }
+  if (profile.role === "employee" && !employeeId) {
+    throw new Error("Account created, but admin approval/employee link pending.");
   }
   if (profile.employee_id) {
     const { data: employee } = await client.from("employees").select("id,name").eq("id", profile.employee_id).maybeSingle();
@@ -6059,6 +6079,31 @@ function finishLogin(user) {
   unlockApp();
   render();
 }
+
+els.signupBtn?.addEventListener("click", async () => {
+  const email = normalizeEmail(els.emailInput?.value);
+  const password = els.pinInput.value;
+  if (!supabaseEnabled()) {
+    els.loginError.textContent = "Signup-er jonno Supabase setup active korte hobe.";
+    return;
+  }
+  if (!email) {
+    els.loginError.textContent = "Account create korte email din.";
+    return;
+  }
+  if (!password || password.length < 6) {
+    els.loginError.textContent = "Password minimum 6 character hote hobe.";
+    return;
+  }
+  try {
+    els.loginError.textContent = "Employee account create hocche...";
+    await signUpWithSupabase(email, password);
+    els.loginError.textContent = "Account create request hoyeche. Email inbox check kore confirm korun, tarpor login korun.";
+    if (els.loginRoleHint) els.loginRoleHint.textContent = "New employee signup pending admin link";
+  } catch (error) {
+    els.loginError.textContent = `Signup failed: ${error.message}`;
+  }
+});
 
 els.loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
