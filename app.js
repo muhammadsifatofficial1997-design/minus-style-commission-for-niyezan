@@ -8,6 +8,14 @@ const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
 const DEFAULT_SUPABASE_URL = "https://awywuyxcjcrbxrxghszu.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_Fk5Yk3q2bRqS40Hdmkd0zw_mimgyRXf";
 const OWNER_ADMIN_EMAIL = "asifat553@gmail.com";
+try {
+  if (localStorage.getItem(SUPABASE_URL_KEY) === "https://alvtxfoywlybipindkmr.supabase.co") {
+    localStorage.setItem(SUPABASE_URL_KEY, DEFAULT_SUPABASE_URL);
+    localStorage.setItem(SUPABASE_ANON_KEY, DEFAULT_SUPABASE_ANON_KEY);
+  }
+} catch (error) {
+  console.warn("Supabase config migration skipped", error);
+}
 const THEME_KEY = "minus-style-theme-mode";
 const THEME_PRESET_KEY = "minus-style-theme-preset";
 const COMPACT_MODE_KEY = "minus-style-compact-mode";
