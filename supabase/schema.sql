@@ -243,7 +243,7 @@ begin
     new.id,
     new.email,
     case
-      when lower(new.email) = 'muhammadsifatofficial1997@gmail.com' then 'admin'
+      when lower(new.email) = 'asifat553@gmail.com' then 'admin'
       else 'employee'
     end,
     coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),
@@ -346,7 +346,7 @@ drop policy if exists profiles_owner_bootstrap on public.profiles;
 create policy profiles_owner_bootstrap on public.profiles for insert
   with check (
     id = auth.uid()
-    and lower(email) = 'muhammadsifatofficial1997@gmail.com'
+    and lower(email) = 'asifat553@gmail.com'
     and role = 'admin'
   );
 
