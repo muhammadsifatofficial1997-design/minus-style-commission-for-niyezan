@@ -352,6 +352,7 @@ const els = {
   notificationList: document.querySelector("#notificationList"),
   cloudApiUrl: document.querySelector("#cloudApiUrl"),
   cloudStatus: document.querySelector("#cloudStatus"),
+  employeeSetupSteps: document.querySelector("#employeeSetupSteps"),
   supabaseUrl: document.querySelector("#supabaseUrl"),
   supabaseAnonKey: document.querySelector("#supabaseAnonKey"),
   supabaseStatus: document.querySelector("#supabaseStatus"),
@@ -2413,6 +2414,18 @@ function renderFixedList() {
 
 function renderManagers() {
   if (!els.managerList) return;
+  if (supabaseEnabled()) {
+    els.managerList.innerHTML = `
+      <article class="fixed-item">
+        <div class="item-line">
+          <strong>Supabase Auth Active</strong>
+          <span class="status-pill">Secure</span>
+        </div>
+        <small class="muted">Manager password dashboard-e set hobe na. Supabase Auth Users/reset password diye manage korun.</small>
+      </article>
+    `;
+    return;
+  }
   els.managerList.innerHTML =
     state.managers
       .map(
@@ -4618,6 +4631,15 @@ function renderNotifications() {
 function renderCloudSettings() {
   if (!els.cloudApiUrl) return;
   els.cloudApiUrl.value = cloudUrl();
+  const backupButtons = [
+    ["saveCloudUrlBtn", "Backup URL Save"],
+    ["syncFromCloudBtn", "Backup Import"],
+    ["syncToCloudBtn", "Backup Export"],
+  ];
+  backupButtons.forEach(([id, label]) => {
+    const button = document.querySelector(`#${id}`);
+    if (button) button.lastChild.textContent = ` ${label}`;
+  });
   if (els.supabaseUrl) {
     const config = supabaseConfig();
     els.supabaseUrl.value = config.url;
@@ -4625,8 +4647,66 @@ function renderCloudSettings() {
     setSupabaseStatus(supabaseEnabled() ? "Supabase ready. Email/password login active." : "Supabase off. SQL setup kore URL/anon key din.", supabaseEnabled() ? "ready" : "off");
   }
   if (!cloudUrl()) setCloudStatus("Cloud sync বন্ধ আছে। Apps Script Web App URL দিলে live data sync হবে।");
+  if (els.cloudStatus && !cloudUrl()) {
+    setCloudStatus(supabaseEnabled() ? "Google Sheets backup/report ready. Main live data is Supabase." : "Google Sheets backup off. Supabase live database setup korun.");
+  }
+  if (els.pinForm) els.pinForm.hidden = supabaseEnabled();
+  if (els.managerForm) els.managerForm.hidden = supabaseEnabled();
+  renderEmployeeSetupWizard();
   renderOfficeLocationSettings();
   renderPermissionMatrix();
+}
+
+function renderEmployeeSetupWizard() {
+  if (!els.employeeSetupSteps) return;
+  const activeEmployees = employees();
+  const accessRows = state.employeeAccess || [];
+  const linkedEmployees = activeEmployees.filter((employee) =>
+    accessRows.some((access) => access.employeeId === employee.id && String(access.email || "").includes("@")),
+  );
+  const missingEmployees = activeEmployees.filter((employee) => !linkedEmployees.some((linked) => linked.id === employee.id));
+  const steps = [
+    {
+      ok: supabaseEnabled(),
+      title: "Supabase Auth active",
+      text: supabaseEnabled() ? "Email + password login cholche." : "Supabase URL/anon key save korun.",
+    },
+    {
+      ok: Boolean(state.dashboardAccess?.admin?.email),
+      title: "Admin email linked",
+      text: state.dashboardAccess?.admin?.email || "Admin email set korun.",
+    },
+    {
+      ok: activeEmployees.length > 0,
+      title: "Employee profile ready",
+      text: `${bn.format(activeEmployees.length)} active employee profile.`,
+    },
+    {
+      ok: missingEmployees.length === 0 && activeEmployees.length > 0,
+      title: "Employee email link",
+      text: missingEmployees.length
+        ? `${missingEmployees.map((employee) => employee.name).join(", ")} email link missing.`
+        : `${bn.format(linkedEmployees.length)} employee email linked.`,
+    },
+    {
+      ok: true,
+      title: "Password setup rule",
+      text: "Password dashboard-e save hobe na. Supabase Auth Users/reset link diye manage korun.",
+    },
+  ];
+  els.employeeSetupSteps.innerHTML = steps
+    .map(
+      (step, index) => `
+        <article class="setup-step ${step.ok ? "done" : "pending"}">
+          <span class="status-pill">${step.ok ? "OK" : "Need"}</span>
+          <div>
+            <strong>${bn.format(index + 1)}. ${escapeHtml(step.title)}</strong>
+            <small class="muted">${escapeHtml(step.text)}</small>
+          </div>
+        </article>
+      `,
+    )
+    .join("");
 }
 
 function renderPermissionMatrix() {

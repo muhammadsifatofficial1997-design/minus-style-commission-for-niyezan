@@ -1086,8 +1086,8 @@
                 </div>
               </div>
               <div class="publish-box cloud-box">
-                <strong>Google Sheets Backend</strong>
-                <p>Main live data Supabase-e thakbe. Google Sheets ekhon backup/report copy hisebe use korun.</p>
+                <strong>Google Sheets Backup / Report</strong>
+                <p>Main live data Supabase-e thakbe. Google Sheets sudhu backup, report copy, ba emergency restore-er jonno use korun.</p>
                 <label>Apps Script Web App URL <input id="cloudApiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label>
                 <div class="button-row">
                   <button class="secondary-button" id="saveCloudUrlBtn" type="button"><i data-lucide="cloud"></i> URL সেভ</button>
@@ -1096,6 +1096,11 @@
                 </div>
                 <p class="backup-status" id="cloudStatus">Cloud sync বন্ধ আছে।</p>
                 <p class="backup-status" id="settingsSaveStatus">Settings ready.</p>
+              </div>
+              <div class="publish-box employee-setup-box">
+                <strong>Employee Setup Wizard</strong>
+                <p>Supabase Auth user, employee profile, role, email link, and login test ek sathe check korun.</p>
+                <div class="setup-steps" id="employeeSetupSteps"></div>
               </div>
               <div class="publish-box supabase-box">
                 <strong>Supabase Backend</strong>

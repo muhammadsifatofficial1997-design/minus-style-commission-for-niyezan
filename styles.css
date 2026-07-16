@@ -4573,6 +4573,31 @@ body.beginner-mode .compact-summary-panel {
   font-weight: 900;
 }
 
+.setup-steps {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.setup-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.setup-step.pending {
+  border-color: rgba(245, 158, 11, 0.58);
+}
+
+.setup-step small {
+  display: block;
+  margin-top: 4px;
+}
+
 .detail-pre {
   overflow: auto;
   max-height: 280px;
