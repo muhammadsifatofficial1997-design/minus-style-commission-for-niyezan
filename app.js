@@ -355,6 +355,7 @@ const els = {
   supabaseUrl: document.querySelector("#supabaseUrl"),
   supabaseAnonKey: document.querySelector("#supabaseAnonKey"),
   supabaseStatus: document.querySelector("#supabaseStatus"),
+  supabaseHealthCheckBtn: document.querySelector("#supabaseHealthCheckBtn"),
   settingsSaveStatus: document.querySelector("#settingsSaveStatus"),
   officeLocationEnabled: document.querySelector("#officeLocationEnabled"),
   officeLatitude: document.querySelector("#officeLatitude"),
@@ -1270,6 +1271,54 @@ async function syncFromSupabase(showAlert = true) {
     updateCloudSyncBar(`Supabase load failed: ${error.message}`);
     if (showAlert) alert(`Supabase load failed: ${error.message}`);
     return false;
+  }
+}
+
+async function runSupabaseHealthCheck() {
+  const client = supabaseClient();
+  if (!client) {
+    setSupabaseStatus("Supabase config/library missing.", "failed");
+    return;
+  }
+  const checks = [];
+  const addCheck = (name, ok, detail = "") => checks.push(`${ok ? "OK" : "FAIL"} ${name}${detail ? `: ${detail}` : ""}`);
+  try {
+    setSupabaseStatus("Supabase health check cholche...", "dirty");
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
+    const user = sessionData?.session?.user;
+    addCheck("Auth session", Boolean(user), sessionError?.message || user?.email || "Not logged in");
+    if (!user) {
+      const message = checks.join(" | ");
+      setSupabaseStatus(message, "failed");
+      alert(`Supabase Health Check\n${message}`);
+      return;
+    }
+
+    const tables = [
+      ["profiles", "created_at"],
+      ["employees", "name"],
+      ["attendance_records", "work_date"],
+      ["break_records", "break_date"],
+      ["leave_requests", "start_date"],
+      ["approvals", "created_at"],
+    ];
+    for (const [table, orderColumn] of tables) {
+      try {
+        let query = client.from(table).select("*").limit(1);
+        if (orderColumn) query = query.order(orderColumn, { ascending: false });
+        const { data, error } = await query;
+        addCheck(table, !error, error?.message || `${data?.length || 0} row visible`);
+      } catch (error) {
+        addCheck(table, false, error.message);
+      }
+    }
+    const failed = checks.some((line) => line.startsWith("FAIL"));
+    const message = checks.join(" | ");
+    setSupabaseStatus(message, failed ? "failed" : "synced");
+    alert(`Supabase Health Check\n${checks.join("\n")}`);
+  } catch (error) {
+    setSupabaseStatus(`Supabase health check failed: ${error.message}`, "failed");
+    alert(`Supabase health check failed: ${error.message}`);
   }
 }
 
@@ -6536,6 +6585,7 @@ document.querySelector("#saveSupabaseConfigBtn")?.addEventListener("click", () =
 });
 document.querySelector("#syncFromSupabaseBtn")?.addEventListener("click", () => syncFromSupabase(true));
 document.querySelector("#syncToSupabaseBtn")?.addEventListener("click", () => syncToSupabase(true));
+els.supabaseHealthCheckBtn?.addEventListener("click", runSupabaseHealthCheck);
 document.querySelector("#supabaseLogoutBtn")?.addEventListener("click", logoutSupabase);
 document.querySelector("#setOfficeLocationBtn")?.addEventListener("click", setOfficeLocationFromCurrentPosition);
 els.testOfficeLocationBtn?.addEventListener("click", testOfficeLocation);
