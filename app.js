@@ -2814,6 +2814,28 @@ function smartAlertTarget(item) {
   return "dashboardView";
 }
 
+function openSmartAlertTarget(targetId) {
+  const viewMap = {
+    approvalList: "approvals",
+    attendanceTable: "attendance",
+    breakTable: "attendance",
+    payrollTable: "attendance",
+    cloudSyncBar: "settings",
+    dashboardView: "dashboard",
+  };
+  const view = viewMap[targetId] || "dashboard";
+  const nav = document.querySelector(`.nav-button[data-view="${view}"]`);
+  if (nav && !nav.hidden) nav.click();
+  requestAnimationFrame(() => {
+    const target = document.querySelector(`#${CSS.escape(targetId || "dashboardView")}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("focus-pulse");
+      setTimeout(() => target.classList.remove("focus-pulse"), 1600);
+    }
+  });
+}
+
 function noticeVisibleForRole(notice) {
   if (isAdmin()) return true;
   if (notice.audience === "managers") return isManager();
@@ -6420,6 +6442,29 @@ function finishLogin(user) {
   render();
 }
 
+function friendlyAuthError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  if (message.includes("permission denied") && message.includes("profiles")) {
+    return "Login hoyeche, kintu profile permission/RLS policy thik nei. Supabase SQL policy apply korun.";
+  }
+  if (message.includes("invalid login") || message.includes("invalid credentials")) {
+    return "Email ba password vul. Password reset kore abar try korun.";
+  }
+  if (message.includes("email not confirmed")) {
+    return "Email ekhono confirm hoyni. Inbox/spam theke confirmation link open korun.";
+  }
+  if (message.includes("rate limit")) {
+    return "Onekbar email pathano hoyeche. Kichu shomoy wait kore abar try korun.";
+  }
+  if (message.includes("otp_expired") || message.includes("expired")) {
+    return "Reset/confirm link expire hoyeche. Notun reset email nin.";
+  }
+  if (message.includes("user not found")) {
+    return "Ei email-er account paoa jayni. Admin-ke account create korte bolun.";
+  }
+  return `Login failed: ${error?.message || error}`;
+}
+
 els.signupBtn?.addEventListener("click", async () => {
   const email = normalizeEmail(els.emailInput?.value);
   const password = els.pinInput.value;
@@ -6441,7 +6486,7 @@ els.signupBtn?.addEventListener("click", async () => {
     els.loginError.textContent = "Account create request hoyeche. Email inbox check kore confirm korun, tarpor login korun.";
     if (els.loginRoleHint) els.loginRoleHint.textContent = "New employee signup pending admin link";
   } catch (error) {
-    els.loginError.textContent = `Signup failed: ${error.message}`;
+    els.loginError.textContent = friendlyAuthError(error);
   }
 });
 
@@ -6461,7 +6506,7 @@ els.resetPasswordBtn?.addEventListener("click", async () => {
     els.loginError.textContent = "Password setup/reset email pathano hoyeche. Inbox/spam check korun.";
     if (els.loginRoleHint) els.loginRoleHint.textContent = "Email link open kore new password set korun";
   } catch (error) {
-    els.loginError.textContent = `Password reset failed: ${error.message}`;
+    els.loginError.textContent = friendlyAuthError(error);
   }
 });
 
@@ -6481,7 +6526,7 @@ els.loginForm.addEventListener("submit", async (event) => {
       await syncFromSupabase(false);
       return;
     } catch (error) {
-      els.loginError.textContent = `Supabase login failed: ${error.message}`;
+      els.loginError.textContent = friendlyAuthError(error);
       return;
     }
   }
@@ -6727,12 +6772,7 @@ document.body.addEventListener("click", (event) => {
   }
 
   if (alertTarget) {
-    const target = document.querySelector(`#${CSS.escape(alertTarget.dataset.alertTarget || "dashboardView")}`);
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-      target.classList.add("focus-pulse");
-      setTimeout(() => target.classList.remove("focus-pulse"), 1600);
-    }
+    openSmartAlertTarget(alertTarget.dataset.alertTarget || "dashboardView");
   }
 
   if (copyTemplate || whatsappTemplate) {

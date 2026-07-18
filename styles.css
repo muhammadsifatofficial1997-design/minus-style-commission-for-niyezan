@@ -5454,3 +5454,81 @@ select option {
 table td {
   color: #edf8ff !important;
 }
+
+/* Final phone safety patch: prevents side panels or wide controls from pushing the app off-screen. */
+@media (max-width: 900px) {
+  html,
+  body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .sidebar {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    transform: translateX(-120%) !important;
+  }
+
+  .main {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: calc(92px + env(safe-area-inset-top)) 12px 22px !important;
+    overflow-x: hidden !important;
+  }
+
+  .topbar,
+  .view,
+  .panel,
+  .metric,
+  .publish-box,
+  .fixed-item,
+  .entry-item,
+  .content-grid,
+  .metrics-grid,
+  .form-grid,
+  .inline-form,
+  .manager-inline,
+  .button-row,
+  .date-control,
+  .global-search,
+  .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .mobile-bottom-nav {
+    display: grid !important;
+    position: fixed !important;
+    top: calc(8px + env(safe-area-inset-top)) !important;
+    bottom: auto !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: calc(100vw - 20px) !important;
+    z-index: 10000 !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .mobile-nav-button {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+}
