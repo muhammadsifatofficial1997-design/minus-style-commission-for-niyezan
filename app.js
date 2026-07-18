@@ -5,6 +5,7 @@ const SESSION_KEY = "minus-style-admin-session";
 const CLOUD_URL_KEY = "minus-style-cloud-api-url";
 const SUPABASE_URL_KEY = "minus-style-supabase-url";
 const SUPABASE_ANON_KEY = "minus-style-supabase-anon-key";
+const LOCAL_CHANGE_KEY = "minus-style-last-local-change";
 const DEFAULT_SUPABASE_URL = "https://awywuyxcjcrbxrxghszu.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_Fk5Yk3q2bRqS40Hdmkd0zw_mimgyRXf";
 const OWNER_ADMIN_EMAIL = "asifat553@gmail.com";
@@ -52,6 +53,7 @@ let isApplyingCloudState = false;
 let breakTicker = null;
 let cloudDirty = false;
 let lastCloudSyncAt = "";
+let lastLocalChangeAt = localStorage.getItem(LOCAL_CHANGE_KEY) || "";
 let lastCloudSyncFailed = false;
 let cloudRetryTimer = null;
 let cloudRetryCount = 0;
@@ -552,6 +554,8 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  lastLocalChangeAt = new Date().toISOString();
+  localStorage.setItem(LOCAL_CHANGE_KEY, lastLocalChangeAt);
   if (els?.settingsSaveStatus) {
     els.settingsSaveStatus.textContent = `Saved · ${new Date().toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
   }
@@ -622,7 +626,8 @@ function updateCloudSyncBar(message = "") {
     return;
   }
   if (cloudDirty) {
-    els.cloudSyncBar.textContent = "Unsaved changes";
+    const localText = lastLocalChangeAt ? ` since ${timeAgo(lastLocalChangeAt)}` : "";
+    els.cloudSyncBar.textContent = `Unsaved changes${localText}`;
     els.cloudSyncBar.dataset.status = "dirty";
     return;
   }
@@ -1070,6 +1075,13 @@ async function syncToSupabase(showAlert = true) {
     setSupabaseStatus("Supabase config/library missing.", "failed");
     return false;
   }
+  if (showAlert && lastCloudSyncAt && Date.now() - new Date(lastCloudSyncAt).getTime() > 30 * 60 * 1000) {
+    const ok = confirm(`Last cloud sync was ${timeAgo(lastCloudSyncAt)}. Please load from Supabase first if another device changed data. Push local data now?`);
+    if (!ok) {
+      setSupabaseStatus("Supabase push cancelled. Load from cloud first.", "warning");
+      return false;
+    }
+  }
   try {
     setSupabaseStatus("Supabase-e data pathano hocche...", "dirty");
     const rows = tableRowsForSupabase();
@@ -1241,6 +1253,13 @@ async function syncFromSupabase(showAlert = true) {
   if (!client) {
     setSupabaseStatus("Supabase config/library missing.", "failed");
     return false;
+  }
+  if (showAlert && cloudDirty) {
+    const ok = confirm("This browser has unsaved local changes. Loading from Supabase may replace local draft data. Continue?");
+    if (!ok) {
+      setSupabaseStatus("Supabase load cancelled. Push local changes or clear cache first.", "warning");
+      return false;
+    }
   }
   try {
     setSupabaseStatus("Supabase theke data ana hocche...", "dirty");
@@ -2600,6 +2619,38 @@ function bulkReviewApprovals(approved) {
   render();
 }
 
+function approvalPayloadFields(payload = {}) {
+  const fields = [
+    ["Employee", payload.employeeName || employeeName(payload.employeeId)],
+    ["Date", payload.date || payload.workDate || payload.startDate || payload.start],
+    ["End Date", payload.endDate || payload.end],
+    ["Amount", payload.amount != null ? money(payload.amount) : ""],
+    ["Type", payload.type || payload.requestType || payload.status],
+    ["Category", payload.category ? labelFor(payload.category) : ""],
+    ["Reason", payload.reason || payload.note],
+  ];
+  return fields.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+}
+
+function approvalPayloadTableHtml(payload = {}) {
+  const rows = approvalPayloadFields(payload);
+  if (!rows.length) return `<div class="empty">No readable field found. Raw payload is available below.</div>`;
+  return `
+    <div class="detail-kv-grid">
+      ${rows
+        .map(
+          ([label, value]) => `
+            <div>
+              <small>${escapeHtml(label)}</small>
+              <strong>${escapeHtml(String(value))}</strong>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function openApprovalDetail(id) {
   const request = state.approvals.find((item) => item.id === id);
   if (!request || !els.approvalDetailModal || !els.approvalDetailBody) return;
@@ -2624,6 +2675,11 @@ function openApprovalDetail(id) {
       </div>
       <small class="muted">Created: ${formatDateTime(request.createdAt)} · Reviewed: ${escapeHtml(request.reviewedAt ? formatDateTime(request.reviewedAt) : "Pending")}</small>
       ${approvalTimelineHtml(request)}
+    </article>
+    <article class="fixed-item">
+      <strong>Request Summary</strong>
+      <small class="muted">Requested by: ${escapeHtml(request.requestedBy || "-")}</small>
+      ${approvalPayloadTableHtml(payload)}
     </article>
     <article class="fixed-item">
       <strong>Request Impact</strong>
@@ -2773,6 +2829,20 @@ function openDailyWhatsappSummary() {
 
 function searchItems() {
   const items = [];
+  if (isAdmin()) {
+    const missingProfiles = employees().filter((employee) => {
+      const profile = employeeProfileFor(employee.id);
+      return !profile.phone || !profile.joinDate || !profile.shift;
+    }).length;
+    const employeeEmailMissing = employees().filter((employee) => {
+      const access = (state.employeeAccess || []).find((item) => item.employeeId === employee.id);
+      return !access?.email;
+    }).length;
+    if (missingProfiles) alerts.push({ level: "info", title: "Quick Fix: Employee Profile", detail: `${bn.format(missingProfiles)} employee profile phone/join/shift incomplete`, view: "settings" });
+    if (employeeEmailMissing) alerts.push({ level: "warning", title: "Quick Fix: Employee Email", detail: `${bn.format(employeeEmailMissing)} employee email missing for Supabase login mapping`, view: "settings" });
+    if (cloudDirty) alerts.push({ level: "warning", title: "Quick Fix: Unsaved Sync", detail: `Local changes pending${lastLocalChangeAt ? ` since ${timeAgo(lastLocalChangeAt)}` : ""}`, view: "settings" });
+  }
+
   employees().forEach((employee) => {
     items.push({ title: employee.name, detail: `Salary ${money(employee.salary)}`, view: "attendance", type: "Employee" });
   });
@@ -3778,6 +3848,13 @@ function renderEmployeeHome() {
   const hasCheckOut = Boolean(record?.checkOut);
   const runningBreak = activeBreakFor(employee.id);
   const statusText = runningBreak ? `On ${breakLabel(runningBreak.type)}` : hasCheckIn && hasCheckOut ? "Complete" : hasCheckIn ? "Check-out baki" : "Check-in baki";
+  const month = els.payrollMonth.value || today().slice(0, 7);
+  const monthStartDate = `${month}-01`;
+  const monthEndDate = monthEnd(monthStartDate);
+  const ownMonthAttendance = state.attendance.filter((item) => item.employeeId === employee.id && item.date >= monthStartDate && item.date <= monthEndDate);
+  const missingCheckoutCount = ownMonthAttendance.filter((item) => item.checkIn && !item.checkOut).length;
+  const absentCount = ownMonthAttendance.filter((item) => item.status === "absent").length;
+  const ownPendingApprovals = state.approvals.filter((item) => item.status === "pending" && item.payload?.employeeId === employee.id).length;
 
   els.employeeHomeTitle.textContent = `${employee.name} - আজকের স্ট্যাটাস`;
   els.employeeTodayStatus.textContent = statusText;
@@ -3802,6 +3879,9 @@ function renderEmployeeHome() {
       <span>Join: ${escapeHtml(profile.joinDate || "-")}</span>
       <span>Phone: ${escapeHtml(profile.phone || "-")}</span>
       <span>Emergency: ${escapeHtml(profile.emergencyContact || "-")}</span>
+      <span>Missing checkout: ${bn.format(missingCheckoutCount)}</span>
+      <span>Absent: ${bn.format(absentCount)}</span>
+      <span>Pending approval: ${bn.format(ownPendingApprovals)}</span>
     `;
   }
 
@@ -5184,6 +5264,12 @@ function clearEmptyBackups() {
 
 function renderChart(dateString) {
   const canvas = document.querySelector("#trendChart");
+  if (!canvas) return;
+  if (window.matchMedia?.("(max-width: 760px)")?.matches) {
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
   const ctx = canvas.getContext("2d");
   const width = canvas.width;
   const height = canvas.height;

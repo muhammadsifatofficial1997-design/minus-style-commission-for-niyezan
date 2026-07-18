@@ -406,6 +406,34 @@ canvas {
   height: 260px;
 }
 
+.detail-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.detail-kv-grid div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.detail-kv-grid small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.detail-kv-grid strong {
+  display: block;
+  color: var(--text);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
 .status-pill,
 .type-pill {
   display: inline-flex;
@@ -5658,5 +5686,22 @@ body::after,
   .friendly-step,
   .template-card {
     box-shadow: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .chart-wrap {
+    display: none !important;
+  }
+
+  .panel,
+  .metric,
+  .fixed-item,
+  .entry-item {
+    contain: content;
+  }
+
+  .detail-kv-grid {
+    grid-template-columns: 1fr;
   }
 }
