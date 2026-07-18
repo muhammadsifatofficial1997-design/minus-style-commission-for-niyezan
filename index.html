@@ -1041,6 +1041,9 @@
               <div class="approval-tabs" id="approvalTabs">
                 <button class="secondary-button active" data-approval-filter="pending" type="button">Pending</button>
                 <button class="secondary-button" data-approval-filter="attendance" type="button">Attendance</button>
+                <button class="secondary-button" data-approval-filter="leave" type="button">Leave</button>
+                <button class="secondary-button" data-approval-filter="payroll" type="button">Payroll</button>
+                <button class="secondary-button" data-approval-filter="friday" type="button">Friday Work</button>
                 <button class="secondary-button" data-approval-filter="finance" type="button">Finance</button>
                 <button class="secondary-button" data-approval-filter="fixed" type="button">Fixed Cost</button>
                 <button class="secondary-button" data-approval-filter="completed" type="button">Completed</button>
@@ -1056,6 +1059,14 @@
         </section>
 
         <section class="view" id="settingsView">
+          <div class="settings-tabs" id="settingsTabs">
+            <button class="secondary-button active" data-settings-jump="#pinForm" type="button">Access</button>
+            <button class="secondary-button" data-settings-jump=".supabase-box" type="button">Supabase</button>
+            <button class="secondary-button" data-settings-jump=".office-location-box" type="button">Office</button>
+            <button class="secondary-button" data-settings-jump="#employeeProfileForm" type="button">Employee</button>
+            <button class="secondary-button" data-settings-jump="#backupVersionSelect" type="button">Backup</button>
+            <button class="secondary-button" data-settings-jump="#runHealthCheckBtn" type="button">Health</button>
+          </div>
           <div class="content-grid">
             <section class="panel">
               <div class="panel-head">
@@ -1261,7 +1272,10 @@
                   <h2>Data Health Check</h2>
                   <p>Duplicate attendance, missing checkout এবং running break দ্রুত চেক করুন</p>
                 </div>
-                <button class="secondary-button" id="runHealthCheckBtn" type="button"><i data-lucide="shield-check"></i> Check Now</button>
+                <div class="button-row">
+                  <button class="secondary-button" id="runHealthCheckBtn" type="button"><i data-lucide="shield-check"></i> Check Now</button>
+                  <button class="secondary-button" id="repairDataBtn" type="button"><i data-lucide="wrench"></i> Safe Repair</button>
+                </div>
               </div>
               <div class="fixed-list health-list" id="healthCheckList"></div>
             </section>

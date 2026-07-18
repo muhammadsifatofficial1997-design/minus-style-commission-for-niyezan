@@ -335,6 +335,7 @@ const els = {
   managerList: document.querySelector("#managerList"),
   approvalList: document.querySelector("#approvalList"),
   approvalTabs: document.querySelector("#approvalTabs"),
+  settingsTabs: document.querySelector("#settingsTabs"),
   bulkApproveBtn: document.querySelector("#bulkApproveBtn"),
   bulkRejectBtn: document.querySelector("#bulkRejectBtn"),
   employeeAccessForm: document.querySelector("#employeeAccessForm"),
@@ -383,6 +384,7 @@ const els = {
   backupVersionHint: document.querySelector("#backupVersionHint"),
   healthCheckList: document.querySelector("#healthCheckList"),
   runHealthCheckBtn: document.querySelector("#runHealthCheckBtn"),
+  repairDataBtn: document.querySelector("#repairDataBtn"),
   systemCheckList: document.querySelector("#systemCheckList"),
   runSystemCheckBtn: document.querySelector("#runSystemCheckBtn"),
   editModal: document.querySelector("#editModal"),
@@ -1224,9 +1226,11 @@ function mergeSupabaseRows(payload) {
   }
 }
 
-async function selectSupabaseTable(client, table, orderColumn = "created_at") {
+async function selectSupabaseTable(client, table, orderColumn = "created_at", options = {}) {
   let query = client.from(table).select("*");
+  if (options.employeeId) query = query.eq("employee_id", options.employeeId);
   if (orderColumn) query = query.order(orderColumn, { ascending: false });
+  if (options.limit) query = query.limit(options.limit);
   const { data, error } = await query;
   if (error) throw new Error(`${table}: ${error.message}`);
   return data || [];
@@ -1241,17 +1245,28 @@ async function syncFromSupabase(showAlert = true) {
   try {
     setSupabaseStatus("Supabase theke data ana hocche...", "dirty");
     isApplyingSupabaseState = true;
+    const employeeScope = isEmployee() && currentUser.employeeId ? currentUser.employeeId : "";
+    const loadWarnings = [];
+    const loadTable = async (table, orderColumn, options = {}) => {
+      try {
+        return await selectSupabaseTable(client, table, orderColumn, options);
+      } catch (error) {
+        loadWarnings.push(error.message);
+        return undefined;
+      }
+    };
+    const scopedOptions = employeeScope ? { employeeId: employeeScope, limit: 160 } : {};
     const payload = {
-      employees: await selectSupabaseTable(client, "employees", "name"),
-      daily_entries: await selectSupabaseTable(client, "daily_entries", "entry_date"),
-      fixed_expenses: await selectSupabaseTable(client, "fixed_expenses", "name"),
-      attendance_records: await selectSupabaseTable(client, "attendance_records", "work_date"),
-      break_records: await selectSupabaseTable(client, "break_records", "break_date"),
-      leave_requests: await selectSupabaseTable(client, "leave_requests", "start_date"),
-      advance_requests: await selectSupabaseTable(client, "advance_requests", "salary_month"),
-      approvals: await selectSupabaseTable(client, "approvals", "created_at"),
-      friday_work_requests: await selectSupabaseTable(client, "friday_work_requests", "work_date"),
-      salary_adjustments: await selectSupabaseTable(client, "salary_adjustments", "salary_month"),
+      employees: await loadTable("employees", "name"),
+      daily_entries: employeeScope ? undefined : await loadTable("daily_entries", "entry_date", { limit: 700 }),
+      fixed_expenses: employeeScope ? undefined : await loadTable("fixed_expenses", "name"),
+      attendance_records: await loadTable("attendance_records", "work_date", scopedOptions),
+      break_records: await loadTable("break_records", "break_date", scopedOptions),
+      leave_requests: await loadTable("leave_requests", "start_date", scopedOptions),
+      advance_requests: await loadTable("advance_requests", "salary_month", scopedOptions),
+      approvals: await loadTable("approvals", "created_at", { limit: employeeScope ? 80 : 500 }),
+      friday_work_requests: await loadTable("friday_work_requests", "work_date", scopedOptions),
+      salary_adjustments: await loadTable("salary_adjustments", "salary_month", scopedOptions),
     };
     mergeSupabaseRows(payload);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1262,7 +1277,8 @@ async function syncFromSupabase(showAlert = true) {
     ensureEmployeeAccess();
     render();
     updateCloudSyncBar("Supabase synced");
-    setSupabaseStatus(`Supabase load complete: ${new Date().toLocaleString("bn-BD")}`, "synced");
+    const warningText = loadWarnings.length ? ` (${loadWarnings.length} table skipped by RLS/policy)` : "";
+    setSupabaseStatus(`Supabase load complete${warningText}: ${new Date().toLocaleString("bn-BD")}`, "synced");
     if (showAlert) alert("Supabase theke data load hoyeche.");
     return true;
   } catch (error) {
@@ -2472,7 +2488,10 @@ function renderApprovals() {
 }
 
 function approvalGroup(request) {
-  if (["attendance_punch", "correction_request", "leave_request"].includes(request.action)) return "attendance";
+  if (["attendance_punch", "correction_request"].includes(request.action)) return "attendance";
+  if (["leave_request"].includes(request.action)) return "leave";
+  if (["advance_request", "salary_adjustment", "manual_salary_adjustment", "payroll_adjustment"].includes(request.action)) return "payroll";
+  if (["friday_work_request", "friday_work_complete", "friday_work_update"].includes(request.action)) return "friday";
   if (["add_entry", "bulk_entries", "edit_entry", "delete_entry"].includes(request.action)) return "finance";
   if (["add_fixed", "edit_fixed", "delete_fixed", "toggle_fixed", "save_fixed"].includes(request.action)) return "fixed";
   return "other";
@@ -2592,6 +2611,28 @@ function closeApprovalDetail() {
 }
 
 function requestCategory(request) {
+  const cleanCategory = {
+    attendance_punch: "Attendance",
+    correction_request: "Attendance",
+    leave_request: "Leave",
+    advance_request: "Payroll",
+    salary_adjustment: "Payroll",
+    manual_salary_adjustment: "Payroll",
+    payroll_adjustment: "Payroll",
+    friday_work_request: "Friday Work",
+    friday_work_complete: "Friday Work",
+    friday_work_update: "Friday Work",
+    add_entry: "Daily Finance",
+    bulk_entries: "Daily Finance",
+    edit_entry: "Daily Finance",
+    delete_entry: "Daily Finance",
+    add_fixed: "Fixed Cost",
+    edit_fixed: "Fixed Cost",
+    delete_fixed: "Fixed Cost",
+    toggle_fixed: "Fixed Cost",
+    save_fixed: "Fixed Cost",
+  }[request.action];
+  if (cleanCategory) return cleanCategory;
   return {
     attendance_punch: "হাজিরা ও বেতন",
     correction_request: "হাজিরা ও বেতন",
@@ -4016,6 +4057,52 @@ function renderHealthCheck() {
         `,
       )
       .join("") || `<div class="empty">Data health OK. Duplicate, missing checkout বা running break নেই।</div>`;
+}
+
+function repairDataIssues() {
+  if (!isAdmin()) return;
+  let fixes = 0;
+  const employeeMap = new Map(employees().map((employee) => [employee.id, employee]));
+  const fixEmployeeName = (items = []) => {
+    items.forEach((item) => {
+      const employee = employeeMap.get(item.employeeId || item.employee_id);
+      if (!employee) return;
+      if (item.employeeName !== undefined && item.employeeName !== employee.name) {
+        item.employeeName = employee.name;
+        fixes += 1;
+      }
+      if (item.employee_name !== undefined && item.employee_name !== employee.name) {
+        item.employee_name = employee.name;
+        fixes += 1;
+      }
+    });
+  };
+
+  fixEmployeeName(state.attendance);
+  fixEmployeeName(state.breaks);
+  fixEmployeeName(state.leaveRequests);
+  fixEmployeeName(state.advances);
+  fixEmployeeName(state.fridayWorkRequests);
+  fixEmployeeName(state.salaryAdjustments);
+
+  const validEmployeeIds = new Set(employees().map((employee) => employee.id));
+  const beforeAccess = (state.employeeAccess || []).length;
+  state.employeeAccess = (state.employeeAccess || []).filter((access) => {
+    if (access.employeeId) return validEmployeeIds.has(access.employeeId);
+    return Boolean(employeeForAccess(access));
+  });
+  fixes += beforeAccess - state.employeeAccess.length;
+
+  const beforeApprovals = (state.approvals || []).length;
+  state.approvals = (state.approvals || []).filter((request) => request && request.id && request.action);
+  fixes += beforeApprovals - state.approvals.length;
+
+  ensureEmployeeAccess();
+  logActivity("Data Repair", `${fixes} safe fix applied`, "health");
+  saveState();
+  render();
+  renderHealthCheck();
+  alert(fixes ? `${fixes} safe repair complete.` : "No safe repair needed. Health report refreshed.");
 }
 
 function systemCheckItems() {
@@ -6440,6 +6527,9 @@ function finishLogin(user) {
   currentUser = user;
   unlockApp();
   render();
+  if (user.role === "employee") {
+    setTimeout(() => document.querySelector('[data-view="attendance"]')?.click(), 0);
+  }
 }
 
 function friendlyAuthError(error) {
@@ -6576,6 +6666,17 @@ els.approvalTabs?.addEventListener("click", (event) => {
   approvalFilter = button.dataset.approvalFilter;
   renderApprovalsV2();
 });
+els.settingsTabs?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-settings-jump]");
+  if (!button) return;
+  els.settingsTabs.querySelectorAll("[data-settings-jump]").forEach((item) => item.classList.toggle("active", item === button));
+  const target = document.querySelector(button.dataset.settingsJump);
+  const panel = target?.closest(".panel, .publish-box, .backup-version-box") || target;
+  if (!panel) return;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  panel.classList.add("settings-jump-highlight");
+  setTimeout(() => panel.classList.remove("settings-jump-highlight"), 1400);
+});
 els.bulkApproveBtn?.addEventListener("click", () => bulkReviewApprovals(true));
 els.bulkRejectBtn?.addEventListener("click", () => bulkReviewApprovals(false));
 
@@ -6677,6 +6778,7 @@ els.clearOldNotificationsBtn?.addEventListener("click", clearOldNotifications);
 els.clearRejectedRequestsBtn?.addEventListener("click", clearRejectedRequests);
 els.clearEmptyBackupsBtn?.addEventListener("click", clearEmptyBackups);
 els.runHealthCheckBtn?.addEventListener("click", renderHealthCheck);
+els.repairDataBtn?.addEventListener("click", repairDataIssues);
 els.runSystemCheckBtn?.addEventListener("click", renderSystemCheck);
 document.querySelector("#clearCacheBtn").addEventListener("click", clearAppCache);
 els.homeClearCacheBtn?.addEventListener("click", clearAppCache);
