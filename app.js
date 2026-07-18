@@ -1329,6 +1329,19 @@ async function runSupabaseHealthCheck() {
         addCheck(table, false, error.message);
       }
     }
+    try {
+      const { data: profileRows, error: profileError } = await client.from("profiles").select("id,email,role").eq("id", user.id).limit(1);
+      addCheck("Current profile row", Boolean(profileRows?.length) && !profileError, profileError?.message || (profileRows?.[0] ? `${profileRows[0].email || user.email} / ${profileRows[0].role || "role missing"}` : "Missing profile for current user"));
+    } catch (error) {
+      addCheck("Current profile row", false, error.message);
+    }
+    try {
+      const { data: employeeRows, error: employeeError } = await client.from("employees").select("id,name,email,role,status").limit(20);
+      const missingEmail = (employeeRows || []).filter((employee) => !employee.email).length;
+      addCheck("Employee login readiness", !employeeError && !missingEmail, employeeError?.message || `${employeeRows?.length || 0} visible, ${missingEmail} email missing`);
+    } catch (error) {
+      addCheck("Employee login readiness", false, error.message);
+    }
     const failed = checks.some((line) => line.startsWith("FAIL"));
     const message = checks.join(" | ");
     setSupabaseStatus(message, failed ? "failed" : "synced");
@@ -2513,8 +2526,35 @@ function renderApprovalsV2() {
   const pending = state.approvals.filter((request) => request.status === "pending");
   renderPendingApprovalBadge(pending.length);
   if (els.approvalTabs) {
+    const labels = {
+      pending: "Pending",
+      attendance: "Attendance",
+      leave: "Leave",
+      payroll: "Payroll",
+      friday: "Friday Work",
+      finance: "Finance",
+      fixed: "Fixed Cost",
+      completed: "Completed",
+      all: "All",
+    };
+    const filterCounts = Object.fromEntries(Object.keys(labels).map((key) => [key, 0]));
+    state.approvals.forEach((request) => {
+      if (request.status === "pending") filterCounts.pending += 1;
+      if (request.status !== "pending") filterCounts.completed += 1;
+      const group = approvalGroup(request);
+      filterCounts[group] = (filterCounts[group] || 0) + 1;
+      filterCounts.all += 1;
+    });
+    (state.fridayWorkRequests || []).forEach((request) => {
+      filterCounts.friday += 1;
+      filterCounts.all += 1;
+      if (request.status === "pending") filterCounts.pending += 1;
+      if (request.status && request.status !== "pending") filterCounts.completed += 1;
+    });
     els.approvalTabs.querySelectorAll("[data-approval-filter]").forEach((button) => {
-      button.classList.toggle("active", button.dataset.approvalFilter === approvalFilter);
+      const filter = button.dataset.approvalFilter;
+      button.classList.toggle("active", filter === approvalFilter);
+      button.textContent = `${labels[filter] || filter} (${bn.format(filterCounts[filter] || 0)})`;
     });
   }
   const visible = state.approvals.filter(approvalFilterMatches);
@@ -4294,7 +4334,10 @@ function renderPayroll() {
   document.querySelector("#payrollTable").innerHTML =
     rows
       .map(
-        (row) => `
+        (row) => {
+          const dailySalary = Number(row.salary || 0) / PAYROLL_DAYS;
+          const tooltip = `Base ${money(row.salary)} / ${PAYROLL_DAYS} days = ${money(dailySalary)} per day. Payable = base + Friday ${money(row.weekendPay || 0)} + bonus ${money(row.additions || 0)} - deduction ${money((row.deduction || 0) + (row.advance || 0) + (row.manualDeductions || 0))}.`;
+          return `
           <tr>
             <td>${escapeHtml(row.name)}</td>
             <td>${money(row.salary)}</td>
@@ -4307,10 +4350,11 @@ function renderPayroll() {
             <td class="amount good">${money(row.weekendPay || 0)}</td>
             <td class="amount good">${money(row.additions || 0)}</td>
             <td class="amount bad">${money(row.manualDeductions || 0)}</td>
-            <td class="amount good">${money(row.payable)}</td>
+            <td class="amount good" title="${escapeHtml(tooltip)}">${money(row.payable)}</td>
             <td><button class="small-action" data-payslip="${row.id}" type="button">PDF</button></td>
           </tr>
-        `,
+        `;
+        },
       )
       .join("") || `<tr><td colspan="13" class="empty">Payroll-এর জন্য কোনো employee নেই।</td></tr>`;
 }
@@ -4574,6 +4618,41 @@ function renderEmployeeAccess() {
   if (!els.employeeAccessEmployee) return;
   if (supabaseEnabled()) {
     if (els.employeeAccessForm) els.employeeAccessForm.hidden = true;
+    const debugRows = employees()
+      .map((employee) => {
+        const profile = employeeProfileFor(employee.id);
+        const access = (state.employeeAccess || []).find((item) => item.employeeId === employee.id || normalizeName(item.employeeName) === normalizeName(employee.name));
+        const email = access?.email || profile.email || employee.email || "";
+        const role = access?.role || profile.role || (employee.name === currentUser.name ? currentUser.role : "employee");
+        return `
+          <article class="fixed-item compact-debug">
+            <div class="item-line">
+              <strong>${escapeHtml(employee.name)}</strong>
+              <span class="status-pill">${escapeHtml(role)}</span>
+            </div>
+            <small class="muted">${escapeHtml(email || "No email set")} · ${email ? "Auth email ready" : "Email missing"} · Salary ${money(employee.salary)}</small>
+          </article>
+        `;
+      })
+      .join("");
+    els.employeeAccessList.innerHTML = `
+      <article class="fixed-item">
+        <div class="item-line">
+          <strong>Supabase Auth Active</strong>
+          <span class="status-pill">Secure</span>
+        </div>
+        <small class="muted">Dashboard password save off. Password Supabase Authentication > Users, invite/reset email, ba login page reset diye set hobe.</small>
+      </article>
+      <article class="fixed-item">
+        <div class="item-line">
+          <strong>Employee Login Debug</strong>
+          <span class="status-pill">${bn.format(employees().length)} employee</span>
+        </div>
+        <small class="muted">Email missing hole login hobe na. Role/profile mismatch hole RLS data block korte pare.</small>
+      </article>
+      ${debugRows || `<div class="empty">No employee found for login debug.</div>`}
+    `;
+    return;
     els.employeeAccessList.innerHTML = `
       <article class="fixed-item">
         <div class="item-line">
