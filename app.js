@@ -2269,6 +2269,7 @@ function render() {
   setText("monthStatus", month.net >= 0 ? "মাসিক লাভ" : "মাসিক লস");
   setText("monthLabel", `${formatMonth(date)} সারাংশ`);
   renderCompactSummary(day);
+  renderFixedShortcut(date);
 
   document.querySelector("#todayNet").className = day.net >= 0 ? "amount good" : "amount bad";
   document.querySelector("#monthNet").className = month.net >= 0 ? "amount good" : "amount bad";
@@ -2458,6 +2459,39 @@ function renderFixedList() {
       `,
     )
     .join("");
+}
+
+function renderFixedShortcut(dateString = today()) {
+  const panel = document.querySelector("#fixedShortcutPanel");
+  if (!panel) return;
+  const canSeeFixed = canOpenView("fixed");
+  panel.hidden = !canSeeFixed;
+  if (!canSeeFixed) return;
+
+  const activeItems = state.fixedExpenses.filter((item) => item.active);
+  const inactiveItems = state.fixedExpenses.filter((item) => !item.active);
+  setText("fixedShortcutTotal", money(activeFixedTotal()));
+  setText("fixedShortcutDaily", money(activeFixedTotal() / getDaysInMonth(dateString)));
+  setText("fixedShortcutActive", bn.format(activeItems.length));
+  setText("fixedShortcutInactive", bn.format(inactiveItems.length));
+
+  const list = document.querySelector("#fixedShortcutList");
+  if (!list) return;
+  list.innerHTML =
+    activeItems
+      .slice(0, 5)
+      .map(
+        (item) => `
+          <article class="fixed-item compact-fixed-item">
+            <div class="item-line">
+              <strong>${escapeHtml(item.name)}</strong>
+              <span class="amount">${money(item.amount)}</span>
+            </div>
+            <small class="muted">${escapeHtml(labelFor(item.category))} | ${escapeHtml(item.note || "No note")}</small>
+          </article>
+        `,
+      )
+      .join("") || `<div class="empty">No active fixed cost.</div>`;
 }
 
 function renderManagers() {
@@ -6910,6 +6944,12 @@ els.approvalDetailModal?.addEventListener("click", (event) => {
 document.querySelector("#quickAddBtn").addEventListener("click", () => {
   document.querySelector('[data-view="daily"]').click();
   els.entryAmount.focus();
+});
+document.addEventListener("click", (event) => {
+  const viewJump = event.target.closest("[data-view-jump]");
+  if (!viewJump) return;
+  const target = document.querySelector(`.nav-button[data-view="${viewJump.dataset.viewJump}"]`);
+  if (target && !target.hidden) target.click();
 });
 document.querySelector("#applyDailyFilter").addEventListener("click", renderEntriesTable);
 document.querySelector("#applyReportFilter").addEventListener("click", renderReports);
