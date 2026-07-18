@@ -5532,3 +5532,73 @@ table td {
     overflow: hidden !important;
   }
 }
+
+/* Performance mode: keep the dark premium look without expensive GPU paint. */
+*,
+*::before,
+*::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+
+body::before,
+body::after,
+.app-shell::before,
+.app-shell::after,
+.main::before,
+.main::after,
+.topbar::before,
+.topbar::after,
+.metric::before,
+.metric::after,
+.panel::before,
+.panel::after,
+.login-screen::before {
+  display: none !important;
+}
+
+.login-card,
+.panel,
+.metric,
+.publish-box,
+.fixed-item,
+.entry-item,
+.modal-card,
+.topbar,
+.mobile-bottom-nav,
+.global-search-results,
+.table-wrap,
+.summary-row > div,
+.employee-status-grid div,
+.system-check-item,
+.role-home-card,
+.friendly-step,
+.template-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22) !important;
+}
+
+@media (max-width: 900px) {
+  .login-card,
+  .panel,
+  .metric,
+  .publish-box,
+  .fixed-item,
+  .entry-item,
+  .modal-card,
+  .topbar,
+  .mobile-bottom-nav,
+  .global-search-results,
+  .table-wrap,
+  .summary-row > div,
+  .employee-status-grid div,
+  .system-check-item,
+  .role-home-card,
+  .friendly-step,
+  .template-card {
+    box-shadow: none !important;
+  }
+}

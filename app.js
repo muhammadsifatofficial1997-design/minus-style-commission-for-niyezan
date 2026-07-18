@@ -6933,7 +6933,11 @@ document.querySelector("#resetBtn").addEventListener("click", () => {
   render();
 });
 
-window.addEventListener("resize", () => renderChart(els.selectedDate.value));
+let resizeChartTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeChartTimer);
+  resizeChartTimer = setTimeout(() => renderChart(els.selectedDate.value), 220);
+});
 
 applyThemeMode();
 initDates();
@@ -6943,9 +6947,11 @@ initDates();
   if (cleanupChanged || accessChanged) saveState();
 }
 breakTicker = setInterval(() => {
+  if (document.hidden) return;
+  if (!activeBreakFor(currentUser.employeeId) && !state.breaks.some((item) => !item.endedAt && !item.endAt)) return;
   renderBreaks();
   renderEmployeeHome();
-}, 1000);
+}, 10000);
 
 async function boot() {
   registerServiceWorker();
