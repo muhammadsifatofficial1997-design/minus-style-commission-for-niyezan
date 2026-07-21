@@ -5705,3 +5705,76 @@ body::after,
     grid-template-columns: 1fr;
   }
 }
+
+/* Final contrast guard: keep old light-table/filter rules from leaking into the dark UI. */
+.filter-bar,
+.mini-filter,
+.report-actions,
+.table-wrap,
+.entry-list,
+.range-helper,
+.bulk-panel,
+.publish-box,
+.summary-row > div,
+.employee-status-grid div,
+.system-check-item {
+  color: #f4fbff !important;
+  background: rgba(5, 16, 31, 0.94) !important;
+  border-color: rgba(121, 201, 255, 0.24) !important;
+}
+
+.filter-bar label,
+.mini-filter label,
+.report-actions label,
+.range-helper label,
+.bulk-panel label,
+.table-wrap p,
+.entry-list p,
+.empty-state,
+td[colspan] {
+  color: rgba(231, 244, 252, 0.88) !important;
+}
+
+.filter-bar input,
+.filter-bar select,
+.mini-filter input,
+.mini-filter select,
+.report-actions input,
+.report-actions select,
+.range-helper input,
+.range-helper select,
+.bulk-panel input,
+.bulk-panel select,
+.bulk-panel textarea {
+  color: #f8fdff !important;
+  background: rgba(3, 12, 24, 0.98) !important;
+  border-color: rgba(135, 214, 255, 0.36) !important;
+}
+
+.filter-bar .secondary-button,
+.mini-filter .secondary-button,
+.report-actions .secondary-button,
+.range-helper .secondary-button {
+  color: #061426 !important;
+  background: linear-gradient(145deg, #8be2ff, #30aaf2) !important;
+  border-color: rgba(167, 230, 255, 0.54) !important;
+}
+
+table {
+  color: #f3fbff !important;
+  background: rgba(4, 14, 27, 0.94) !important;
+}
+
+table th {
+  color: #eaf8ff !important;
+  background: rgba(17, 56, 88, 0.92) !important;
+}
+
+table td {
+  color: rgba(241, 249, 255, 0.94) !important;
+  background: rgba(5, 18, 34, 0.72) !important;
+}
+
+tbody tr:nth-child(even) td {
+  background: rgba(7, 24, 44, 0.82) !important;
+}
